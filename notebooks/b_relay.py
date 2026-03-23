@@ -1,8 +1,18 @@
-from __future__ import annotations
-import asyncio
-import threading
-from fnmatch import fnmatch
+import marimo
 
+__generated_with = "0.21.1"
+app = marimo.App()
+
+with app.setup:
+    from __future__ import annotations
+ 
+    import asyncio
+    import threading
+    from fnmatch import fnmatch
+ 
+
+
+@app.function
 def create_relay():
     """Create a pub/sub relay for broadcasting events.
  
@@ -72,3 +82,12 @@ def create_relay():
     relay.publish = publish
     relay.subscribe = subscribe
     return relay
+
+
+@app.cell
+def _():
+    return
+
+
+if __name__ == "__main__":
+    app.run()

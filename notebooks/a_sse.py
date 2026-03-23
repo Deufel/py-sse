@@ -1,10 +1,33 @@
-from __future__ import annotations
-import json
-from html_tags import to_html, Tag
+import marimo
 
-MODES = frozenset({'outer', 'inner', 'replace', 'prepend', 'append', 'before', 'after', 'remove'})
-NAMESPACES = frozenset({'html', 'svg', 'mathml'})
+__generated_with = "0.21.1"
+app = marimo.App(width="full")
 
+with app.setup:
+    from __future__ import annotations
+ 
+    import json
+    from html_tags import to_html, Tag
+ 
+ 
+    # Datastar spec: valid values for the `mode` data line
+    MODES = frozenset({
+        "outer",    # morph outer HTML (default)
+        "inner",    # morph inner HTML
+        "replace",  # replace outer HTML (no morph)
+        "prepend",  # prepend to target's children
+        "append",   # append to target's children
+        "before",   # insert before target as sibling
+        "after",    # insert after target as sibling
+        "remove",   # remove target from DOM
+    })
+ 
+    # Datastar spec: valid values for the `namespace` data line
+    NAMESPACES = frozenset({"html", "svg", "mathml"})
+ 
+
+
+@app.function
 def patch_elements(
     elements: Tag | str,
     *,
@@ -45,6 +68,8 @@ def patch_elements(
         lines.append(f"data: elements {line}")
     return "event: datastar-patch-elements\n" + "\n".join(lines) + "\n\n"
 
+
+@app.function
 def patch_signals(
     signals: dict | str,
     *,
@@ -67,6 +92,8 @@ def patch_signals(
     lines.append(f"data: signals {signals}")
     return "event: datastar-patch-signals\n" + "\n".join(lines) + "\n\n"
 
+
+@app.function
 def remove_signals(*names: str) -> str:
     """Remove signals by patching them to null.
  
@@ -74,6 +101,8 @@ def remove_signals(*names: str) -> str:
     """
     return patch_signals({name: None for name in names})
 
+
+@app.function
 def execute_script(
     script: str,
     *,
@@ -97,3 +126,12 @@ def execute_script(
     for line in script.split("\n"):
         lines.append(f"data: script {line}")
     return "event: datastar-execute-script\n" + "\n".join(lines) + "\n\n"
+
+
+@app.cell
+def _():
+    return
+
+
+if __name__ == "__main__":
+    app.run()

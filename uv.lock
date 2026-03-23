@@ -847,7 +847,7 @@ wheels = [
 
 [[package]]
 name = "py-sse"
-version = "0.0.5"
+version = "0.0.6"
 source = { editable = "." }
 dependencies = [
     { name = "brotli" },
