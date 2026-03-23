@@ -1,0 +1,140 @@
+<!doctype html>
+<html>
+  <head>
+<script type="module" src="https://cdn.jsdelivr.net/gh/starfederation/datastar@1.0.0-RC.8/bundles/datastar.js"></script><script src="https://cdn.jsdelivr.net/gh/gnat/css-scope-inline@main/script.js"></script><script src="js/highlight.js" type="module"></script>    <style>body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; } code { font-family: 'SF Mono', Consolas, monospace; }</style>
+    <title>sse - py-sse</title>
+  </head>
+  <body data-signals="{search: ''}" style="display: flex; height: 100vh; margin: 0; background: #121212;">
+    <nav>
+      <style>
+            me { padding: 1rem; background: #1a1a1a; min-width: 180px; }
+            me h3 { margin: 0 0 1rem 0; color: #fff; }
+            me ul { list-style: none; padding: 0; margin: 0; }
+            me .back-link { color: #888; text-decoration: none; font-size: 0.85rem; }
+            me .back-link:hover { color: #fff; }
+            me .nav-link { color: #aaa; text-decoration: none; }
+            me .nav-link:hover { color: #fff; }
+            me .nav-link.active { color: #fff; }
+            me input { width: 100%; padding: 0.5rem; border: 1px solid #333; border-radius: 4px; background: #252525; color: #fff; margin-bottom: 1rem; box-sizing: border-box; }
+        </style>
+      <h3>py-sse</h3>
+      <input type="text" placeholder="Search..." data-bind="search">
+      <ul>
+        <li>
+<a href="index.html" class="back-link">← Index</a>        </li>
+        <li>
+<a href="request.html" class="nav-link ">request</a>        </li>
+        <li>
+<a href="response.html" class="nav-link ">response</a>        </li>
+        <li>
+<a href="stream.html" class="nav-link ">stream</a>        </li>
+        <li>
+<a href="relay.html" class="nav-link ">relay</a>        </li>
+        <li>
+<a href="router.html" class="nav-link ">router</a>        </li>
+        <li>
+<a href="sse.html" class="nav-link active">sse</a>        </li>
+      </ul>
+    </nav>
+    <div style="flex: 1; display: flex; flex-direction: column;">
+      <header>
+        <style>
+            me { padding: 1rem; background: #1e1e1e; border-bottom: 1px solid #333; }
+            me .header-row { display: flex; align-items: center; justify-content: space-between; }
+            me h1 { margin: 0; font-size: 1.5rem; color: #fff; }
+            me .wasm-btn { display: flex; align-items: center; gap: 0.25rem; background: #333; border: 1px solid #444; color: #ccc; padding: 0.5rem 0.75rem; border-radius: 4px; cursor: pointer; font-size: 0.85rem; }
+            me .wasm-link { text-decoration: none; }
+        </style>
+        <div class="header-row">
+          <h1>sse</h1>
+<a href="wasm/sse/index.html" target="_blank" class="wasm-link"><button class="wasm-btn"><icon-external-link><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-external-link-icon lucide-external-link"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg></icon-external-link>Run in Browser</button></a>        </div>
+      </header>
+      <div>
+        <style>
+            me { padding: 1rem; background: #121212; overflow-y: auto; flex: 1; }
+        </style>
+        <article>
+          <style>
+            me { margin-bottom: 0.75rem; border-radius: 8px; overflow: hidden; background: #1e1e1e; max-width: 100%; }
+            me .header { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; }
+            me .header-left { display: flex; align-items: center; }
+            me .header-right { display: flex; align-items: center; gap: 0.5rem; }
+            me .tag { padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; color: white; }
+            me .full-name { font-weight: 500; font-size: 1rem; margin-left: 0.75rem; }
+            me .mod { color: #666; }
+            me .name { color: #e5e5e5; }
+            me .doc { margin: 0; padding: 0 1rem 0.5rem 1rem; color: #888; font-size: 0.85rem; }
+            me .gh-btn { display: flex; align-items: center; gap: 0.25rem; background: #333; border: 1px solid #444; color: #ccc; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
+            me .gh-link { text-decoration: none; }
+            me .copy-btn { background: transparent; border: none; cursor: pointer; font-size: 0.9rem; padding: 0.25rem; }
+            me pre { background: #1a1a1a; border-top: 1px solid #2a2a2a; margin: 0; padding: 0.5rem 0; }
+            me code { counter-reset: line; font-size: 0.8rem; line-height: 1.6; color: #ccc; }
+            me .code-line { display: block; padding-left: 3.5em; white-space: pre-wrap; word-break: break-all; position: relative; }
+            me .code-line::before { content: counter(line); counter-increment: line; position: absolute; left: 0; width: 2.5em; text-align: right; color: #555; user-select: none; }
+        </style>
+          <div class="header">
+            <div class="header-left">
+<span class="tag" style="background:#10b981;">func</span><span class="full-name"><span class="mod">sse.</span><span class="name">patch_elements</span></span>            </div>
+            <div class="header-right">
+<button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('code-sse-patch_elements').textContent).then(() =&gt; this.textContent = '✓').then(() =&gt; setTimeout(() =&gt; this.textContent = '📋', 1500))">📋</button>            </div>
+          </div>
+          <p class="doc">Format a datastar-patch-elements SSE event</p>
+<pre><code class="language-python" id="code-sse-patch_elements"><span class="code-line">def patch_elements(</span><span class="code-line">    elements: Tag | str,  # HTML content - Tag objects or raw strings</span><span class="code-line">    selector: str | None = None,  # CSS selector for target element</span><span class="code-line">    mode: str | None = None,  # outer, inner, prepend, append, before, after, remove</span><span class="code-line">    namespace: str | None = None,  # html, svg, mathml</span><span class="code-line">    use_view_transition: bool | None = None  # wrap in View Transition API</span><span class="code-line">) -&gt; str:  # formatted SSE event string</span><span class="code-line">    "Format a datastar-patch-elements SSE event"</span><span class="code-line">    if isinstance(elements, Tag): elements = to_html(elements)</span><span class="code-line">    lines = []</span><span class="code-line">    if selector: lines.append(f'data: selector {selector}')</span><span class="code-line">    if mode: lines.append(f'data: mode {mode}')</span><span class="code-line">    if namespace: lines.append(f'data: namespace {namespace}')</span><span class="code-line">    if use_view_transition is not None: lines.append(f'data: useViewTransition {str(use_view_transition).lower()}')</span><span class="code-line">    for line in elements.split('\n'): lines.append(f'data: elements {line}')</span><span class="code-line">    return 'event: datastar-patch-elements\n' + '\n'.join(lines) + '\n\n'</span></code></pre>        </article>
+        <article>
+          <style>
+            me { margin-bottom: 0.75rem; border-radius: 8px; overflow: hidden; background: #1e1e1e; max-width: 100%; }
+            me .header { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; }
+            me .header-left { display: flex; align-items: center; }
+            me .header-right { display: flex; align-items: center; gap: 0.5rem; }
+            me .tag { padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; color: white; }
+            me .full-name { font-weight: 500; font-size: 1rem; margin-left: 0.75rem; }
+            me .mod { color: #666; }
+            me .name { color: #e5e5e5; }
+            me .doc { margin: 0; padding: 0 1rem 0.5rem 1rem; color: #888; font-size: 0.85rem; }
+            me .gh-btn { display: flex; align-items: center; gap: 0.25rem; background: #333; border: 1px solid #444; color: #ccc; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
+            me .gh-link { text-decoration: none; }
+            me .copy-btn { background: transparent; border: none; cursor: pointer; font-size: 0.9rem; padding: 0.25rem; }
+            me pre { background: #1a1a1a; border-top: 1px solid #2a2a2a; margin: 0; padding: 0.5rem 0; }
+            me code { counter-reset: line; font-size: 0.8rem; line-height: 1.6; color: #ccc; }
+            me .code-line { display: block; padding-left: 3.5em; white-space: pre-wrap; word-break: break-all; position: relative; }
+            me .code-line::before { content: counter(line); counter-increment: line; position: absolute; left: 0; width: 2.5em; text-align: right; color: #555; user-select: none; }
+        </style>
+          <div class="header">
+            <div class="header-left">
+<span class="tag" style="background:#10b981;">func</span><span class="full-name"><span class="mod">sse.</span><span class="name">patch_signals</span></span>            </div>
+            <div class="header-right">
+<button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('code-sse-patch_signals').textContent).then(() =&gt; this.textContent = '✓').then(() =&gt; setTimeout(() =&gt; this.textContent = '📋', 1500))">📋</button>            </div>
+          </div>
+          <p class="doc">Format a datastar-patch-signals SSE event</p>
+<pre><code class="language-python" id="code-sse-patch_signals"><span class="code-line">def patch_signals(</span><span class="code-line">    signals: dict | str,  # signal data - dicts auto-serialized to JSON</span><span class="code-line">    only_if_missing: bool | None = None  # only patch if signal doesn't exist</span><span class="code-line">) -&gt; str:  # formatted SSE event string</span><span class="code-line">    "Format a datastar-patch-signals SSE event"</span><span class="code-line">    if isinstance(signals, dict): signals = json.dumps(signals)</span><span class="code-line">    lines = []</span><span class="code-line">    if only_if_missing is not None: lines.append(f'data: onlyIfMissing {str(only_if_missing).lower()}')</span><span class="code-line">    lines.append(f'data: signals {signals}')</span><span class="code-line">    return 'event: datastar-patch-signals\n' + '\n'.join(lines) + '\n\n'</span></code></pre>        </article>
+        <article>
+          <style>
+            me { margin-bottom: 0.75rem; border-radius: 8px; overflow: hidden; background: #1e1e1e; max-width: 100%; }
+            me .header { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; }
+            me .header-left { display: flex; align-items: center; }
+            me .header-right { display: flex; align-items: center; gap: 0.5rem; }
+            me .tag { padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; color: white; }
+            me .full-name { font-weight: 500; font-size: 1rem; margin-left: 0.75rem; }
+            me .mod { color: #666; }
+            me .name { color: #e5e5e5; }
+            me .doc { margin: 0; padding: 0 1rem 0.5rem 1rem; color: #888; font-size: 0.85rem; }
+            me .gh-btn { display: flex; align-items: center; gap: 0.25rem; background: #333; border: 1px solid #444; color: #ccc; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
+            me .gh-link { text-decoration: none; }
+            me .copy-btn { background: transparent; border: none; cursor: pointer; font-size: 0.9rem; padding: 0.25rem; }
+            me pre { background: #1a1a1a; border-top: 1px solid #2a2a2a; margin: 0; padding: 0.5rem 0; }
+            me code { counter-reset: line; font-size: 0.8rem; line-height: 1.6; color: #ccc; }
+            me .code-line { display: block; padding-left: 3.5em; white-space: pre-wrap; word-break: break-all; position: relative; }
+            me .code-line::before { content: counter(line); counter-increment: line; position: absolute; left: 0; width: 2.5em; text-align: right; color: #555; user-select: none; }
+        </style>
+          <div class="header">
+            <div class="header-left">
+<span class="tag" style="background:#10b981;">func</span><span class="full-name"><span class="mod">sse.</span><span class="name">execute_script</span></span>            </div>
+            <div class="header-right">
+<button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('code-sse-execute_script').textContent).then(() =&gt; this.textContent = '✓').then(() =&gt; setTimeout(() =&gt; this.textContent = '📋', 1500))">📋</button>            </div>
+          </div>
+          <p class="doc">Format a datastar-execute-script SSE event</p>
+<pre><code class="language-python" id="code-sse-execute_script"><span class="code-line">def execute_script(</span><span class="code-line">    script: str,  # JavaScript to execute</span><span class="code-line">    auto_remove: bool = True  # remove script element after execution</span><span class="code-line">) -&gt; str:  # formatted SSE event string</span><span class="code-line">    "Format a datastar-execute-script SSE event"</span><span class="code-line">    lines = []</span><span class="code-line">    if not auto_remove: lines.append('data: autoRemove false')</span><span class="code-line">    for line in script.split('\n'): lines.append(f'data: script {line}')</span><span class="code-line">    return 'event: datastar-execute-script\n' + '\n'.join(lines) + '\n\n'</span></code></pre>        </article>
+      </div>
+    </div>
+  </body>
+</html>

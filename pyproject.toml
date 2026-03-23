@@ -1,0 +1,24 @@
+[project]
+name = "py-sse"
+version = "0.0.6"
+description = "Minimal Async implementation for sse"
+readme = "README.md"
+authors = [
+    { name = "Deufel", email = "MDeufel13@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "brotli>=1.2.0",
+    "html-tags>=0.0.18",
+]
+
+[build-system]
+requires = ["uv_build>=0.9.18,<0.10.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "marimo-dev>=0.3.3",
+    "marimo>=0.21.1",
+    "uvicorn>=0.42.0",
+]

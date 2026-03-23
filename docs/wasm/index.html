@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="./favicon.ico" />
+    <!-- Preload is necessary because we show these images when we disconnect from the server,
+    but at that point we cannot load these images from the server -->
+    <link rel="preload" href="./assets/gradient-yHQUC_QB.png" as="image" />
+    <link rel="preload" href="./assets/noise-60BoTA8O.png" as="image" />
+    <!-- Preload the fonts -->
+    <link rel="preload" href="./assets/Lora-VariableFont_wght-B2ootaw-.ttf" as="font" crossorigin="anonymous" />
+    <link rel="preload" href="./assets/PTSans-Regular-CxL0S8W7.ttf" as="font" crossorigin="anonymous" />
+    <link rel="preload" href="./assets/PTSans-Bold-D9fedIX3.ttf" as="font" crossorigin="anonymous" />
+    <link rel="preload" href="./assets/FiraMono-Regular-BTCkDNvf.ttf" as="font" crossorigin="anonymous" />
+    <link rel="preload" href="./assets/FiraMono-Medium-DU3aDxX5.ttf" as="font" crossorigin="anonymous" />
+    <link rel="preload" href="./assets/FiraMono-Bold-CLVRCuM9.ttf" as="font" crossorigin="anonymous" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="description" content="a marimo app" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <link rel="manifest" href="./manifest.json" />
+
+    <script data-marimo="true">
+      function __resizeIframe(obj) {
+        const scrollbarHeight = 20; // Max between windows, mac, and linux
+
+        function setHeight() {
+          // Guard against race condition where iframe isn't ready
+          if (!obj.contentWindow?.document?.documentElement) {
+            return;
+          }
+          const element = obj.contentWindow.document.documentElement;
+          // If there is no vertical scrollbar, we don't need to resize the iframe
+          if (element.scrollHeight === element.clientHeight) {
+            return;
+          }
+
+          // Create a new height that includes the scrollbar height if it's visible
+          const hasHorizontalScrollbar = element.scrollWidth > element.clientWidth;
+          const newHeight = element.scrollHeight + (hasHorizontalScrollbar ? scrollbarHeight : 0);
+
+          // Only update the height if it's different from the current height
+          if (obj.style.height !== `${newHeight}px`) {
+            obj.style.height = `${newHeight}px`;
+          }
+        }
+
+        // Resize the iframe to the height of the content and bottom scrollbar height
+        setHeight();
+
+        // Resize the iframe when the content changes
+        const resizeObserver = new ResizeObserver((_entries) => {
+          setHeight();
+        });
+        // Only observe if iframe content is ready
+        if (obj.contentWindow?.document?.body) {
+          resizeObserver.observe(obj.contentWindow.document.body);
+        }
+      }
+    </script>
+    <marimo-filename hidden>notebook.py</marimo-filename>
+    <!-- TODO(Trevor): Legacy, required by VS Code plugin. Remove when plugin is updated (see marimo/server/_templates/template.py) -->
+    <marimo-version data-version="{{ version }}" hidden></marimo-version>
+    <marimo-user-config data-config="{{ user_config }}" hidden></marimo-user-config>
+    <marimo-server-token data-token="{{ server_token }}" hidden></marimo-server-token>
+    <!-- /TODO -->
+    <title> bundled</title>
+    <script type="module" crossorigin src="./assets/index-0n92c_W7.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/preload-helper-BW0IMuFq.js">
+    <link rel="modulepreload" crossorigin href="./assets/clsx-BDxNtGmi.js">
+    <link rel="modulepreload" crossorigin href="./assets/cn-BoaCR37F.js">
+    <link rel="modulepreload" crossorigin href="./assets/chunk-LvLJmgfZ.js">
+    <link rel="modulepreload" crossorigin href="./assets/react-Bj1aDYRI.js">
+    <link rel="modulepreload" crossorigin href="./assets/compiler-runtime-B3qBwwSJ.js">
+    <link rel="modulepreload" crossorigin href="./assets/jsx-runtime-icT_Ltz2.js">
+    <link rel="modulepreload" crossorigin href="./assets/badge-hTpPIsMT.js">
+    <link rel="modulepreload" crossorigin href="./assets/useEventListener-Dy81QR4n.js">
+    <link rel="modulepreload" crossorigin href="./assets/button-Ej3vmCIF.js">
+    <link rel="modulepreload" crossorigin href="./assets/react-dom-CSu739Rf.js">
+    <link rel="modulepreload" crossorigin href="./assets/Combination-Cs9nbinQ.js">
+    <link rel="modulepreload" crossorigin href="./assets/menu-items-UxKrm8hS.js">
+    <link rel="modulepreload" crossorigin href="./assets/dist-DJBpXGro.js">
+    <link rel="modulepreload" crossorigin href="./assets/createLucideIcon-Cm-Z7dYr.js">
+    <link rel="modulepreload" crossorigin href="./assets/check-BE0hEwVo.js">
+    <link rel="modulepreload" crossorigin href="./assets/x-BI1M8X_v.js">
+    <link rel="modulepreload" crossorigin href="./assets/select-CxT2Geqr.js">
+    <link rel="modulepreload" crossorigin href="./assets/tooltip-D9723Brr.js">
+    <link rel="modulepreload" crossorigin href="./assets/use-toast-Hc8CXlvz.js">
+    <link rel="modulepreload" crossorigin href="./assets/_Uint8Array-C0aUZfE0.js">
+    <link rel="modulepreload" crossorigin href="./assets/_baseIsEqual-EYp9AUJI.js">
+    <link rel="modulepreload" crossorigin href="./assets/useEvent-O0nX5vok.js">
+    <link rel="modulepreload" crossorigin href="./assets/invariant-CQUIhlu2.js">
+    <link rel="modulepreload" crossorigin href="./assets/isArrayLikeObject-Dx6-QZGQ.js">
+    <link rel="modulepreload" crossorigin href="./assets/merge-CfcLlFFp.js">
+    <link rel="modulepreload" crossorigin href="./assets/zod-H_cgTO0M.js">
+    <link rel="modulepreload" crossorigin href="./assets/utils-tNbLd14P.js">
+    <link rel="modulepreload" crossorigin href="./assets/Deferred-BMfCOLaw.js">
+    <link rel="modulepreload" crossorigin href="./assets/uuid-ClFZlR7U.js">
+    <link rel="modulepreload" crossorigin href="./assets/DeferredRequestRegistry-O6RDJKs0.js">
+    <link rel="modulepreload" crossorigin href="./assets/constants-Rz_lD4HK.js">
+    <link rel="modulepreload" crossorigin href="./assets/session-BrEm7qNv.js">
+    <link rel="modulepreload" crossorigin href="./assets/config-3Aq84phF.js">
+    <link rel="modulepreload" crossorigin href="./assets/requests-Bgjtqo_1.js">
+    <link rel="modulepreload" crossorigin href="./assets/isSymbol-CiGN2w5X.js">
+    <link rel="modulepreload" crossorigin href="./assets/toString-lmrYznmk.js">
+    <link rel="modulepreload" crossorigin href="./assets/_baseSlice-39dTX4Wi.js">
+    <link rel="modulepreload" crossorigin href="./assets/_hasUnicode-QS_pSfjY.js">
+    <link rel="modulepreload" crossorigin href="./assets/assertNever-DWSyoPEi.js">
+    <link rel="modulepreload" crossorigin href="./assets/_arrayReduce-BKEr35uH.js">
+    <link rel="modulepreload" crossorigin href="./assets/useLifecycle-DA9DjSPo.js">
+    <link rel="modulepreload" crossorigin href="./assets/useNonce-BtW-rR_1.js">
+    <link rel="modulepreload" crossorigin href="./assets/useTheme-BYXBU1of.js">
+    <link rel="modulepreload" crossorigin href="./assets/once-CJOnx12W.js">
+    <link rel="modulepreload" crossorigin href="./assets/capabilities-D3x_db9Y.js">
+    <link rel="modulepreload" crossorigin href="./assets/createReducer-Drh7NmIR.js">
+    <link rel="modulepreload" crossorigin href="./assets/paths-D2lG83Oh.js">
+    <link rel="modulepreload" crossorigin href="./assets/dist-B_cxg-E4.js">
+    <link rel="modulepreload" crossorigin href="./assets/dist-D0Vj4Kqc.js">
+    <link rel="modulepreload" crossorigin href="./assets/dist-CtXb4bUU.js">
+    <link rel="modulepreload" crossorigin href="./assets/dist-CQqv2gQL.js">
+    <link rel="modulepreload" crossorigin href="./assets/dist-8UD0A5sU.js">
+    <link rel="modulepreload" crossorigin href="./assets/dist-CXLJUPFl.js">
+    <link rel="modulepreload" crossorigin href="./assets/dist-BNC_tnlW.js">
+    <link rel="modulepreload" crossorigin href="./assets/dist-apDpadc4.js">
+    <link rel="modulepreload" crossorigin href="./assets/dist-CEeVCRd_.js">
+    <link rel="modulepreload" crossorigin href="./assets/stex-0ac7Aukl.js">
+    <link rel="modulepreload" crossorigin href="./assets/toDate-BqKH-Jd9.js">
+    <link rel="modulepreload" crossorigin href="./assets/purify.es-BBn8CPhf.js">
+    <link rel="modulepreload" crossorigin href="./assets/cjs-BU2qXMKx.js">
+    <link rel="modulepreload" crossorigin href="./assets/toNumber-OnFQK5Wu.js">
+    <link rel="modulepreload" crossorigin href="./assets/now-8AYn-wiF.js">
+    <link rel="modulepreload" crossorigin href="./assets/debounce-DS_VtWMt.js">
+    <link rel="modulepreload" crossorigin href="./assets/toInteger-CO3ppIfA.js">
+    <link rel="modulepreload" crossorigin href="./assets/database-zap-DTWCDKdn.js">
+    <link rel="modulepreload" crossorigin href="./assets/main-DrBRErTM.js">
+    <link rel="modulepreload" crossorigin href="./assets/cells-fq1RMGX_.js">
+    <link rel="modulepreload" crossorigin href="./assets/spinner-C5JoisA7.js">
+    <link rel="modulepreload" crossorigin href="./assets/chevron-right-D0GQBpTb.js">
+    <link rel="modulepreload" crossorigin href="./assets/dropdown-menu-DdPu5Kfu.js">
+    <link rel="modulepreload" crossorigin href="./assets/kbd-DvKpAc6K.js">
+    <link rel="modulepreload" crossorigin href="./assets/renderShortcut-CnD1Dah5.js">
+    <link rel="modulepreload" crossorigin href="./assets/multi-map-Pp1P2DOX.js">
+    <link rel="modulepreload" crossorigin href="./assets/alert-OQZHipbB.js">
+    <link rel="modulepreload" crossorigin href="./assets/card-C-c-4jyF.js">
+    <link rel="modulepreload" crossorigin href="./assets/alert-dialog-9WfvUF7e.js">
+    <link rel="modulepreload" crossorigin href="./assets/dialog-CVN1lcMF.js">
+    <link rel="modulepreload" crossorigin href="./assets/dist-BhNN2V5a.js">
+    <link rel="modulepreload" crossorigin href="./assets/label-TNNaT1M9.js">
+    <link rel="modulepreload" crossorigin href="./assets/useDebounce-B0dx2Gp0.js">
+    <link rel="modulepreload" crossorigin href="./assets/azure-BTXHztTw.js">
+    <link rel="modulepreload" crossorigin href="./assets/numbers-CYnquDho.js">
+    <link rel="modulepreload" crossorigin href="./assets/SSRProvider-DC7ElCZZ.js">
+    <link rel="modulepreload" crossorigin href="./assets/context-CIAP2NOh.js">
+    <link rel="modulepreload" crossorigin href="./assets/useNumberFormatter-DbDKSvEd.js">
+    <link rel="modulepreload" crossorigin href="./assets/usePress-BHGkpw8X.js">
+    <link rel="modulepreload" crossorigin href="./assets/input-CUwqpKjd.js">
+    <link rel="modulepreload" crossorigin href="./assets/links-DzgPOFJ-.js">
+    <link rel="modulepreload" crossorigin href="./assets/popover-BPGG2gPG.js">
+    <link rel="modulepreload" crossorigin href="./assets/switch-CVKxYu_0.js">
+    <link rel="modulepreload" crossorigin href="./assets/table-BhH-Mm8O.js">
+    <link rel="modulepreload" crossorigin href="./assets/mode-AcL8c6qH.js">
+    <link rel="modulepreload" crossorigin href="./assets/useAsyncData-D-4ifFXh.js">
+    <link rel="modulepreload" crossorigin href="./assets/errors-Bfogio62.js">
+    <link rel="modulepreload" crossorigin href="./assets/error-banner-BRG6IPhC.js">
+    <link rel="modulepreload" crossorigin href="./assets/copy-YwM0Pd7v.js">
+    <link rel="modulepreload" crossorigin href="./assets/memoize-Bw1ifb7c.js">
+    <link rel="modulepreload" crossorigin href="./assets/get-DBdMgUNq.js">
+    <link rel="modulepreload" crossorigin href="./assets/capitalize-BfkXNxmI.js">
+    <link rel="modulepreload" crossorigin href="./assets/copy-CkudG0Ej.js">
+    <link rel="modulepreload" crossorigin href="./assets/plus-dVmh0yTy.js">
+    <link rel="modulepreload" crossorigin href="./assets/refresh-cw-CHAHPgkx.js">
+    <link rel="modulepreload" crossorigin href="./assets/trash-2-CAoNMkjq.js">
+    <link rel="modulepreload" crossorigin href="./assets/triangle-alert-qZo1ox6x.js">
+    <link rel="modulepreload" crossorigin href="./assets/ai-model-dropdown-DPTa_EpU.js">
+    <link rel="modulepreload" crossorigin href="./assets/defaultLocale-OkOxlkkM.js">
+    <link rel="modulepreload" crossorigin href="./assets/precisionRound-BOmLQIKI.js">
+    <link rel="modulepreload" crossorigin href="./assets/defaultLocale-DK1MWd7f.js">
+    <link rel="modulepreload" crossorigin href="./assets/vega-loader.browser-CZV6_g2i.js">
+    <link rel="modulepreload" crossorigin href="./assets/utils-CdjCA1J8.js">
+    <link rel="modulepreload" crossorigin href="./assets/ErrorBoundary-Ba0LbbH4.js">
+    <link rel="modulepreload" crossorigin href="./assets/useInstallPackage-C9V-on2J.js">
+    <link rel="modulepreload" crossorigin href="./assets/ImperativeModal-qEtcJ95s.js">
+    <link rel="modulepreload" crossorigin href="./assets/cell-link-Q_UEP94Z.js">
+    <link rel="modulepreload" crossorigin href="./assets/datasource-F9sJtuof.js">
+    <link rel="modulepreload" crossorigin href="./assets/state-3V5UxC3B.js">
+    <link rel="modulepreload" crossorigin href="./assets/MarimoErrorOutput-az74f3Mp.js">
+    <link rel="modulepreload" crossorigin href="./assets/copy-icon-BgmMM9Zg.js">
+    <link rel="modulepreload" crossorigin href="./assets/html-to-image-BnSc-Wa0.js">
+    <link rel="modulepreload" crossorigin href="./assets/focus-DYwTiH9-.js">
+    <link rel="modulepreload" crossorigin href="./assets/LazyAnyLanguageCodeMirror-m8w66E4s.js">
+    <link rel="modulepreload" crossorigin href="./assets/chunk-5FQGJX7Z-CM1a_K7I.js">
+    <link rel="modulepreload" crossorigin href="./assets/katex-rvFxOCU-.js">
+    <link rel="modulepreload" crossorigin href="./assets/markdown-renderer-MR9df58W.js">
+    <link rel="modulepreload" crossorigin href="./assets/command-rfxSsiHU.js">
+    <link rel="modulepreload" crossorigin href="./assets/download-B9_ToVd4.js">
+    <link rel="modulepreload" crossorigin href="./assets/useRunCells-5m6jCnyo.js">
+    <link rel="modulepreload" crossorigin href="./assets/RenderHTML-DJ8khuob.js">
+    <link rel="modulepreload" crossorigin href="./assets/useIframeCapabilities-DTN9kFDq.js">
+    <link rel="modulepreload" crossorigin href="./assets/formats-rhOJovGE.js">
+    <link rel="modulepreload" crossorigin href="./assets/en-US-BO8E69bZ.js">
+    <link rel="modulepreload" crossorigin href="./assets/isValid-BGe7pJXT.js">
+    <link rel="modulepreload" crossorigin href="./assets/dates-CHaNfieI.js">
+    <link rel="modulepreload" crossorigin href="./assets/maps-OKerBHH8.js">
+    <link rel="modulepreload" crossorigin href="./assets/extends-DRbCSry7.js">
+    <link rel="modulepreload" crossorigin href="./assets/emotion-is-prop-valid.esm-D1keIaYa.js">
+    <link rel="modulepreload" crossorigin href="./assets/useDateFormatter-CpE7XQLs.js">
+    <link rel="modulepreload" crossorigin href="./assets/range-CJeRXUtp.js">
+    <link rel="modulepreload" crossorigin href="./assets/table-BCnp9gKC.js">
+    <link rel="modulepreload" crossorigin href="./assets/JsonOutput-DKXKGKvX.js">
+    <link rel="modulepreload" crossorigin href="./assets/useDeleteCell-DRUDRiy0.js">
+    <link rel="modulepreload" crossorigin href="./assets/icons-CrUXojcA.js">
+    <link rel="modulepreload" crossorigin href="./assets/process-output-CTVsT--B.js">
+    <link rel="modulepreload" crossorigin href="./assets/blob-CObhN-9g.js">
+    <link rel="modulepreload" crossorigin href="./assets/objectWithoutPropertiesLoose-DP4vAkvg.js">
+    <link rel="modulepreload" crossorigin href="./assets/esm-CBkHtTOV.js">
+    <link rel="modulepreload" crossorigin href="./assets/file-DzHkbIdO.js">
+    <link rel="modulepreload" crossorigin href="./assets/image-DXfkah9d.js">
+    <link rel="modulepreload" crossorigin href="./assets/play-DKSqmedg.js">
+    <link rel="modulepreload" crossorigin href="./assets/add-cell-with-ai-DUn4LN4W.js">
+    <link rel="modulepreload" crossorigin href="./assets/isEmpty-CfmnKtgL.js">
+    <link rel="modulepreload" crossorigin href="./assets/bot-message-square-CK6eoGWy.js">
+    <link rel="modulepreload" crossorigin href="./assets/chat-display-D_Fuuy6r.js">
+    <link rel="modulepreload" crossorigin href="./assets/chart-no-axes-column-DV8gdCvH.js">
+    <link rel="modulepreload" crossorigin href="./assets/square-function-B006EYFX.js">
+    <link rel="modulepreload" crossorigin href="./assets/spec-DbmSqx09.js">
+    <link rel="modulepreload" crossorigin href="./assets/ellipsis-vertical-CAB7tdza.js">
+    <link rel="modulepreload" crossorigin href="./assets/components-Bpgzv_5_.js">
+    <link rel="modulepreload" crossorigin href="./assets/column-preview-WsubyItX.js">
+    <link rel="modulepreload" crossorigin href="./assets/toggle-RCwU-rnE.js">
+    <link rel="modulepreload" crossorigin href="./assets/globals-BsV5fVR-.js">
+    <link rel="modulepreload" crossorigin href="./assets/share-BdH_5I58.js">
+    <link rel="modulepreload" crossorigin href="./assets/_baseSet-D5BgdrnX.js">
+    <link rel="modulepreload" crossorigin href="./assets/react-resizable-panels.browser.esm-DDRqG5ui.js">
+    <link rel="modulepreload" crossorigin href="./assets/context-aware-panel-CfsfBlhO.js">
+    <link rel="modulepreload" crossorigin href="./assets/floating-outline-BvQKiC0F.js">
+    <link rel="modulepreload" crossorigin href="./assets/useAddCell-YC7rpcmD.js">
+    <link rel="modulepreload" crossorigin href="./assets/eye-off-vwi9L975.js">
+    <link rel="modulepreload" crossorigin href="./assets/readonly-python-code-DH-1xZGq.js">
+    <link rel="modulepreload" crossorigin href="./assets/file-headphone-B5q2Ow55.js">
+    <link rel="modulepreload" crossorigin href="./assets/file-icons-CWLHDa1J.js">
+    <link rel="modulepreload" crossorigin href="./assets/refresh-ccw-DLpfIr8v.js">
+    <link rel="modulepreload" crossorigin href="./assets/form-CrQYrsUC.js">
+    <link rel="modulepreload" crossorigin href="./assets/field-B1jGbQlH.js">
+    <link rel="modulepreload" crossorigin href="./assets/useBoolean-m1e6E3Ao.js">
+    <link rel="modulepreload" crossorigin href="./assets/useDeepCompareMemoize-yyiB9aJX.js">
+    <link rel="modulepreload" crossorigin href="./assets/types-C1RN112u.js">
+    <link rel="modulepreload" crossorigin href="./assets/prop-types-RrUi-pOT.js">
+    <link rel="modulepreload" crossorigin href="./assets/es-CzkousWe.js">
+    <link rel="modulepreload" crossorigin href="./assets/hasIn-Bx4-SO9M.js">
+    <link rel="modulepreload" crossorigin href="./assets/_baseFlatten-Be7p_si8.js">
+    <link rel="modulepreload" crossorigin href="./assets/_basePickBy-Ck7z0-tq.js">
+    <link rel="modulepreload" crossorigin href="./assets/pick-BYA9UDHe.js">
+    <link rel="modulepreload" crossorigin href="./assets/code-xml-DwHPF_nL.js">
+    <link rel="modulepreload" crossorigin href="./assets/download-DBW9RXtT.js">
+    <link rel="modulepreload" crossorigin href="./assets/square-CxAsQQ77.js">
+    <link rel="modulepreload" crossorigin href="./assets/settings-CzQUw9rV.js">
+    <link rel="modulepreload" crossorigin href="./assets/bundle.esm-idScn0w0.js">
+    <link rel="stylesheet" crossorigin href="./assets/cells-jmgGt1lS.css">
+    <link rel="stylesheet" crossorigin href="./assets/markdown-renderer-DdDKmWlR.css">
+    <link rel="stylesheet" crossorigin href="./assets/JsonOutput-B7vuddcd.css">
+    <link rel="stylesheet" crossorigin href="./assets/index-GjXovVsl.css">
+  <marimo-wasm hidden=""></marimo-wasm>
+    <script>
+        if (window.location.protocol === 'file:') {
+            alert('Warning: This file must be served by an HTTP server to function correctly.');
+        }
+    </script>
+    
+    <style>
+        #save-button {
+            display: none !important;
+        }
+        #filename-input {
+            display: none !important;
+        }
+    </style>
+    <marimo-code hidden="">import%20marimo%0A%0A__generated_with%20%3D%20%220.21.1%22%0Aapp%20%3D%20marimo.App(width%3D%22full%22)%0A%0Awith%20app.setup%3A%0A%20%20%20%20from%20urllib.parse%20import%20parse_qs%0A%20%20%20%20import%20asyncio%0A%20%20%20%20from%20fnmatch%20import%20fnmatch%0A%20%20%20%20import%20threading%0A%20%20%20%20import%20json%0A%20%20%20%20from%20html_tags.core%20import%20Tag%2C%20to_html%0A%0A%0A%40app.class_definition%0Aclass%20Request%3A%0A%20%20%20%20__slots__%20%3D%20('path'%2C%20'method'%2C%20'headers'%2C%20'query'%2C%20'cookies'%2C%20'_receive')%0A%0A%20%20%20%20def%20__init__(self%2C%20scope%2C%20receive)%3A%0A%20%20%20%20%20%20%20%20self.path%20%3D%20scope%5B%22path%22%5D%0A%20%20%20%20%20%20%20%20self.method%20%3D%20scope.get(%22method%22%2C%20%22GET%22)%0A%20%20%20%20%20%20%20%20self._receive%20%3D%20receive%0A%20%20%20%20%20%20%20%20%23%20Parse%20headers%0A%20%20%20%20%20%20%20%20self.headers%20%3D%20%7Bk.decode()%3A%20v.decode()%20for%20k%2C%20v%20in%20scope.get(%22headers%22%2C%20%5B%5D)%7D%0A%20%20%20%20%20%20%20%20%23%20Parse%20query%20params%0A%20%20%20%20%20%20%20%20qs%20%3D%20scope.get(%22query_string%22%2C%20b%22%22).decode()%0A%20%20%20%20%20%20%20%20self.query%20%3D%20%7Bk%3A%20v%5B0%5D%20if%20len(v)%20%3D%3D%201%20else%20v%20for%20k%2C%20v%20in%20parse_qs(qs).items()%7D%0A%20%20%20%20%20%20%20%20%23%20Parse%20cookies%0A%20%20%20%20%20%20%20%20raw%20%3D%20self.headers.get(%22cookie%22%2C%20%22%22)%0A%20%20%20%20%20%20%20%20self.cookies%20%3D%20dict(pair.strip().split(%22%3D%22%2C%201)%20for%20pair%20in%20raw.split(%22%3B%22)%20if%20%22%3D%22%20in%20pair)%0A%0A%20%20%20%20async%20def%20body(self)%3A%0A%20%20%20%20%20%20%20%20chunks%20%3D%20%5B%5D%0A%20%20%20%20%20%20%20%20while%20True%3A%0A%20%20%20%20%20%20%20%20%20%20%20%20msg%20%3D%20await%20self._receive()%0A%20%20%20%20%20%20%20%20%20%20%20%20chunks.append(msg.get(%22body%22%2C%20b%22%22))%0A%20%20%20%20%20%20%20%20%20%20%20%20if%20not%20msg.get(%22more_body%22)%3A%20break%0A%20%20%20%20%20%20%20%20return%20b%22%22.join(chunks)%0A%0A%20%20%20%20async%20def%20json(self)%3A%0A%20%20%20%20%20%20%20%20import%20json%0A%20%20%20%20%20%20%20%20return%20json.loads(await%20self.body())%0A%0A%0A%40app.class_definition%0Aclass%20Response%3A%0A%20%20%20%20__slots__%20%3D%20('_send'%2C%20'_headers')%0A%0A%20%20%20%20def%20__init__(self%2C%20send)%3A%0A%20%20%20%20%20%20%20%20self._send%20%3D%20send%0A%20%20%20%20%20%20%20%20self._headers%20%3D%20%5B%5D%0A%0A%20%20%20%20def%20cookie(self%2C%20name%2C%20value%2C%20**opts)%3A%0A%20%20%20%20%20%20%20%20parts%20%3D%20%5Bf%22%7Bname%7D%3D%7Bvalue%7D%22%5D%0A%20%20%20%20%20%20%20%20for%20k%2C%20v%20in%20opts.items()%3A%0A%20%20%20%20%20%20%20%20%20%20%20%20k%20%3D%20k.replace(%22_%22%2C%20%22-%22)%0A%20%20%20%20%20%20%20%20%20%20%20%20if%20isinstance(v%2C%20bool)%3A%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20if%20v%3A%20parts.append(k)%0A%20%20%20%20%20%20%20%20%20%20%20%20else%3A%20parts.append(f%22%7Bk%7D%3D%7Bv%7D%22)%0A%20%20%20%20%20%20%20%20self._headers.append(%5Bb%22set-cookie%22%2C%20%22%3B%20%22.join(parts).encode()%5D)%0A%20%20%20%20%20%20%20%20return%20self%0A%0A%20%20%20%20async%20def%20_send_response(self%2C%20status%2C%20content_type%2C%20body)%3A%0A%20%20%20%20%20%20%20%20headers%20%3D%20%5B%5Bb%22content-type%22%2C%20content_type%5D%5D%20%2B%20self._headers%0A%20%20%20%20%20%20%20%20await%20self._send(%7B%22type%22%3A%20%22http.response.start%22%2C%20%22status%22%3A%20status%2C%20%22headers%22%3A%20headers%7D)%0A%20%20%20%20%20%20%20%20await%20self._send(%7B%22type%22%3A%20%22http.response.body%22%2C%20%22body%22%3A%20body.encode()%20if%20isinstance(body%2C%20str)%20else%20body%7D)%0A%0A%20%20%20%20async%20def%20html(self%2C%20body%2C%20status%3D200)%3A%0A%20%20%20%20%20%20%20%20await%20self._send_response(status%2C%20b%22text%2Fhtml%3B%20charset%3Dutf-8%22%2C%20body)%0A%0A%20%20%20%20async%20def%20text(self%2C%20body%2C%20status%3D200)%3A%0A%20%20%20%20%20%20%20%20await%20self._send_response(status%2C%20b%22text%2Fplain%3B%20charset%3Dutf-8%22%2C%20body)%0A%0A%20%20%20%20async%20def%20redirect(self%2C%20url%2C%20status%3D302)%3A%0A%20%20%20%20%20%20%20%20headers%20%3D%20%5B%5Bb%22location%22%2C%20url.encode()%5D%5D%20%2B%20self._headers%0A%20%20%20%20%20%20%20%20await%20self._send(%7B%22type%22%3A%20%22http.response.start%22%2C%20%22status%22%3A%20status%2C%20%22headers%22%3A%20headers%7D)%0A%20%20%20%20%20%20%20%20await%20self._send(%7B%22type%22%3A%20%22http.response.body%22%2C%20%22body%22%3A%20b%22%22%7D)%0A%0A%0A%40app.class_definition%0Aclass%20Stream%3A%0A%20%20%20%20__slots__%20%3D%20('_send'%2C%20'_closed'%2C%20'_headers'%2C%20'_keepalive_task'%2C%20'_compressor')%0A%0A%20%20%20%20def%20__init__(self%2C%20send%2C%20closed)%3A%0A%20%20%20%20%20%20%20%20self._send%20%3D%20send%0A%20%20%20%20%20%20%20%20self._closed%20%3D%20closed%0A%20%20%20%20%20%20%20%20self._headers%20%3D%20%5B%5D%0A%20%20%20%20%20%20%20%20self._keepalive_task%20%3D%20None%0A%20%20%20%20%20%20%20%20self._compressor%20%3D%20None%0A%0A%20%20%20%20def%20cookie(self%2C%20name%2C%20value%2C%20**opts)%3A%0A%20%20%20%20%20%20%20%20parts%20%3D%20%5Bf%22%7Bname%7D%3D%7Bvalue%7D%22%5D%0A%20%20%20%20%20%20%20%20for%20k%2C%20v%20in%20opts.items()%3A%0A%20%20%20%20%20%20%20%20%20%20%20%20k%20%3D%20k.replace(%22_%22%2C%20%22-%22)%0A%20%20%20%20%20%20%20%20%20%20%20%20if%20isinstance(v%2C%20bool)%3A%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20if%20v%3A%20parts.append(k)%0A%20%20%20%20%20%20%20%20%20%20%20%20else%3A%20parts.append(f%22%7Bk%7D%3D%7Bv%7D%22)%0A%20%20%20%20%20%20%20%20self._headers.append(%5Bb%22set-cookie%22%2C%20%22%3B%20%22.join(parts).encode()%5D)%0A%20%20%20%20%20%20%20%20return%20self%0A%0A%20%20%20%20async%20def%20open(self%2C%20keepalive%3D15%2C%20compress%3DFalse)%3A%0A%20%20%20%20%20%20%20%20headers%20%3D%20%5B%0A%20%20%20%20%20%20%20%20%20%20%20%20%5Bb%22content-type%22%2C%20b%22text%2Fevent-stream%22%5D%2C%0A%20%20%20%20%20%20%20%20%20%20%20%20%5Bb%22cache-control%22%2C%20b%22no-cache%22%5D%2C%0A%20%20%20%20%20%20%20%20%20%20%20%20%5Bb%22connection%22%2C%20b%22keep-alive%22%5D%2C%0A%20%20%20%20%20%20%20%20%20%20%20%20%5Bb%22x-accel-buffering%22%2C%20b%22no%22%5D%2C%0A%20%20%20%20%20%20%20%20%5D%20%2B%20self._headers%0A%20%20%20%20%20%20%20%20if%20compress%3A%0A%20%20%20%20%20%20%20%20%20%20%20%20import%20brotli%0A%20%20%20%20%20%20%20%20%20%20%20%20headers.append(%5Bb%22content-encoding%22%2C%20b%22br%22%5D)%0A%20%20%20%20%20%20%20%20%20%20%20%20self._compressor%20%3D%20brotli.Compressor(mode%3Dbrotli.MODE_TEXT%2C%20quality%3D1)%0A%20%20%20%20%20%20%20%20await%20self._send(%7B%22type%22%3A%20%22http.response.start%22%2C%20%22status%22%3A%20200%2C%20%22headers%22%3A%20headers%7D)%0A%20%20%20%20%20%20%20%20if%20keepalive%3A%0A%20%20%20%20%20%20%20%20%20%20%20%20self._keepalive_task%20%3D%20asyncio.create_task(self._auto_keepalive(keepalive))%0A%0A%20%20%20%20async%20def%20_auto_keepalive(self%2C%20interval)%3A%0A%20%20%20%20%20%20%20%20try%3A%0A%20%20%20%20%20%20%20%20%20%20%20%20while%20not%20self._closed.is_set()%3A%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20await%20asyncio.sleep(interval)%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20await%20self.send_event(%22%3A%5Cn%5Cn%22)%0A%20%20%20%20%20%20%20%20except%20asyncio.CancelledError%3A%0A%20%20%20%20%20%20%20%20%20%20%20%20pass%0A%0A%20%20%20%20async%20def%20send_event(self%2C%20data)%3A%0A%20%20%20%20%20%20%20%20if%20self._closed.is_set()%3A%20return%0A%20%20%20%20%20%20%20%20raw%20%3D%20data.encode()%0A%20%20%20%20%20%20%20%20if%20self._compressor%3A%0A%20%20%20%20%20%20%20%20%20%20%20%20raw%20%3D%20self._compressor.process(raw)%20%2B%20self._compressor.flush()%0A%20%20%20%20%20%20%20%20try%3A%0A%20%20%20%20%20%20%20%20%20%20%20%20await%20self._send(%7B%22type%22%3A%20%22http.response.body%22%2C%20%22body%22%3A%20raw%2C%20%22more_body%22%3A%20True%7D)%0A%20%20%20%20%20%20%20%20except%20Exception%3A%0A%20%20%20%20%20%20%20%20%20%20%20%20self._closed.set()%0A%0A%20%20%20%20async%20def%20close(self)%3A%0A%20%20%20%20%20%20%20%20if%20self._keepalive_task%3A%0A%20%20%20%20%20%20%20%20%20%20%20%20self._keepalive_task.cancel()%0A%20%20%20%20%20%20%20%20if%20self._closed.is_set()%3A%20return%0A%20%20%20%20%20%20%20%20self._closed.set()%0A%20%20%20%20%20%20%20%20body%20%3D%20b%22%22%0A%20%20%20%20%20%20%20%20if%20self._compressor%3A%0A%20%20%20%20%20%20%20%20%20%20%20%20body%20%3D%20self._compressor.finish()%0A%20%20%20%20%20%20%20%20await%20self._send(%7B%22type%22%3A%20%22http.response.body%22%2C%20%22body%22%3A%20body%7D)%0A%0A%20%20%20%20async%20def%20alive(self%2C%20events)%3A%0A%20%20%20%20%20%20%20%20async%20for%20event%20in%20events%3A%0A%20%20%20%20%20%20%20%20%20%20%20%20if%20self._closed.is_set()%3A%20break%0A%20%20%20%20%20%20%20%20%20%20%20%20yield%20event%0A%0A%0A%40app.class_definition%0Aclass%20Relay%3A%0A%20%20%20%20__slots__%20%3D%20('_subs'%2C%20'_lock')%0A%0A%20%20%20%20def%20__init__(self)%3A%0A%20%20%20%20%20%20%20%20self._subs%20%3D%20%5B%5D%0A%20%20%20%20%20%20%20%20self._lock%20%3D%20threading.Lock()%0A%0A%20%20%20%20def%20publish(self%2C%20topic%2C%20data)%3A%0A%20%20%20%20%20%20%20%20with%20self._lock%3A%0A%20%20%20%20%20%20%20%20%20%20%20%20targets%20%3D%20%5B(p%2C%20q)%20for%20p%2C%20q%20in%20self._subs%20if%20fnmatch(topic%2C%20p)%5D%0A%20%20%20%20%20%20%20%20loop%20%3D%20asyncio.get_event_loop()%0A%20%20%20%20%20%20%20%20for%20_%2C%20queue%20in%20targets%3A%0A%20%20%20%20%20%20%20%20%20%20%20%20loop.call_soon_threadsafe(queue.put_nowait%2C%20(topic%2C%20data))%0A%0A%20%20%20%20async%20def%20subscribe(self%2C%20pattern)%3A%0A%20%20%20%20%20%20%20%20queue%20%3D%20asyncio.Queue()%0A%20%20%20%20%20%20%20%20with%20self._lock%3A%0A%20%20%20%20%20%20%20%20%20%20%20%20self._subs.append((pattern%2C%20queue))%0A%20%20%20%20%20%20%20%20try%3A%0A%20%20%20%20%20%20%20%20%20%20%20%20while%20True%3A%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20yield%20await%20queue.get()%0A%20%20%20%20%20%20%20%20except%20(asyncio.CancelledError%2C%20GeneratorExit)%3A%0A%20%20%20%20%20%20%20%20%20%20%20%20pass%0A%20%20%20%20%20%20%20%20finally%3A%0A%20%20%20%20%20%20%20%20%20%20%20%20with%20self._lock%3A%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20self._subs.remove((pattern%2C%20queue))%0A%0A%0A%40app.function%0Aasync%20def%20internal_watch_disconnect(receive%2C%20closed)%3A%0A%20%20%20%20while%20True%3A%0A%20%20%20%20%20%20%20%20msg%20%3D%20await%20receive()%0A%20%20%20%20%20%20%20%20if%20msg.get(%22type%22)%20%3D%3D%20%22http.disconnect%22%3A%0A%20%20%20%20%20%20%20%20%20%20%20%20closed.set()%0A%20%20%20%20%20%20%20%20%20%20%20%20return%0A%0A%0A%40app.class_definition%0Aclass%20Router%3A%0A%20%20%20%20__slots__%20%3D%20('_routes'%2C)%0A%0A%20%20%20%20def%20__init__(self)%3A%0A%20%20%20%20%20%20%20%20self._routes%20%3D%20%7B%7D%0A%0A%20%20%20%20def%20get(self%2C%20path)%3A%0A%20%20%20%20%20%20%20%20def%20decorator(fn)%3A%0A%20%20%20%20%20%20%20%20%20%20%20%20self._routes%5B(%22GET%22%2C%20path)%5D%20%3D%20fn%0A%20%20%20%20%20%20%20%20%20%20%20%20return%20fn%0A%20%20%20%20%20%20%20%20return%20decorator%0A%0A%20%20%20%20def%20post(self%2C%20path)%3A%0A%20%20%20%20%20%20%20%20def%20decorator(fn)%3A%0A%20%20%20%20%20%20%20%20%20%20%20%20self._routes%5B(%22POST%22%2C%20path)%5D%20%3D%20fn%0A%20%20%20%20%20%20%20%20%20%20%20%20return%20fn%0A%20%20%20%20%20%20%20%20return%20decorator%0A%0A%20%20%20%20async%20def%20__call__(self%2C%20scope%2C%20receive%2C%20send)%3A%0A%20%20%20%20%20%20%20%20if%20scope%5B%22type%22%5D%20%3D%3D%20%22lifespan%22%3A%0A%20%20%20%20%20%20%20%20%20%20%20%20while%20True%3A%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20msg%20%3D%20await%20receive()%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20if%20msg%5B%22type%22%5D%20%3D%3D%20%22lifespan.startup%22%3A%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20await%20send(%7B%22type%22%3A%20%22lifespan.startup.complete%22%7D)%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20elif%20msg%5B%22type%22%5D%20%3D%3D%20%22lifespan.shutdown%22%3A%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20await%20send(%7B%22type%22%3A%20%22lifespan.shutdown.complete%22%7D)%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20return%0A%20%20%20%20%20%20%20%20%20%20%20%20return%0A%20%20%20%20%20%20%20%20if%20scope%5B%22type%22%5D%20!%3D%20%22http%22%3A%20return%0A%20%20%20%20%20%20%20%20req%20%3D%20Request(scope%2C%20receive)%0A%20%20%20%20%20%20%20%20key%20%3D%20(req.method%2C%20req.path)%0A%20%20%20%20%20%20%20%20handler%20%3D%20self._routes.get(key)%0A%20%20%20%20%20%20%20%20if%20not%20handler%3A%0A%20%20%20%20%20%20%20%20%20%20%20%20res%20%3D%20Response(send)%0A%20%20%20%20%20%20%20%20%20%20%20%20await%20res.text(%22Not%20Found%22%2C%20status%3D404)%0A%20%20%20%20%20%20%20%20%20%20%20%20return%0A%20%20%20%20%20%20%20%20closed%20%3D%20asyncio.Event()%0A%20%20%20%20%20%20%20%20task%20%3D%20asyncio.create_task(internal_watch_disconnect(receive%2C%20closed))%0A%20%20%20%20%20%20%20%20try%3A%0A%20%20%20%20%20%20%20%20%20%20%20%20await%20handler(req%2C%20send%2C%20closed)%0A%20%20%20%20%20%20%20%20finally%3A%0A%20%20%20%20%20%20%20%20%20%20%20%20task.cancel()%0A%0A%0A%40app.function%0Adef%20patch_elements(%0A%20%20%20%20elements%3A%20Tag%20%7C%20str%2C%20%20%23%20HTML%20content%20-%20Tag%20objects%20or%20raw%20strings%0A%20%20%20%20selector%3A%20str%20%7C%20None%20%3D%20None%2C%20%20%23%20CSS%20selector%20for%20target%20element%0A%20%20%20%20mode%3A%20str%20%7C%20None%20%3D%20None%2C%20%20%23%20outer%2C%20inner%2C%20prepend%2C%20append%2C%20before%2C%20after%2C%20remove%0A%20%20%20%20namespace%3A%20str%20%7C%20None%20%3D%20None%2C%20%20%23%20html%2C%20svg%2C%20mathml%0A%20%20%20%20use_view_transition%3A%20bool%20%7C%20None%20%3D%20None%20%20%23%20wrap%20in%20View%20Transition%20API%0A)%20-%3E%20str%3A%20%20%23%20formatted%20SSE%20event%20string%0A%20%20%20%20%22Format%20a%20datastar-patch-elements%20SSE%20event%22%0A%20%20%20%20if%20isinstance(elements%2C%20Tag)%3A%20elements%20%3D%20to_html(elements)%0A%20%20%20%20lines%20%3D%20%5B%5D%0A%20%20%20%20if%20selector%3A%20lines.append(f'data%3A%20selector%20%7Bselector%7D')%0A%20%20%20%20if%20mode%3A%20lines.append(f'data%3A%20mode%20%7Bmode%7D')%0A%20%20%20%20if%20namespace%3A%20lines.append(f'data%3A%20namespace%20%7Bnamespace%7D')%0A%20%20%20%20if%20use_view_transition%20is%20not%20None%3A%20lines.append(f'data%3A%20useViewTransition%20%7Bstr(use_view_transition).lower()%7D')%0A%20%20%20%20for%20line%20in%20elements.split('%5Cn')%3A%20lines.append(f'data%3A%20elements%20%7Bline%7D')%0A%20%20%20%20return%20'event%3A%20datastar-patch-elements%5Cn'%20%2B%20'%5Cn'.join(lines)%20%2B%20'%5Cn%5Cn'%0A%0A%0A%40app.function%0Adef%20patch_signals(%0A%20%20%20%20signals%3A%20dict%20%7C%20str%2C%20%20%23%20signal%20data%20-%20dicts%20auto-serialized%20to%20JSON%0A%20%20%20%20only_if_missing%3A%20bool%20%7C%20None%20%3D%20None%20%20%23%20only%20patch%20if%20signal%20doesn't%20exist%0A)%20-%3E%20str%3A%20%20%23%20formatted%20SSE%20event%20string%0A%20%20%20%20%22Format%20a%20datastar-patch-signals%20SSE%20event%22%0A%20%20%20%20if%20isinstance(signals%2C%20dict)%3A%20signals%20%3D%20json.dumps(signals)%0A%20%20%20%20lines%20%3D%20%5B%5D%0A%20%20%20%20if%20only_if_missing%20is%20not%20None%3A%20lines.append(f'data%3A%20onlyIfMissing%20%7Bstr(only_if_missing).lower()%7D')%0A%20%20%20%20lines.append(f'data%3A%20signals%20%7Bsignals%7D')%0A%20%20%20%20return%20'event%3A%20datastar-patch-signals%5Cn'%20%2B%20'%5Cn'.join(lines)%20%2B%20'%5Cn%5Cn'%0A%0A%0A%40app.function%0Adef%20execute_script(%0A%20%20%20%20script%3A%20str%2C%20%20%23%20JavaScript%20to%20execute%0A%20%20%20%20auto_remove%3A%20bool%20%3D%20True%20%20%23%20remove%20script%20element%20after%20execution%0A)%20-%3E%20str%3A%20%20%23%20formatted%20SSE%20event%20string%0A%20%20%20%20%22Format%20a%20datastar-execute-script%20SSE%20event%22%0A%20%20%20%20lines%20%3D%20%5B%5D%0A%20%20%20%20if%20not%20auto_remove%3A%20lines.append('data%3A%20autoRemove%20false')%0A%20%20%20%20for%20line%20in%20script.split('%5Cn')%3A%20lines.append(f'data%3A%20script%20%7Bline%7D')%0A%20%20%20%20return%20'event%3A%20datastar-execute-script%5Cn'%20%2B%20'%5Cn'.join(lines)%20%2B%20'%5Cn%5Cn'%0A%0A%0Aif%20__name__%20%3D%3D%20%22__main__%22%3A%0A%20%20%20%20app.run()%0A</marimo-code></head>
+  <body>
+    <div id="root"></div>
+    <!-- This is a portal for the data editor to render in -->
+    <div id="portal" data-testid="glide-portal" style="position: fixed; left: 0; top: 0; z-index: 9999"></div>
+    <script data-marimo="true">
+      window.__MARIMO_MOUNT_CONFIG__ = {
+            "filename": "notebook.py",
+            "cwd": "",
+            "mode": "edit",
+            "version": "0.21.1",
+            "serverToken": "unused",
+            "config": {"ai": {"custom_providers": {}, "models": {"custom_models": [], "displayed_models": []}}, "completion": {"activate_on_typing": true, "copilot": false, "signature_hint_on_typing": false}, "diagnostics": {"sql_linter": true}, "display": {"cell_output": "below", "code_editor_font_size": 12, "dataframes": "rich", "default_table_max_columns": 50, "default_table_page_size": 10, "default_width": "compact", "reference_highlighting": true, "theme": "light"}, "formatting": {"line_length": 79}, "keymap": {"overrides": {}, "preset": "default"}, "language_servers": {"pylsp": {"enable_flake8": false, "enable_mypy": true, "enable_pydocstyle": false, "enable_pyflakes": false, "enable_pylint": false, "enable_ruff": true, "enabled": false}}, "mcp": {"mcpServers": {}, "presets": []}, "package_management": {"manager": "uv"}, "runtime": {"auto_instantiate": false, "auto_reload": "off", "default_csv_encoding": "utf-8", "default_sql_output": "auto", "on_cell_change": "autorun", "output_max_bytes": 8000000, "reactive_tests": true, "std_stream_max_bytes": 1000000, "watcher_on_save": "lazy"}, "save": {"autosave": "off", "autosave_delay": 1000, "format_on_save": false}, "server": {"browser": "default", "follow_symlink": false}, "snippets": {"custom_paths": [], "include_default_snippets": true}},
+            "configOverrides": {},
+            "appConfig": {"sql_output": "auto", "width": "full"},
+            "view": {"showAppCode": false},
+            "notebook": null,
+            "session": null,
+            "runtimeConfig": null,
+        };
+    </script>
+  </body>
+</html>

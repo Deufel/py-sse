@@ -1,0 +1,266 @@
+# py-sse
+
+> 
+
+
+## request
+
+
+class Request:
+    __slots__ = ('path', 'method', 'headers', 'query', 'cookies', '_receive')
+
+    def __init__(self, scope, receive):
+        self.path = scope["path"]
+        self.method = scope.get("method", "GET")
+        self._receive = receive
+        # Parse headers
+        self.headers = {k.decode(): v.decode() for k, v in scope.get("headers", [])}
+        # Parse query params
+        qs = scope.get("query_string", b"").decode()
+        self.query = {k: v[0] if len(v) == 1 else v for k, v in parse_qs(qs).items()}
+        # Parse cookies
+        raw = self.headers.get("cookie", "")
+        self.cookies = dict(pair.strip().split("=", 1) for pair in raw.split(";") if "=" in pair)
+
+    async def body(self):
+        chunks = []
+        while True:
+            msg = await self._receive()
+            chunks.append(msg.get("body", b""))
+            if not msg.get("more_body"): break
+        return b"".join(chunks)
+
+    async def json(self):
+        import json
+        return json.loads(await self.body())
+
+## response
+
+
+class Response:
+    __slots__ = ('_send', '_headers')
+
+    def __init__(self, send):
+        self._send = send
+        self._headers = []
+
+    def cookie(self, name, value, **opts):
+        parts = [f"{name}={value}"]
+        for k, v in opts.items():
+            k = k.replace("_", "-")
+            if isinstance(v, bool):
+                if v: parts.append(k)
+            else: parts.append(f"{k}={v}")
+        self._headers.append([b"set-cookie", "; ".join(parts).encode()])
+        return self
+
+    async def _send_response(self, status, content_type, body):
+        headers = [[b"content-type", content_type]] + self._headers
+        await self._send({"type": "http.response.start", "status": status, "headers": headers})
+        await self._send({"type": "http.response.body", "body": body.encode() if isinstance(body, str) else body})
+
+    async def html(self, body, status=200):
+        await self._send_response(status, b"text/html; charset=utf-8", body)
+
+    async def text(self, body, status=200):
+        await self._send_response(status, b"text/plain; charset=utf-8", body)
+
+    async def redirect(self, url, status=302):
+        headers = [[b"location", url.encode()]] + self._headers
+        await self._send({"type": "http.response.start", "status": status, "headers": headers})
+        await self._send({"type": "http.response.body", "body": b""})
+
+## stream
+
+
+class Stream:
+    __slots__ = ('_send', '_closed', '_headers', '_keepalive_task', '_compressor')
+
+    def __init__(self, send, closed):
+        self._send = send
+        self._closed = closed
+        self._headers = []
+        self._keepalive_task = None
+        self._compressor = None
+
+    def cookie(self, name, value, **opts):
+        parts = [f"{name}={value}"]
+        for k, v in opts.items():
+            k = k.replace("_", "-")
+            if isinstance(v, bool):
+                if v: parts.append(k)
+            else: parts.append(f"{k}={v}")
+        self._headers.append([b"set-cookie", "; ".join(parts).encode()])
+        return self
+
+    async def open(self, keepalive=15, compress=False):
+        headers = [
+            [b"content-type", b"text/event-stream"],
+            [b"cache-control", b"no-cache"],
+            [b"connection", b"keep-alive"],
+            [b"x-accel-buffering", b"no"],
+        ] + self._headers
+        if compress:
+            import brotli
+            headers.append([b"content-encoding", b"br"])
+            self._compressor = brotli.Compressor(mode=brotli.MODE_TEXT, quality=1)
+        await self._send({"type": "http.response.start", "status": 200, "headers": headers})
+        if keepalive:
+            self._keepalive_task = asyncio.create_task(self._auto_keepalive(keepalive))
+
+    async def _auto_keepalive(self, interval):
+        try:
+            while not self._closed.is_set():
+                await asyncio.sleep(interval)
+                await self.send_event(":\n\n")
+        except asyncio.CancelledError:
+            pass
+
+    async def send_event(self, data):
+        if self._closed.is_set(): return
+        raw = data.encode()
+        if self._compressor:
+            raw = self._compressor.process(raw) + self._compressor.flush()
+        try:
+            await self._send({"type": "http.response.body", "body": raw, "more_body": True})
+        except Exception:
+            self._closed.set()
+
+    async def close(self):
+        if self._keepalive_task:
+            self._keepalive_task.cancel()
+        if self._closed.is_set(): return
+        self._closed.set()
+        body = b""
+        if self._compressor:
+            body = self._compressor.finish()
+        await self._send({"type": "http.response.body", "body": body})
+
+    async def alive(self, events):
+        async for event in events:
+            if self._closed.is_set(): break
+            yield event
+
+## relay
+
+
+class Relay:
+    __slots__ = ('_subs', '_lock')
+
+    def __init__(self):
+        self._subs = []
+        self._lock = threading.Lock()
+
+    def publish(self, topic, data):
+        with self._lock:
+            targets = [(p, q) for p, q in self._subs if fnmatch(topic, p)]
+        loop = asyncio.get_event_loop()
+        for _, queue in targets:
+            loop.call_soon_threadsafe(queue.put_nowait, (topic, data))
+
+    async def subscribe(self, pattern):
+        queue = asyncio.Queue()
+        with self._lock:
+            self._subs.append((pattern, queue))
+        try:
+            while True:
+                yield await queue.get()
+        except (asyncio.CancelledError, GeneratorExit):
+            pass
+        finally:
+            with self._lock:
+                self._subs.remove((pattern, queue))
+
+## router
+
+
+async def internal_watch_disconnect(receive, closed):
+    while True:
+        msg = await receive()
+        if msg.get("type") == "http.disconnect":
+            closed.set()
+            return
+
+class Router:
+    __slots__ = ('_routes',)
+
+    def __init__(self):
+        self._routes = {}
+
+    def get(self, path):
+        def decorator(fn):
+            self._routes[("GET", path)] = fn
+            return fn
+        return decorator
+
+    def post(self, path):
+        def decorator(fn):
+            self._routes[("POST", path)] = fn
+            return fn
+        return decorator
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "lifespan":
+            while True:
+                msg = await receive()
+                if msg["type"] == "lifespan.startup":
+                    await send({"type": "lifespan.startup.complete"})
+                elif msg["type"] == "lifespan.shutdown":
+                    await send({"type": "lifespan.shutdown.complete"})
+                    return
+            return
+        if scope["type"] != "http": return
+        req = Request(scope, receive)
+        key = (req.method, req.path)
+        handler = self._routes.get(key)
+        if not handler:
+            res = Response(send)
+            await res.text("Not Found", status=404)
+            return
+        closed = asyncio.Event()
+        task = asyncio.create_task(internal_watch_disconnect(receive, closed))
+        try:
+            await handler(req, send, closed)
+        finally:
+            task.cancel()
+
+## sse
+
+
+def patch_elements(
+    elements: Tag | str,  # HTML content - Tag objects or raw strings
+    selector: str | None = None,  # CSS selector for target element
+    mode: str | None = None,  # outer, inner, prepend, append, before, after, remove
+    namespace: str | None = None,  # html, svg, mathml
+    use_view_transition: bool | None = None  # wrap in View Transition API
+) -> str:  # formatted SSE event string
+    "Format a datastar-patch-elements SSE event"
+    if isinstance(elements, Tag): elements = to_html(elements)
+    lines = []
+    if selector: lines.append(f'data: selector {selector}')
+    if mode: lines.append(f'data: mode {mode}')
+    if namespace: lines.append(f'data: namespace {namespace}')
+    if use_view_transition is not None: lines.append(f'data: useViewTransition {str(use_view_transition).lower()}')
+    for line in elements.split('\n'): lines.append(f'data: elements {line}')
+    return 'event: datastar-patch-elements\n' + '\n'.join(lines) + '\n\n'
+
+def patch_signals(
+    signals: dict | str,  # signal data - dicts auto-serialized to JSON
+    only_if_missing: bool | None = None  # only patch if signal doesn't exist
+) -> str:  # formatted SSE event string
+    "Format a datastar-patch-signals SSE event"
+    if isinstance(signals, dict): signals = json.dumps(signals)
+    lines = []
+    if only_if_missing is not None: lines.append(f'data: onlyIfMissing {str(only_if_missing).lower()}')
+    lines.append(f'data: signals {signals}')
+    return 'event: datastar-patch-signals\n' + '\n'.join(lines) + '\n\n'
+
+def execute_script(
+    script: str,  # JavaScript to execute
+    auto_remove: bool = True  # remove script element after execution
+) -> str:  # formatted SSE event string
+    "Format a datastar-execute-script SSE event"
+    lines = []
+    if not auto_remove: lines.append('data: autoRemove false')
+    for line in script.split('\n'): lines.append(f'data: script {line}')
+    return 'event: datastar-execute-script\n' + '\n'.join(lines) + '\n\n'
