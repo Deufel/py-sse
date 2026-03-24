@@ -2,7 +2,7 @@ from __future__ import annotations
 import base64, hashlib, hmac, html, os, re, time, unicodedata
 
 CONTROL_RE = re.compile('[\\x00-\\x08\\x0b\\x0c\\x0e-\\x1f\\x7f]')
-FILENAME_BAD = re.compile('[/\\\\:\\x00-\\x1f\\x7f]')
+FILENAME_BAD = re.compile('[/\\\\:\\x00-\\x1f\\x7f<>"\\\'`]')
 FILENAME_MAX = 255
 
 MAX_BODY: int = 1_048_576

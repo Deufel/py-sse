@@ -8,7 +8,7 @@ with app.setup:
     from __future__ import annotations
     import base64, hashlib, hmac, html, os, re, time, unicodedata
 
-    MAX_BODY: int = 1_048_576  # 1 MB default
+    MAX_BODY: int = 1_048_576  # 10 MB default
 
 
 
@@ -16,7 +16,8 @@ with app.setup:
     CONTROL_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 
     # Filename: strip path separators, null bytes, control chars
-    FILENAME_BAD = re.compile(r'[/\\:\x00-\x1f\x7f]')
+    FILENAME_BAD = re.compile(r'[/\\:\x00-\x1f\x7f<>"\'`]')
+
 
     # Reasonable filename length
     FILENAME_MAX = 255
