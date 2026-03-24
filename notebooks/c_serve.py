@@ -1,19 +1,17 @@
 import marimo
 
 __generated_with = "0.21.1"
-app = marimo.App()
+app = marimo.App(width="full")
 
 with app.setup:
     from __future__ import annotations
- 
-    import asyncio
-    import inspect
-    import json
-    import traceback
+
+    import asyncio, inspect, json, traceback, re
     from urllib.parse import parse_qs
- 
+
     from html_tags import to_html, Tag
- 
+
+    PARAM_RE = re.compile(r"\{(\w+)\}")
 
 
 @app.cell(hide_code=True)
@@ -67,7 +65,7 @@ async def json_body(req: dict) -> dict:
 @app.function
 async def signals(req: dict) -> dict:
     """Read Datastar signals from the request.
- 
+
     GET requests carry signals as a `datastar` query parameter (JSON-encoded).
     Other methods carry signals in the JSON body.
     """
@@ -196,7 +194,7 @@ async def internal_open_sse(send, req: dict, *, compress: bool = False):
         [b"connection", b"keep-alive"],
         [b"x-accel-buffering", b"no"],
     ] + internal_cookie_headers(req)
- 
+
     compressor = None
     if compress:
         try:
@@ -205,7 +203,7 @@ async def internal_open_sse(send, req: dict, *, compress: bool = False):
             compressor = brotli.Compressor(mode=brotli.MODE_TEXT, quality=1)
         except ImportError:
             pass  # No brotli available, send uncompressed
- 
+
     await send({"type": "http.response.start", "status": 200, "headers": headers})
     return compressor
 
@@ -274,147 +272,185 @@ def _(mo):
     return
 
 
-@app.cell
-def _():
+@app.function
+def create_app(routes: dict | None = None):
+    """Create a Datastar ASGI application.
 
-    def app(routes: dict | None = None):
-        """Create a Datastar ASGI application.
- 
-        Usage:
-            application = app()
- 
-            @application.get("/")
-            async def index(req):
-                return "<h1>Hello</h1>"
- 
-            @application.get("/feed")
-            async def feed(req):
-                while True:
-                    yield patch_elements('<div id="time">...</div>')
-                    await asyncio.sleep(1)
- 
-            @application.post("/click")
-            async def click(req):
-                return None  # 204 No Content
- 
-            # Run with: uvicorn module:application
-        """
-        if routes is None:
-            routes = {}
- 
-        def route(method: str, path: str):
-            """Register a route handler."""
-            def decorator(fn):
+    Usage:
+        application = app()
+
+        @application.get("/")
+        async def index(req):
+            return "<h1>Hello</h1>"
+
+        @application.get("/events/{event_id}")
+        async def event(req):
+            eid = req["params"]["event_id"]
+            return f"<h1>Event {eid}</h1>"
+
+        @application.get("/feed")
+        async def feed(req):
+            while True:
+                yield patch_elements('<div id="time">...</div>')
+                await asyncio.sleep(1)
+
+        @application.post("/click")
+        async def click(req):
+            return None  # 204 No Content
+
+        static(application, "/static", "static/")
+
+        # Run with: uvicorn module:application
+    """
+    if routes is None:
+        routes = {}
+
+    def internal_path_to_regex(path):
+        return re.compile("^" + PARAM_RE.sub(r"(?P<\1>[^/]+)", path) + "$")
+
+    param_routes = []
+    mounts = []
+
+    def route(method: str, path: str):
+        """Register a route handler."""
+        def decorator(fn):
+            if "{" in path:
+                param_routes.append((method.upper(), internal_path_to_regex(path), fn))
+            else:
                 routes[(method.upper(), path)] = fn
-                return fn
-            return decorator
- 
-        def get(path: str):    return route("GET", path)
-        def post(path: str):   return route("POST", path)
-        def put(path: str):    return route("PUT", path)
-        def patch(path: str):  return route("PATCH", path)
-        def delete(path: str): return route("DELETE", path)
- 
-        async def handle(scope, receive, send):
-            """ASGI callable."""
- 
-            # --- Lifespan protocol ---
-            if scope["type"] == "lifespan":
-                while True:
-                    msg = await receive()
-                    if msg["type"] == "lifespan.startup":
-                        await send({"type": "lifespan.startup.complete"})
-                    elif msg["type"] == "lifespan.shutdown":
-                        await send({"type": "lifespan.shutdown.complete"})
-                        return
-                return
- 
-            if scope["type"] != "http":
-                return
- 
-            req = internal_parse_request(scope, receive)
-            key = (req["method"], req["path"])
-            handler = routes.get(key)
- 
-            if handler is None:
-                await send_error(send, req, 404, "Not Found")
-                return
- 
-            closed = asyncio.Event()
- 
-            try:
-                result = handler(req)
- 
-                if inspect.isasyncgen(result):
-                    # --- SSE stream ---
-                    watcher = asyncio.create_task(
-                        internal_watch_disconnect(receive, closed)
-                    )
-                    compress = "br" in req["headers"].get("accept-encoding", "")
-                    compressor = await internal_open_sse(send, req, compress=compress)
-                    keepalive_task = asyncio.create_task(
-                        internal_keepalive(send, compressor, closed)
-                    )
-                    try:
-                        async for event in result:
-                            if closed.is_set():
-                                break
-                            await internal_send_sse_event(send, compressor, event)
-                    finally:
-                        keepalive_task.cancel()
-                        watcher.cancel()
-                        if not closed.is_set():
-                            await internal_close_sse(send, compressor)
- 
-                else:
-                    # --- Regular request/response ---
-                    # Let the handler read the body first, THEN start the
-                    # disconnect watcher so they don't race on receive()
-                    result = await result
-                    watcher = asyncio.create_task(
-                        internal_watch_disconnect(receive, closed)
-                    )
-                    try:
-                        if isinstance(result, tuple) and len(result) == 2:
-                            url, status = result
-                            await send_redirect(send, req, url, status)
-                        elif isinstance(result, Tag):
-                            await send_html(send, req, result)
-                        elif isinstance(result, dict):
-                            await send_json(send, req, result)
-                        elif isinstance(result, str):
-                            await send_html(send, req, result)
-                        elif result is None:
-                            # 204 No Content — valid for Datastar commands
-                            headers = internal_cookie_headers(req)
-                            await send({"type": "http.response.start", "status": 204, "headers": headers})
-                            await send({"type": "http.response.body", "body": b""})
-                        else:
-                            await send_error(
-                                send, req, 500,
-                                f"Handler returned unsupported type: {type(result).__name__}"
-                            )
-                    finally:
-                        watcher.cancel()
- 
-            except Exception:
-                traceback.print_exc()
-                try:
-                    await send_error(send, req, 500, "Internal Server Error")
-                except Exception:
-                    pass  # Response headers already sent, nothing we can do
- 
-        # Attach route decorators directly to the ASGI callable
-        handle.route = route
-        handle.get = get
-        handle.post = post
-        handle.put = put
-        handle.patch = patch
-        handle.delete = delete
- 
-        return handle
+            return fn
+        return decorator
 
-    return
+    def mount(prefix, fn):
+        """Mount a handler at a URL prefix (checked after exact and param routes)."""
+        mounts.append((prefix.rstrip("/"), fn))
+        mounts.sort(key=lambda x: -len(x[0]))  # longest prefix first
+
+    def get(path: str):    return route("GET", path)
+    def post(path: str):   return route("POST", path)
+    def put(path: str):    return route("PUT", path)
+    def patch(path: str):  return route("PATCH", path)
+    def delete(path: str): return route("DELETE", path)
+
+    async def handle(scope, receive, send):
+        """ASGI callable."""
+
+        # --- Lifespan protocol ---
+        if scope["type"] == "lifespan":
+            while True:
+                msg = await receive()
+                if msg["type"] == "lifespan.startup":
+                    await send({"type": "lifespan.startup.complete"})
+                elif msg["type"] == "lifespan.shutdown":
+                    await send({"type": "lifespan.shutdown.complete"})
+                    return
+            return
+
+        if scope["type"] != "http":
+            return
+
+        req = internal_parse_request(scope, receive)
+        req["internal_send"] = send
+        key = (req["method"], req["path"])
+        handler = routes.get(key)
+        req["params"] = {}
+
+        # Parameterized routes
+        if handler is None:
+            for method, pattern, fn in param_routes:
+                if method == req["method"]:
+                    m = pattern.match(req["path"])
+                    if m:
+                        req["params"] = m.groupdict()
+                        handler = fn
+                        break
+
+        # Prefix mounts
+        if handler is None:
+            for prefix, fn in mounts:
+                if req["path"] == prefix or req["path"].startswith(prefix + "/"):
+                    req["params"]["path"] = req["path"][len(prefix) + 1:]
+                    handler = fn
+                    break
+
+        if handler is None:
+            await send_error(send, req, 404, "Not Found")
+            return
+
+        closed = asyncio.Event()
+
+        try:
+            result = handler(req)
+
+            if inspect.isasyncgen(result):
+                # --- SSE stream ---
+                watcher = asyncio.create_task(
+                    internal_watch_disconnect(receive, closed)
+                )
+                compress = "br" in req["headers"].get("accept-encoding", "")
+                compressor = await internal_open_sse(send, req, compress=compress)
+                keepalive_task = asyncio.create_task(
+                    internal_keepalive(send, compressor, closed)
+                )
+                try:
+                    async for event in result:
+                        if closed.is_set():
+                            break
+                        await internal_send_sse_event(send, compressor, event)
+                finally:
+                    keepalive_task.cancel()
+                    watcher.cancel()
+                    if not closed.is_set():
+                        await internal_close_sse(send, compressor)
+
+            else:
+                # --- Regular request/response ---
+                result = await result
+                if req.get("_sent"):
+                    return  # Handler already sent response directly
+
+                watcher = asyncio.create_task(
+                    internal_watch_disconnect(receive, closed)
+                )
+                try:
+                    if isinstance(result, tuple) and len(result) == 2:
+                        url, status = result
+                        await send_redirect(send, req, url, status)
+                    elif isinstance(result, Tag):
+                        await send_html(send, req, result)
+                    elif isinstance(result, dict):
+                        await send_json(send, req, result)
+                    elif isinstance(result, str):
+                        await send_html(send, req, result)
+                    elif result is None:
+                        headers = internal_cookie_headers(req)
+                        await send({"type": "http.response.start", "status": 204, "headers": headers})
+                        await send({"type": "http.response.body", "body": b""})
+                    else:
+                        await send_error(
+                            send, req, 500,
+                            f"Handler returned unsupported type: {type(result).__name__}"
+                        )
+                finally:
+                    watcher.cancel()
+
+        except Exception:
+            traceback.print_exc()
+            try:
+                await send_error(send, req, 500, "Internal Server Error")
+            except Exception:
+                pass
+
+    # Attach route decorators directly to the ASGI callable
+    handle.route = route
+    handle.get = get
+    handle.post = post
+    handle.put = put
+    handle.patch = patch
+    handle.delete = delete
+    handle.mount = mount
+
+    return handle
 
 
 @app.cell

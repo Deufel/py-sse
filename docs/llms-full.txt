@@ -172,7 +172,7 @@ def create_relay():
     relay.subscribe = subscribe
     return relay
 
-## app
+## serve
 
 
 def internal_parse_request(scope: dict, receive) -> dict:
@@ -211,7 +211,7 @@ async def json_body(req: dict) -> dict:
 
 async def signals(req: dict) -> dict:
     """Read Datastar signals from the request.
- 
+
     GET requests carry signals as a `datastar` query parameter (JSON-encoded).
     Other methods carry signals in the JSON body.
     """
@@ -284,7 +284,7 @@ async def internal_open_sse(send, req: dict, *, compress: bool = False):
         [b"connection", b"keep-alive"],
         [b"x-accel-buffering", b"no"],
     ] + internal_cookie_headers(req)
- 
+
     compressor = None
     if compress:
         try:
@@ -293,7 +293,7 @@ async def internal_open_sse(send, req: dict, *, compress: bool = False):
             compressor = brotli.Compressor(mode=brotli.MODE_TEXT, quality=1)
         except ImportError:
             pass  # No brotli available, send uncompressed
- 
+
     await send({"type": "http.response.start", "status": 200, "headers": headers})
     return compressor
 
@@ -331,3 +331,419 @@ async def internal_watch_disconnect(receive, closed: asyncio.Event):
                 return
     except Exception:
         closed.set()
+
+def create_app(routes: dict | None = None):
+    """Create a Datastar ASGI application.
+
+    Usage:
+        application = app()
+
+        @application.get("/")
+        async def index(req):
+            return "<h1>Hello</h1>"
+
+        @application.get("/events/{event_id}")
+        async def event(req):
+            eid = req["params"]["event_id"]
+            return f"<h1>Event {eid}</h1>"
+
+        @application.get("/feed")
+        async def feed(req):
+            while True:
+                yield patch_elements('<div id="time">...</div>')
+                await asyncio.sleep(1)
+
+        @application.post("/click")
+        async def click(req):
+            return None  # 204 No Content
+
+        static(application, "/static", "static/")
+
+        # Run with: uvicorn module:application
+    """
+    if routes is None:
+        routes = {}
+
+    def internal_path_to_regex(path):
+        return re.compile("^" + PARAM_RE.sub(r"(?P<\1>[^/]+)", path) + "$")
+
+    param_routes = []
+    mounts = []
+
+    def route(method: str, path: str):
+        """Register a route handler."""
+        def decorator(fn):
+            if "{" in path:
+                param_routes.append((method.upper(), internal_path_to_regex(path), fn))
+            else:
+                routes[(method.upper(), path)] = fn
+            return fn
+        return decorator
+
+    def mount(prefix, fn):
+        """Mount a handler at a URL prefix (checked after exact and param routes)."""
+        mounts.append((prefix.rstrip("/"), fn))
+        mounts.sort(key=lambda x: -len(x[0]))  # longest prefix first
+
+    def get(path: str):    return route("GET", path)
+    def post(path: str):   return route("POST", path)
+    def put(path: str):    return route("PUT", path)
+    def patch(path: str):  return route("PATCH", path)
+    def delete(path: str): return route("DELETE", path)
+
+    async def handle(scope, receive, send):
+        """ASGI callable."""
+
+        # --- Lifespan protocol ---
+        if scope["type"] == "lifespan":
+            while True:
+                msg = await receive()
+                if msg["type"] == "lifespan.startup":
+                    await send({"type": "lifespan.startup.complete"})
+                elif msg["type"] == "lifespan.shutdown":
+                    await send({"type": "lifespan.shutdown.complete"})
+                    return
+            return
+
+        if scope["type"] != "http":
+            return
+
+        req = internal_parse_request(scope, receive)
+        req["internal_send"] = send
+        key = (req["method"], req["path"])
+        handler = routes.get(key)
+        req["params"] = {}
+
+        # Parameterized routes
+        if handler is None:
+            for method, pattern, fn in param_routes:
+                if method == req["method"]:
+                    m = pattern.match(req["path"])
+                    if m:
+                        req["params"] = m.groupdict()
+                        handler = fn
+                        break
+
+        # Prefix mounts
+        if handler is None:
+            for prefix, fn in mounts:
+                if req["path"] == prefix or req["path"].startswith(prefix + "/"):
+                    req["params"]["path"] = req["path"][len(prefix) + 1:]
+                    handler = fn
+                    break
+
+        if handler is None:
+            await send_error(send, req, 404, "Not Found")
+            return
+
+        closed = asyncio.Event()
+
+        try:
+            result = handler(req)
+
+            if inspect.isasyncgen(result):
+                # --- SSE stream ---
+                watcher = asyncio.create_task(
+                    internal_watch_disconnect(receive, closed)
+                )
+                compress = "br" in req["headers"].get("accept-encoding", "")
+                compressor = await internal_open_sse(send, req, compress=compress)
+                keepalive_task = asyncio.create_task(
+                    internal_keepalive(send, compressor, closed)
+                )
+                try:
+                    async for event in result:
+                        if closed.is_set():
+                            break
+                        await internal_send_sse_event(send, compressor, event)
+                finally:
+                    keepalive_task.cancel()
+                    watcher.cancel()
+                    if not closed.is_set():
+                        await internal_close_sse(send, compressor)
+
+            else:
+                # --- Regular request/response ---
+                result = await result
+                if req.get("_sent"):
+                    return  # Handler already sent response directly
+
+                watcher = asyncio.create_task(
+                    internal_watch_disconnect(receive, closed)
+                )
+                try:
+                    if isinstance(result, tuple) and len(result) == 2:
+                        url, status = result
+                        await send_redirect(send, req, url, status)
+                    elif isinstance(result, Tag):
+                        await send_html(send, req, result)
+                    elif isinstance(result, dict):
+                        await send_json(send, req, result)
+                    elif isinstance(result, str):
+                        await send_html(send, req, result)
+                    elif result is None:
+                        headers = internal_cookie_headers(req)
+                        await send({"type": "http.response.start", "status": 204, "headers": headers})
+                        await send({"type": "http.response.body", "body": b""})
+                    else:
+                        await send_error(
+                            send, req, 500,
+                            f"Handler returned unsupported type: {type(result).__name__}"
+                        )
+                finally:
+                    watcher.cancel()
+
+        except Exception:
+            traceback.print_exc()
+            try:
+                await send_error(send, req, 500, "Internal Server Error")
+            except Exception:
+                pass
+
+    # Attach route decorators directly to the ASGI callable
+    handle.route = route
+    handle.get = get
+    handle.post = post
+    handle.put = put
+    handle.patch = patch
+    handle.delete = delete
+    handle.mount = mount
+
+    return handle
+
+## static
+
+
+def internal_etag(stat):
+    return f'"{stat.st_mtime_ns:x}-{stat.st_size:x}"'
+
+def internal_last_modified(stat):
+    return formatdate(stat.st_mtime, usegmt=True)
+
+async def internal_send_file(send, req, full_path, stat):
+    ext = os.path.splitext(full_path)[1].lower()
+    content_type = MIME_OVERRIDES.get(ext) or mimetypes.guess_type(full_path)[0] or "application/octet-stream"
+    etag = internal_etag(stat)
+
+    if req["headers"].get("if-none-match") == etag:
+        await send({"type": "http.response.start", "status": 304, "headers": [[b"etag", etag.encode()]]})
+        await send({"type": "http.response.body", "body": b""})
+        req["_sent"] = True
+        return
+
+    with open(full_path, "rb") as f:
+        body = f.read()
+
+    headers = [
+        [b"content-type", content_type.encode()],
+        [b"content-length", str(len(body)).encode()],
+        [b"etag", etag.encode()],
+        [b"last-modified", internal_last_modified(stat).encode()],
+        [b"cache-control", b"public, max-age=0, must-revalidate"],
+    ]
+    await send({"type": "http.response.start", "status": 200, "headers": headers})
+    await send({"type": "http.response.body", "body": body})
+    req["_sent"] = True
+
+def static(app, url_prefix, directory):
+    """Mount a directory (or single file) for static file serving.
+
+    Usage:
+        static(app, "/static", "static/")
+        static(app, "/favicon.svg", "favicon.svg")
+    """
+    directory = os.path.abspath(directory)
+
+    if os.path.isfile(directory):
+        async def serve_single(req):
+            stat = os.stat(directory)
+            await internal_send_file(req["internal_send"], req, directory, stat)
+        app.get(url_prefix)(serve_single)
+        return
+
+    async def serve_dir(req):
+        rel_path = req["params"].get("path", "")
+        if not rel_path:
+            return None
+        full = os.path.normpath(os.path.join(directory, rel_path))
+        if not full.startswith(directory) or not os.path.isfile(full):
+            return None
+        stat = os.stat(full)
+        await internal_send_file(req["internal_send"], req, full, stat)
+
+    app.mount(url_prefix.rstrip("/"), serve_dir)
+
+## security
+
+
+def create_signer(secret: str | bytes | None = None):
+    """Create an HMAC-SHA256 cookie signer.
+
+    Usage:
+        signer = create_signer("my-secret")
+
+        # Write
+        set_cookie(req, "session", signer.sign("Fox42"))
+
+        # Read
+        user = signer.unsign(req["cookies"].get("session", ""))
+        if user is None: ...  # invalid or expired
+
+    If no secret is provided, one is generated at startup.
+    This means signatures won't survive process restarts — fine
+    for development, but pass an explicit secret in production.
+    """
+    if secret is None:
+        secret = os.urandom(32)
+    if isinstance(secret, str):
+        secret = secret.encode()
+
+    def _b64e(data: bytes) -> str:
+        return base64.urlsafe_b64encode(data).rstrip(b"=").decode()
+
+    def _b64d(s: str) -> bytes:
+        s += "=" * (-len(s) % 4)
+        return base64.urlsafe_b64decode(s.encode())
+
+    def _mac(payload: str) -> str:
+        sig = hmac.new(secret, payload.encode(), hashlib.sha256).digest()
+        return _b64e(sig)
+
+    def sign(value: str, ts: float | None = None) -> str:
+        """Sign a value with a timestamp.
+
+        Returns: ``base64(value).timestamp_hex.signature``
+        """
+        ts = ts or time.time()
+        payload = f"{_b64e(value.encode())}.{int(ts):x}"
+        return f"{payload}.{_mac(payload)}"
+
+    def unsign(signed: str, max_age: int | None = 3600) -> str | None:
+        """Verify and extract a signed value.
+
+        Args:
+            signed:  The signed cookie string.
+            max_age: Maximum age in seconds. None = no expiry.
+
+        Returns the original value, or None if the signature is
+        invalid, the format is wrong, or the value has expired.
+        """
+        if not signed:
+            return None
+        parts = signed.split(".")
+        if len(parts) != 3:
+            return None
+        enc_value, ts_hex, sig = parts
+        payload = f"{enc_value}.{ts_hex}"
+        if not hmac.compare_digest(sig, _mac(payload)):
+            return None
+        if max_age is not None:
+            try:
+                ts = int(ts_hex, 16)
+            except ValueError:
+                return None
+            if time.time() - ts > max_age:
+                return None
+        try:
+            return _b64d(enc_value).decode()
+        except Exception:
+            return None
+
+    class _Signer:
+        """Thin namespace — attribute access, not a class hierarchy."""
+        __slots__ = ("sign", "unsign")
+    s = _Signer()
+    s.sign = sign
+    s.unsign = unsign
+    return s
+
+class BodyTooLarge(Exception):
+    """Raised when the request body exceeds the configured limit."""
+    def __init__(self, limit: int):
+        self.limit = limit
+        super().__init__(f"Request body exceeds {limit} bytes")
+
+async def read_body(req: dict, *, max_size: int = MAX_BODY) -> bytes:
+    """Read the request body with caching and size enforcement.
+
+    Safe to call multiple times — the result is cached on first read.
+    Raises BodyTooLarge if the body exceeds max_size.
+
+    Drop-in replacement for the original ``body()`` function.
+    """
+    # Return cached result
+    if "_body_cache" in req:
+        return req["_body_cache"]
+
+    receive = req["internal_receive"]
+    chunks: list[bytes] = []
+    total = 0
+    while True:
+        msg = await receive()
+        chunk = msg.get("body", b"")
+        total += len(chunk)
+        if total > max_size:
+            req["_body_cache"] = b""  # prevent re-reads
+            raise BodyTooLarge(max_size)
+        chunks.append(chunk)
+        if not msg.get("more_body"):
+            break
+
+    result = b"".join(chunks)
+    req["_body_cache"] = result
+    return result
+
+def sanitize_html(text: str) -> str:
+    """Escape HTML entities and strip control characters.
+
+    Use for any user-provided text that will appear in HTML content.
+    Does NOT strip tags — it escapes them, so ``<script>`` becomes
+    ``&lt;script&gt;``, preserving the user's intent visibly.
+    """
+    text = CONTROL_RE.sub("", text)
+    return html.escape(text, quote=True)
+
+def sanitize_filename(name: str) -> str:
+    """Sanitise a user-provided filename for safe display and storage.
+
+    Strips path components, control characters, and leading dots.
+    Returns "unnamed" if nothing remains.
+    """
+    # Take only the final path component
+    name = name.split("/")[-1].split("\\")[-1]
+    # Strip control chars and path separators
+    name = FILENAME_BAD.sub("", name)
+    # Normalise unicode to NFC (prevents homoglyph path tricks)
+    name = unicodedata.normalize("NFC", name)
+    # Strip leading dots (hidden files)
+    name = name.lstrip(".")
+    # Truncate
+    name = name[:FILENAME_MAX]
+    return name.strip() or "unnamed"
+
+def validate_base64(data: str, max_decoded_size: int | None = None) -> bool:
+    """Check that a string is valid base64 and optionally within size.
+
+    This is a fast structural check — it doesn't decode the full payload,
+    it validates the character set and checks the *encoded* length against
+    the expected decoded size bound (base64 is ~4/3 of decoded size).
+    """
+    if not data:
+        return False
+    # base64 alphabet check (standard + urlsafe)
+    if not re.fullmatch(r'[A-Za-z0-9+/\-_=\n\r]*', data):
+        return False
+    if max_decoded_size is not None:
+        # Encoded length ≈ 4/3 * decoded length
+        max_encoded = (max_decoded_size * 4 // 3) + 4
+        if len(data) > max_encoded:
+            return False
+    return True
+
+def validate_mime(mime: str) -> str | None:
+    """Validate and normalise a MIME type string.
+
+    Returns the lowercased type/subtype, or None if malformed.
+    """
+    m = re.fullmatch(r'([a-zA-Z0-9][a-zA-Z0-9!#$&\-^_]*)/([a-zA-Z0-9][a-zA-Z0-9!#$&\-^_.+]*)', mime.strip())
+    return f"{m.group(1).lower()}/{m.group(2).lower()}" if m else None

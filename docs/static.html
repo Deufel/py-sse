@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html><head><script type="module" src="https://cdn.jsdelivr.net/gh/starfederation/datastar@1.0.0-RC.8/bundles/datastar.js"></script><script src="https://cdn.jsdelivr.net/gh/gnat/css-scope-inline@main/script.js"></script><script src="js/highlight.js" type="module"></script><style>body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; } code { font-family: 'SF Mono', Consolas, monospace; }</style><title>static - py-sse</title></head><body style="display: flex; height: 100vh; margin: 0; background: #121212;" data-signals="{search: ''}"><nav><style>
+            me { padding: 1rem; background: #1a1a1a; min-width: 180px; }
+            me h3 { margin: 0 0 1rem 0; color: #fff; }
+            me ul { list-style: none; padding: 0; margin: 0; }
+            me .back-link { color: #888; text-decoration: none; font-size: 0.85rem; }
+            me .back-link:hover { color: #fff; }
+            me .nav-link { color: #aaa; text-decoration: none; }
+            me .nav-link:hover { color: #fff; }
+            me .nav-link.active { color: #fff; }
+            me input { width: 100%; padding: 0.5rem; border: 1px solid #333; border-radius: 4px; background: #252525; color: #fff; margin-bottom: 1rem; box-sizing: border-box; }
+        </style><h3>py-sse</h3><input type="text" placeholder="Search..." data-bind="search"></input><ul><li><a href="index.html" class="back-link">← Index</a></li><li><a href="sse.html" class="nav-link ">sse</a></li><li><a href="relay.html" class="nav-link ">relay</a></li><li><a href="serve.html" class="nav-link ">serve</a></li><li><a href="static.html" class="nav-link active">static</a></li><li><a href="security.html" class="nav-link ">security</a></li></ul></nav><div style="flex: 1; display: flex; flex-direction: column;"><header><style>
+            me { padding: 1rem; background: #1e1e1e; border-bottom: 1px solid #333; }
+            me .header-row { display: flex; align-items: center; justify-content: space-between; }
+            me h1 { margin: 0; font-size: 1.5rem; color: #fff; }
+            me .wasm-btn { display: flex; align-items: center; gap: 0.25rem; background: #333; border: 1px solid #444; color: #ccc; padding: 0.5rem 0.75rem; border-radius: 4px; cursor: pointer; font-size: 0.85rem; }
+            me .wasm-link { text-decoration: none; }
+        </style><div class="header-row"><h1>static</h1><a href="wasm/static/index.html" target="_blank" class="wasm-link"><button class="wasm-btn"><icon-external-link><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-external-link-icon lucide-external-link"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg></icon-external-link>Run in Browser</button></a></div></header><div><style>
+            me { padding: 1rem; background: #121212; overflow-y: auto; flex: 1; }
+        </style><article><style>
+            me { margin-bottom: 0.75rem; border-radius: 8px; overflow: hidden; background: #1e1e1e; max-width: 100%; }
+            me .header { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; }
+            me .header-left { display: flex; align-items: center; }
+            me .header-right { display: flex; align-items: center; gap: 0.5rem; }
+            me .tag { padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; color: white; }
+            me .full-name { font-weight: 500; font-size: 1rem; margin-left: 0.75rem; }
+            me .mod { color: #666; }
+            me .name { color: #e5e5e5; }
+            me .doc { margin: 0; padding: 0 1rem 0.5rem 1rem; color: #888; font-size: 0.85rem; }
+            me .gh-btn { display: flex; align-items: center; gap: 0.25rem; background: #333; border: 1px solid #444; color: #ccc; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
+            me .gh-link { text-decoration: none; }
+            me .copy-btn { background: transparent; border: none; cursor: pointer; font-size: 0.9rem; padding: 0.25rem; }
+            me pre { background: #1a1a1a; border-top: 1px solid #2a2a2a; margin: 0; padding: 0.5rem 0; }
+            me code { counter-reset: line; font-size: 0.8rem; line-height: 1.6; color: #ccc; }
+            me .code-line { display: block; padding-left: 3.5em; white-space: pre-wrap; word-break: break-all; position: relative; }
+            me .code-line::before { content: counter(line); counter-increment: line; position: absolute; left: 0; width: 2.5em; text-align: right; color: #555; user-select: none; }
+        </style><div class="header"><div class="header-left"><span class="tag" style="background:#10b981;">func</span><span class="full-name"><span class="mod">static.</span><span class="name">internal_etag</span></span></div><div class="header-right"><button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('code-static-internal_etag').textContent).then(() => this.textContent = '✓').then(() => setTimeout(() => this.textContent = '📋', 1500))">📋</button></div></div><pre><code class="language-python" id="code-static-internal_etag"><span class="code-line">def internal_etag(stat):</span><span class="code-line">    return f&#x27;&quot;{stat.st_mtime_ns:x}-{stat.st_size:x}&quot;&#x27;</span></code></pre></article><article><style>
+            me { margin-bottom: 0.75rem; border-radius: 8px; overflow: hidden; background: #1e1e1e; max-width: 100%; }
+            me .header { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; }
+            me .header-left { display: flex; align-items: center; }
+            me .header-right { display: flex; align-items: center; gap: 0.5rem; }
+            me .tag { padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; color: white; }
+            me .full-name { font-weight: 500; font-size: 1rem; margin-left: 0.75rem; }
+            me .mod { color: #666; }
+            me .name { color: #e5e5e5; }
+            me .doc { margin: 0; padding: 0 1rem 0.5rem 1rem; color: #888; font-size: 0.85rem; }
+            me .gh-btn { display: flex; align-items: center; gap: 0.25rem; background: #333; border: 1px solid #444; color: #ccc; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
+            me .gh-link { text-decoration: none; }
+            me .copy-btn { background: transparent; border: none; cursor: pointer; font-size: 0.9rem; padding: 0.25rem; }
+            me pre { background: #1a1a1a; border-top: 1px solid #2a2a2a; margin: 0; padding: 0.5rem 0; }
+            me code { counter-reset: line; font-size: 0.8rem; line-height: 1.6; color: #ccc; }
+            me .code-line { display: block; padding-left: 3.5em; white-space: pre-wrap; word-break: break-all; position: relative; }
+            me .code-line::before { content: counter(line); counter-increment: line; position: absolute; left: 0; width: 2.5em; text-align: right; color: #555; user-select: none; }
+        </style><div class="header"><div class="header-left"><span class="tag" style="background:#10b981;">func</span><span class="full-name"><span class="mod">static.</span><span class="name">internal_last_modified</span></span></div><div class="header-right"><button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('code-static-internal_last_modified').textContent).then(() => this.textContent = '✓').then(() => setTimeout(() => this.textContent = '📋', 1500))">📋</button></div></div><pre><code class="language-python" id="code-static-internal_last_modified"><span class="code-line">def internal_last_modified(stat):</span><span class="code-line">    return formatdate(stat.st_mtime, usegmt=True)</span></code></pre></article><article><style>
+            me { margin-bottom: 0.75rem; border-radius: 8px; overflow: hidden; background: #1e1e1e; max-width: 100%; }
+            me .header { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; }
+            me .header-left { display: flex; align-items: center; }
+            me .header-right { display: flex; align-items: center; gap: 0.5rem; }
+            me .tag { padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; color: white; }
+            me .full-name { font-weight: 500; font-size: 1rem; margin-left: 0.75rem; }
+            me .mod { color: #666; }
+            me .name { color: #e5e5e5; }
+            me .doc { margin: 0; padding: 0 1rem 0.5rem 1rem; color: #888; font-size: 0.85rem; }
+            me .gh-btn { display: flex; align-items: center; gap: 0.25rem; background: #333; border: 1px solid #444; color: #ccc; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
+            me .gh-link { text-decoration: none; }
+            me .copy-btn { background: transparent; border: none; cursor: pointer; font-size: 0.9rem; padding: 0.25rem; }
+            me pre { background: #1a1a1a; border-top: 1px solid #2a2a2a; margin: 0; padding: 0.5rem 0; }
+            me code { counter-reset: line; font-size: 0.8rem; line-height: 1.6; color: #ccc; }
+            me .code-line { display: block; padding-left: 3.5em; white-space: pre-wrap; word-break: break-all; position: relative; }
+            me .code-line::before { content: counter(line); counter-increment: line; position: absolute; left: 0; width: 2.5em; text-align: right; color: #555; user-select: none; }
+        </style><div class="header"><div class="header-left"><span class="tag" style="background:#10b981;">func</span><span class="full-name"><span class="mod">static.</span><span class="name">internal_send_file</span></span></div><div class="header-right"><button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('code-static-internal_send_file').textContent).then(() => this.textContent = '✓').then(() => setTimeout(() => this.textContent = '📋', 1500))">📋</button></div></div><pre><code class="language-python" id="code-static-internal_send_file"><span class="code-line">async def internal_send_file(send, req, full_path, stat):</span><span class="code-line">    ext = os.path.splitext(full_path)[1].lower()</span><span class="code-line">    content_type = MIME_OVERRIDES.get(ext) or mimetypes.guess_type(full_path)[0] or &quot;application/octet-stream&quot;</span><span class="code-line">    etag = internal_etag(stat)</span><span class="code-line"></span><span class="code-line">    if req[&quot;headers&quot;].get(&quot;if-none-match&quot;) == etag:</span><span class="code-line">        await send({&quot;type&quot;: &quot;http.response.start&quot;, &quot;status&quot;: 304, &quot;headers&quot;: [[b&quot;etag&quot;, etag.encode()]]})</span><span class="code-line">        await send({&quot;type&quot;: &quot;http.response.body&quot;, &quot;body&quot;: b&quot;&quot;})</span><span class="code-line">        req[&quot;_sent&quot;] = True</span><span class="code-line">        return</span><span class="code-line"></span><span class="code-line">    with open(full_path, &quot;rb&quot;) as f:</span><span class="code-line">        body = f.read()</span><span class="code-line"></span><span class="code-line">    headers = [</span><span class="code-line">        [b&quot;content-type&quot;, content_type.encode()],</span><span class="code-line">        [b&quot;content-length&quot;, str(len(body)).encode()],</span><span class="code-line">        [b&quot;etag&quot;, etag.encode()],</span><span class="code-line">        [b&quot;last-modified&quot;, internal_last_modified(stat).encode()],</span><span class="code-line">        [b&quot;cache-control&quot;, b&quot;public, max-age=0, must-revalidate&quot;],</span><span class="code-line">    ]</span><span class="code-line">    await send({&quot;type&quot;: &quot;http.response.start&quot;, &quot;status&quot;: 200, &quot;headers&quot;: headers})</span><span class="code-line">    await send({&quot;type&quot;: &quot;http.response.body&quot;, &quot;body&quot;: body})</span><span class="code-line">    req[&quot;_sent&quot;] = True</span></code></pre></article><article><style>
+            me { margin-bottom: 0.75rem; border-radius: 8px; overflow: hidden; background: #1e1e1e; max-width: 100%; }
+            me .header { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; }
+            me .header-left { display: flex; align-items: center; }
+            me .header-right { display: flex; align-items: center; gap: 0.5rem; }
+            me .tag { padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; color: white; }
+            me .full-name { font-weight: 500; font-size: 1rem; margin-left: 0.75rem; }
+            me .mod { color: #666; }
+            me .name { color: #e5e5e5; }
+            me .doc { margin: 0; padding: 0 1rem 0.5rem 1rem; color: #888; font-size: 0.85rem; }
+            me .gh-btn { display: flex; align-items: center; gap: 0.25rem; background: #333; border: 1px solid #444; color: #ccc; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
+            me .gh-link { text-decoration: none; }
+            me .copy-btn { background: transparent; border: none; cursor: pointer; font-size: 0.9rem; padding: 0.25rem; }
+            me pre { background: #1a1a1a; border-top: 1px solid #2a2a2a; margin: 0; padding: 0.5rem 0; }
+            me code { counter-reset: line; font-size: 0.8rem; line-height: 1.6; color: #ccc; }
+            me .code-line { display: block; padding-left: 3.5em; white-space: pre-wrap; word-break: break-all; position: relative; }
+            me .code-line::before { content: counter(line); counter-increment: line; position: absolute; left: 0; width: 2.5em; text-align: right; color: #555; user-select: none; }
+        </style><div class="header"><div class="header-left"><span class="tag" style="background:#10b981;">func</span><span class="full-name"><span class="mod">static.</span><span class="name">static</span></span></div><div class="header-right"><button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('code-static-static').textContent).then(() => this.textContent = '✓').then(() => setTimeout(() => this.textContent = '📋', 1500))">📋</button></div></div><p class="doc">Mount a directory (or single file) for static file serving.
+
+Usage:
+    static(app, &quot;/static&quot;, &quot;static/&quot;)
+    static(app, &quot;/favicon.svg&quot;, &quot;favicon.svg&quot;)</p><pre><code class="language-python" id="code-static-static"><span class="code-line">def static(app, url_prefix, directory):</span><span class="code-line">    &quot;&quot;&quot;Mount a directory (or single file) for static file serving.</span><span class="code-line"></span><span class="code-line">    Usage:</span><span class="code-line">        static(app, &quot;/static&quot;, &quot;static/&quot;)</span><span class="code-line">        static(app, &quot;/favicon.svg&quot;, &quot;favicon.svg&quot;)</span><span class="code-line">    &quot;&quot;&quot;</span><span class="code-line">    directory = os.path.abspath(directory)</span><span class="code-line"></span><span class="code-line">    if os.path.isfile(directory):</span><span class="code-line">        async def serve_single(req):</span><span class="code-line">            stat = os.stat(directory)</span><span class="code-line">            await internal_send_file(req[&quot;internal_send&quot;], req, directory, stat)</span><span class="code-line">        app.get(url_prefix)(serve_single)</span><span class="code-line">        return</span><span class="code-line"></span><span class="code-line">    async def serve_dir(req):</span><span class="code-line">        rel_path = req[&quot;params&quot;].get(&quot;path&quot;, &quot;&quot;)</span><span class="code-line">        if not rel_path:</span><span class="code-line">            return None</span><span class="code-line">        full = os.path.normpath(os.path.join(directory, rel_path))</span><span class="code-line">        if not full.startswith(directory) or not os.path.isfile(full):</span><span class="code-line">            return None</span><span class="code-line">        stat = os.stat(full)</span><span class="code-line">        await internal_send_file(req[&quot;internal_send&quot;], req, full, stat)</span><span class="code-line"></span><span class="code-line">    app.mount(url_prefix.rstrip(&quot;/&quot;), serve_dir)</span></code></pre></article></div></div></body></html>
