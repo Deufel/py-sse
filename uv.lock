@@ -4,15 +4,15 @@ requires-python = ">=3.12"
 
 [[package]]
 name = "anyio"
-version = "4.12.1"
+version = "4.13.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "idna" },
     { name = "typing-extensions", marker = "python_full_version < '3.13'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/96/f0/5eb65b2bb0d09ac6776f2eb54adee6abe8228ea05b20a5ad0e4945de8aac/anyio-4.12.1.tar.gz", hash = "sha256:41cfcc3a4c85d3f05c932da7c26d0201ac36f72abd4435ba90d0464a3ffed703", size = 228685, upload-time = "2026-01-06T11:45:21.246Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/19/14/2c5dd9f512b66549ae92767a9c7b330ae88e1932ca57876909410251fe13/anyio-4.13.0.tar.gz", hash = "sha256:334b70e641fd2221c1505b3890c69882fe4a2df910cba14d97019b90b24439dc", size = 231622, upload-time = "2026-03-24T12:59:09.671Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/38/0e/27be9fdef66e72d64c0cdc3cc2823101b80585f8119b5c112c2e8f5f7dab/anyio-4.12.1-py3-none-any.whl", hash = "sha256:d405828884fc140aa80a3c667b8beed277f1dfedec42ba031bd6ac3db606ab6c", size = 113592, upload-time = "2026-01-06T11:45:19.497Z" },
+    { url = "https://files.pythonhosted.org/packages/da/42/e921fccf5015463e32a3cf6ee7f980a6ed0f395ceeaa45060b61d86486c2/anyio-4.13.0-py3-none-any.whl", hash = "sha256:08b310f9e24a9594186fd75b4f73f4a4152069e3853f1ed8bfbf58369f4ad708", size = 114353, upload-time = "2026-03-24T12:59:08.246Z" },
 ]
 
 [[package]]
@@ -176,11 +176,11 @@ wheels = [
 
 [[package]]
 name = "html-tags"
-version = "0.0.18"
+version = "0.1.1"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/dc/0f/e24f1a92027bcf94d9d208fbbcc0b1b8e94e17e6b48aa57c4627dcc6074c/html_tags-0.0.18.tar.gz", hash = "sha256:4f4e8d48619e3b9c0de391eb5b526a92eb468e5ba709577dbb81b539fa871baf", size = 5960, upload-time = "2026-03-22T23:17:18.28Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f0/33/50d048d55db46239a1e9745f3195f2451820ea587781831db78553eec42e/html_tags-0.1.1.tar.gz", hash = "sha256:795306711c89e5443c068cfaeb45d9226f2db343110005f0d4cda276692863d1", size = 6246, upload-time = "2026-03-23T22:40:27.419Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ad/10/7b5f09c36cb17f04b408ebfad0bd898c6c600b1856e1b4ebbe5b0afe15e7/html_tags-0.0.18-py3-none-any.whl", hash = "sha256:cd8c5a0a88898d069a9ea17b9fe6bde3f4db721a38254334d003d09cc055639b", size = 7035, upload-time = "2026-03-22T23:17:17.13Z" },
+    { url = "https://files.pythonhosted.org/packages/5b/3f/85bb2f59f880c8380dbed39624c94f52f0ba89182652bd931d0c6a0962d6/html_tags-0.1.1-py3-none-any.whl", hash = "sha256:7617faadc6dd20d82e536dddace6327dea5702dbfccbb14518629dac1f6b0ab7", size = 7043, upload-time = "2026-03-23T22:40:26.291Z" },
 ]
 
 [[package]]
@@ -309,14 +309,14 @@ wheels = [
 
 [[package]]
 name = "marimo-dev"
-version = "0.3.4"
+version = "0.3.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "html-tags" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e3/dc/e2b641e99d56b6a6289b765693e378efa396aeaaa3af4ac8f5bb6657f95f/marimo_dev-0.3.4.tar.gz", hash = "sha256:b6c3d3349e351f72298c94367aaf087ef2e0cf34873b4eb45a21722d59847e0e", size = 18389, upload-time = "2026-03-23T04:48:59.379Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/92/9e/c11fa909181fd26ce59d0cc67d2ecf4e843a6c93bbbcbbcb285a9909f176/marimo_dev-0.3.6.tar.gz", hash = "sha256:e6cab0e5ec390f4d9dd2029f3946c4330f643859e3828144b20c16170f44fe00", size = 19259, upload-time = "2026-03-25T04:46:52.58Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/56/f2/566b636452a944ac1861965897afac84dc9660956bb1615e35363772270b/marimo_dev-0.3.4-py3-none-any.whl", hash = "sha256:8e1c70c5ba300e60746e4dc5b849b1a24865735b07dc6cb4d92217ac944bc8e6", size = 21749, upload-time = "2026-03-23T04:48:58.483Z" },
+    { url = "https://files.pythonhosted.org/packages/bc/82/62af5539ed40bb4fed61333b1966b6c81f1ae7454717a1268a56726d4871/marimo_dev-0.3.6-py3-none-any.whl", hash = "sha256:fe3c74c097b048ca3d0f12db253788a3e10f4af9257c053f16a7749a076bf3f6", size = 22623, upload-time = "2026-03-25T04:46:53.57Z" },
 ]
 
 [[package]]
@@ -370,11 +370,11 @@ wheels = [
 
 [[package]]
 name = "narwhals"
-version = "2.18.0"
+version = "2.18.1"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/47/b4/02a8add181b8d2cd5da3b667cd102ae536e8c9572ab1a130816d70a89edb/narwhals-2.18.0.tar.gz", hash = "sha256:1de5cee338bc17c338c6278df2c38c0dd4290499fcf70d75e0a51d5f22a6e960", size = 620222, upload-time = "2026-03-10T15:51:27.14Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/59/96/45218c2fdec4c9f22178f905086e85ef1a6d63862dcc3cd68eb60f1867f5/narwhals-2.18.1.tar.gz", hash = "sha256:652a1fcc9d432bbf114846688884c215f17eb118aa640b7419295d2f910d2a8b", size = 620578, upload-time = "2026-03-24T15:11:25.456Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/fe/75/0b4a10da17a44cf13567d08a9c7632a285297e46253263f1ae119129d10a/narwhals-2.18.0-py3-none-any.whl", hash = "sha256:68378155ee706ac9c5b25868ef62ecddd62947b6df7801a0a156bc0a615d2d0d", size = 444865, upload-time = "2026-03-10T15:51:24.085Z" },
+    { url = "https://files.pythonhosted.org/packages/3f/c3/06490e98393dcb4d6ce2bf331a39335375c300afaef526897881fbeae6ab/narwhals-2.18.1-py3-none-any.whl", hash = "sha256:a0a8bb80205323851338888ba3a12b4f65d352362c8a94be591244faf36504ad", size = 444952, upload-time = "2026-03-24T15:11:23.801Z" },
 ]
 
 [[package]]
