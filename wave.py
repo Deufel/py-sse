@@ -1,38 +1,92 @@
-import secrets, time, asyncio
+"""Wave Chat — real-time chat with Datastar + py-sse on Granian RSGI.
+
+Run with:
+    python wave.py
+"""
+import secrets, time, asyncio, json, os, base64
 from html_tags import setup_tags, to_html
-from py_sse import patch_elements, create_relay, set_cookie, create_app, signals
+from py_sse import (
+    patch_elements, create_relay, set_cookie, create_app, signals,
+    create_signer, body, serve
+)
+# Security utilities now live in the app, not the framework
+from html import escape as html_escape
+import re, unicodedata
 
 setup_tags()
 
 app   = create_app()
 relay = create_relay()
 
+# ── Config ────────────────────────────────────────────────────
+
+SECRET = os.environ.get("COOKIE_SECRET", "change-me-in-production")
+signer = create_signer(SECRET)
+
 messages = []
 drafts = {}
+files = {}
+MAX_MESSAGES = 200
 NAMES = ["Fox", "Owl", "Bear", "Wolf", "Hawk", "Lynx", "Crow", "Deer", "Hare", "Wren"]
 REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥"]
-MAX_FILE = 5 * 1024 * 1024  # 5MB
+MAX_FILE = 5 * 1024 * 1024
 
-def get_user(req): return req["cookies"].get("user")
+# ── App utilities (moved from framework) ─────────────────────
 
-class Safe:
-    __slots__ = ("_s",)
-    def __init__(self, s): self._s = str(s)
-    def __str__(self): return self._s
-    def __html__(self): return self._s
+_CONTROL_RE = re.compile(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]')
+_FILENAME_BAD = re.compile(r'[/\\:\x00-\x1f\x7f]')
 
+def sanitize_html(text: str) -> str:
+    return html_escape(_CONTROL_RE.sub("", text), quote=True)
 
-def ensure_user(req):
+def sanitize_filename(name: str) -> str:
+    name = name.split("/")[-1].split("\\")[-1]
+    name = _FILENAME_BAD.sub("", name)
+    name = unicodedata.normalize("NFC", name).lstrip(".")[:255]
+    return name.strip() or "unnamed"
+
+def validate_base64(data: str, max_decoded: int | None = None) -> bool:
+    if not data or not re.fullmatch(r'[A-Za-z0-9+/\-_=\n\r]*', data):
+        return False
+    if max_decoded and len(data) > (max_decoded * 4 // 3) + 4:
+        return False
+    return True
+
+def validate_mime(mime: str) -> str | None:
+    m = re.fullmatch(r'([a-zA-Z0-9][\w!#$&\-^]*)/([a-zA-Z0-9][\w!#$&\-^.+]*)', mime.strip())
+    return f"{m.group(1).lower()}/{m.group(2).lower()}" if m else None
+
+# ── Identity ──────────────────────────────────────────────────
+
+def get_user(req) -> str | None:
+    return signer.unsign(req["cookies"].get("user", ""), max_age=None)
+
+def ensure_user(req) -> str:
     user = get_user(req)
     if not user:
         user = secrets.choice(NAMES) + str(secrets.randbelow(100))
-        set_cookie(req, "user", user, path="/", samesite="Lax")
+        set_cookie(req, "user", signer.sign(user), path="/", samesite="Lax")
     return user
+
+# ── Beforeware ────────────────────────────────────────────────
+
+@app.before
+async def inject_user(req):
+    req["user"] = ensure_user(req)
+
+# ── Helpers ───────────────────────────────────────────────────
 
 def find_msg(mid):
     for m in messages:
         if m["id"] == mid: return m
     return None
+
+def append_msg(msg):
+    messages.append(msg)
+    while len(messages) > MAX_MESSAGES:
+        old = messages.pop(0)
+        if old.get("file") and old["file"].get("id"):
+            files.pop(old["file"]["id"], None)
 
 def fmt_time(ts):
     t = time.localtime(ts)
@@ -51,15 +105,18 @@ def fmt_size(n):
     if n < 1024 * 1024: return f"{n / 1024:.1f}KB"
     return f"{n / (1024 * 1024):.1f}MB"
 
+# ── Rendering ─────────────────────────────────────────────────
+
 def render_file(f):
     if not f: return Span()
+    name, fid = f["name"], f["id"]
     if f["type"].startswith("image/"):
         return Div({"class": "msg-file"},
-            Safe(f"<img src='data:{f['type']};base64,{f['data']}' class='msg-img' alt='{f['name']}'>"))
+            Img({"src": f"/file/{fid}", "class": "msg-img", "alt": name}))
     return Div({"class": "msg-file"},
-        Safe(f"<a href='data:{f['type']};base64,{f['data']}' download='{f['name']}' class='file-link'><span class='file-icon'>📎</span> {f['name']} ({fmt_size(f['size'])})</a>"))
-
-
+        A({"href": f"/file/{fid}", "download": name, "class": "file-link"},
+            Span({"class": "file-icon"}, "📎"),
+            f" {name} ({fmt_size(f['size'])})"))
 
 def render_reactions(m, user):
     if not m["reactions"] and not m.get("show_picker"): return Span()
@@ -86,19 +143,19 @@ def render_msg(m, user):
         actions.append(Button({"class": "msg-action", "data-on:click": f"@post('/delete?id={mid}')"}, "🗑️"))
     actions.append(Button({"class": "msg-action", "data-on:click": f"@post('/react-picker?id={mid}')"}, "😀"))
     if m.get("editing") and is_owner:
-        body = Div({"class": "edit-box"},
+        body_el = Div({"class": "edit-box"},
             Input({"type": "text", "id": f"edit-{mid}", "value": m["text"], "class": "edit-input",
                    "data-on:keydown": f"if(event.key==='Enter'){{@post('/edit?id={mid}&text='+encodeURIComponent(el.value))}} if(event.key==='Escape'){{@post('/edit-cancel?id={mid}')}}"}),
             Button({"class": "msg-action", "data-on:click": f"@post('/edit?id={mid}&text='+encodeURIComponent(document.getElementById('edit-{mid}').value))"}, "✓"),
             Button({"class": "msg-action", "data-on:click": f"@post('/edit-cancel?id={mid}')"}, "✗"))
     else:
-        body = Span(m["text"]) if m["text"] else Span()
+        body_el = Span(m["text"]) if m["text"] else Span()
     return Div({"class": "msg", "id": f"msg-{mid}"},
         Div({"class": "msg-header"},
             Span({"class": "user"}, m["user"]),
             Span({"class": "ts"}, ts_str + edited),
             Div({"class": "msg-actions"}, *actions)),
-        body,
+        body_el,
         render_file(m.get("file")),
         render_reactions(m, user),
         render_picker(m))
@@ -109,6 +166,8 @@ def render_messages(user):
         if text.strip():
             items.append(Div({"class": "msg draft"}, Span({"class": "user"}, u), Span(text), Span({"class": "typing"}, " ...")))
     return Div({"id": "chat"}, *items)
+
+# ── Assets ────────────────────────────────────────────────────
 
 FILE_JS = """\
 function readFile(input) {
@@ -181,14 +240,18 @@ input:focus { outline: 2px solid #e54; }
 .attach-btn:hover { border-color: #555; color: #eee; }
 button.send { padding: 0.75rem 1.5rem; background: #e54; border: none; border-radius: 0.5rem; color: #fff; cursor: pointer; font: inherit; }"""
 
+# ── Ticker ────────────────────────────────────────────────────
+
 async def _ticker():
     while True:
         await asyncio.sleep(30)
         relay.publish("chat.tick", None)
 
+# ── Routes ────────────────────────────────────────────────────
+
 @app.get("/")
 async def home(req):
-    user = ensure_user(req)
+    user = req["user"]
     return to_html(Html(
         Head(
             Meta({"charset": "UTF-8"}),
@@ -214,7 +277,7 @@ async def home(req):
 
 @app.get("/stream")
 async def stream(req):
-    user = ensure_user(req)
+    user = req["user"]
     yield patch_elements(render_messages(user))
     tick = asyncio.create_task(_ticker())
     try:
@@ -225,42 +288,63 @@ async def stream(req):
 
 @app.post("/typing")
 async def typing(req):
-    user = ensure_user(req)
+    user = req["user"]
     drafts[user] = req["query"].get("text", "")
     relay.publish("chat.typing", user)
     return None
 
 @app.post("/send")
 async def send_msg(req):
-    user = ensure_user(req)
-    s = await signals(req)
+    user = req["user"]
+    try:
+        raw = await body(req, max_size=MAX_FILE * 2)
+    except ValueError:
+        return None
+
+    data = json.loads(raw)
+    s = data.get("datastar", data) if isinstance(data, dict) else data
     text = s.get("text", "").strip()
+
     file = None
     if s.get("fileData"):
-        file = dict(name=s["fileName"], type=s["fileType"], size=int(s.get("fileSize", 0)), data=s["fileData"])
-        if file["size"] > MAX_FILE: return None
+        clean_type = validate_mime(s.get("fileType", "")) or "application/octet-stream"
+        clean_name = sanitize_filename(s.get("fileName", "file"))
+        raw_data = s["fileData"]
+        if not validate_base64(raw_data, max_decoded=MAX_FILE):
+            return None
+        actual_size = len(raw_data) * 3 // 4
+        if actual_size > MAX_FILE:
+            return None
+        fid = secrets.token_urlsafe(12)
+        file = dict(id=fid, name=clean_name, type=clean_type, size=actual_size, data=raw_data)
+        files[fid] = file
+
     if text or file:
-        messages.append(dict(id=secrets.token_urlsafe(8), user=user, text=text, ts=time.time(), edited=False, reactions={}, editing=False, show_picker=False, file=file))
+        append_msg(dict(
+            id=secrets.token_urlsafe(8), user=user, text=text,
+            ts=time.time(), edited=False, reactions={},
+            editing=False, show_picker=False, file=file))
         drafts.pop(user, None)
         relay.publish("chat.message", user)
     return None
 
 @app.post("/delete")
 async def delete_msg(req):
-    user = ensure_user(req)
+    user = req["user"]
     m = find_msg(req["query"].get("id", ""))
     if m and m["user"] == user:
+        if m.get("file") and m["file"].get("id"):
+            files.pop(m["file"]["id"], None)
         messages.remove(m)
         relay.publish("chat.delete", user)
     return None
 
 @app.post("/edit-start")
 async def edit_start(req):
-    user = ensure_user(req)
     m = find_msg(req["query"].get("id", ""))
-    if m and m["user"] == user:
+    if m and m["user"] == req["user"]:
         m["editing"] = True
-        relay.publish("chat.edit", user)
+        relay.publish("chat.edit", req["user"])
     return None
 
 @app.post("/edit-cancel")
@@ -273,7 +357,7 @@ async def edit_cancel(req):
 
 @app.post("/edit")
 async def edit_msg(req):
-    user = ensure_user(req)
+    user = req["user"]
     m = find_msg(req["query"].get("id", ""))
     text = req["query"].get("text", "").strip()
     if m and m["user"] == user and text:
@@ -293,7 +377,7 @@ async def react_picker(req):
 
 @app.post("/react")
 async def react(req):
-    user = ensure_user(req)
+    user = req["user"]
     m = find_msg(req["query"].get("id", ""))
     emoji = req["query"].get("emoji", "")
     if m and emoji:
@@ -304,3 +388,26 @@ async def react(req):
         m["show_picker"] = False
         relay.publish("chat.react", user)
     return None
+
+@app.get("/file/{fid}")
+async def serve_file(req):
+    """Serve an uploaded file — uses RSGI proto for direct response."""
+    fid = req["params"]["fid"]
+    f = files.get(fid)
+    if not f:
+        return None
+    raw = base64.b64decode(f["data"])
+    proto = req["_proto"]
+    proto.response_bytes(200, [
+        ("content-type", f["type"]),
+        ("content-disposition", f'inline; filename="{f["name"]}"'),
+        ("cache-control", "private, max-age=3600, immutable"),
+    ], raw)
+    req["_sent"] = True
+
+
+
+# embeded server
+
+if __name__ == "__main__":
+  serve(app)

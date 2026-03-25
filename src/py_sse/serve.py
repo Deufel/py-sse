@@ -1,250 +1,328 @@
 from __future__ import annotations
-import asyncio, inspect, json, traceback, re
-from urllib.parse import parse_qs
+import asyncio, base64, hashlib, hmac, inspect, json
+import os, re, threading, time, traceback
+from fnmatch import fnmatch
 from html_tags import to_html, Tag
+from urllib.parse import parse_qs
 
 PARAM_RE = re.compile('\\{(\\w+)\\}')
 
-def _parse_request(scope: dict, receive) -> dict:
-    """Parse an ASGI scope into a plain request dict."""
-    headers = {k.decode(): v.decode() for k, v in scope.get("headers", [])}
-    qs = scope.get("query_string", b"").decode()
-    raw_cookies = headers.get("cookie", "")
+
+def _parse_request(scope, proto) -> dict:
+    """Build a request dict from an RSGI scope and protocol."""
+    raw_cookies = scope.headers.get("cookie", "")
     return {
-        "path": scope["path"],
-        "method": scope.get("method", "GET"),
-        "headers": headers,
-        "query": {k: v[0] if len(v) == 1 else v for k, v in parse_qs(qs).items()},
-        "cookies": dict(
+        "path":     scope.path,
+        "method":   scope.method,
+        "headers":  scope.headers,
+        "query":    {k: v[0] if len(v) == 1 else v
+                     for k, v in parse_qs(scope.query_string).items()},
+        "cookies":  dict(
             pair.strip().split("=", 1)
             for pair in raw_cookies.split(";")
             if "=" in pair
         ),
-        "internal_receive": receive,
-        "internal_set_cookies": [],
+        "scheme":   scope.scheme,
+        "client":   scope.client,
+        "_proto":   proto,
+        "_cookies": [],   # queued Set-Cookie headers
     }
 
-async def body(req: dict) -> bytes:
-    """Read the full request body."""
-    receive = req["internal_receive"]
-    chunks = []
-    while True:
-        msg = await receive()
-        chunks.append(msg.get("body", b""))
-        if not msg.get("more_body"):
-            break
-    return b"".join(chunks)
+async def body(req: dict, *, max_size: int = 1_048_576) -> bytes:
+    """Read the full request body (cached, with size limit).
 
-async def json_body(req: dict) -> dict:
-    """Read and parse JSON request body."""
-    return json.loads(await body(req))
+    Raises ValueError if the body exceeds max_size.
+    """
+    if "_body" in req:
+        return req["_body"]
+    raw = await req["_proto"]()
+    if max_size and len(raw) > max_size:
+        raise ValueError(f"Request body exceeds {max_size} bytes")
+    req["_body"] = raw
+    return raw
 
 async def signals(req: dict) -> dict:
-    """Read Datastar signals from the request.
+    """Read Datastar signals from a request.
 
-    GET requests carry signals as a `datastar` query parameter (JSON-encoded).
-    Other methods carry signals in the JSON body.
+    GET: JSON-encoded ``datastar`` query parameter.
+    Other: JSON body, optionally wrapped in ``{datastar: ...}``.
     """
     if req["method"] == "GET":
         raw = req["query"].get("datastar", "{}")
         return json.loads(raw) if isinstance(raw, str) else raw
-    data = await json_body(req)
+    data = json.loads(await body(req))
     return data.get("datastar", data) if isinstance(data, dict) else data
 
 def set_cookie(req: dict, name: str, value: str, **opts) -> None:
     """Queue a Set-Cookie header on the request."""
-    req["internal_set_cookies"].append((name, value, opts))
+    req["_cookies"].append((name, value, opts))
 
-def _serialize_cookie(name: str, value: str, opts: dict) -> bytes:
-    """Serialize a single Set-Cookie header value."""
+
+def _serialize_cookie(name: str, value: str, opts: dict) -> str:
     parts = [f"{name}={value}"]
     for k, v in opts.items():
         k = k.replace("_", "-")
         if isinstance(v, bool):
-            if v:
-                parts.append(k)
-        else:
-            parts.append(f"{k}={v}")
-    return "; ".join(parts).encode()
+            if v: parts.append(k)
+        else:   parts.append(f"{k}={v}")
+    return "; ".join(parts)
 
-def _cookie_headers(req: dict) -> list:
-    """Build Set-Cookie headers from queued cookies on a request."""
-    return [
-        [b"set-cookie", _serialize_cookie(n, v, o)]
-        for n, v, o in req["internal_set_cookies"]
-    ]
 
-async def _send_response(send, req: dict, status: int, content_type: bytes, content: str | bytes):
-    """Send a complete HTTP response."""
-    if isinstance(content, str):
-        content = content.encode()
-    headers = [[b"content-type", content_type]] + _cookie_headers(req)
-    await send({"type": "http.response.start", "status": status, "headers": headers})
-    await send({"type": "http.response.body", "body": content})
+def _cookie_headers(req: dict) -> list[tuple[str, str]]:
+    return [("set-cookie", _serialize_cookie(n, v, o))
+            for n, v, o in req["_cookies"]]
 
-async def send_html(send, req: dict, content: str | Tag, status: int = 200):
-    """Send an HTML response. Tag objects are rendered automatically."""
-    if isinstance(content, Tag):
-        content = to_html(content)
-    await _send_response(send, req, status, b"text/html; charset=utf-8", content)
-
-async def send_json(send, req: dict, data: dict, status: int = 200):
-    """Send a JSON response."""
-    await _send_response(send, req, status, b"application/json", json.dumps(data))
-
-async def send_text(send, req: dict, text: str, status: int = 200):
-    """Send a plain text response."""
-    await _send_response(send, req, status, b"text/plain; charset=utf-8", text)
-
-async def send_redirect(send, req: dict, url: str, status: int = 302):
-    """Send a redirect response."""
-    headers = [[b"location", url.encode()]] + _cookie_headers(req)
-    await send({"type": "http.response.start", "status": status, "headers": headers})
-    await send({"type": "http.response.body", "body": b""})
-
-async def send_error(send, req: dict, status: int = 500, message: str = "Internal Server Error"):
-    """Send an error response."""
-    await _send_response(send, req, status, b"text/plain; charset=utf-8", message)
-
-async def _open_sse(send, req: dict, *, compress: bool = False):
-    """Open an SSE stream. Returns a brotli compressor or None."""
-    headers = [
-        [b"content-type", b"text/event-stream"],
-        [b"cache-control", b"no-cache"],
-        [b"connection", b"keep-alive"],
-        [b"x-accel-buffering", b"no"],
-    ] + _cookie_headers(req)
-
-    compressor = None
-    if compress:
-        try:
-            import brotli
-            headers.append([b"content-encoding", b"br"])
-            compressor = brotli.Compressor(mode=brotli.MODE_TEXT, quality=1)
-        except ImportError:
-            pass  # No brotli available, send uncompressed
-
-    await send({"type": "http.response.start", "status": 200, "headers": headers})
-    return compressor
-
-async def _send_sse_event(send, compressor, data: str):
-    """Send a single SSE event over an open stream."""
-    raw = data.encode()
-    if compressor:
-        raw = compressor.process(raw) + compressor.flush()
-    await send({"type": "http.response.body", "body": raw, "more_body": True})
-
-async def _close_sse(send, compressor):
-    """Close an SSE stream cleanly."""
-    tail = b""
-    if compressor:
-        tail = compressor.finish()
-    await send({"type": "http.response.body", "body": tail})
-
-async def _keepalive(send, compressor, closed: asyncio.Event, interval: int = 15):
-    """Send SSE keepalive comments to prevent proxy timeouts."""
-    try:
-        while not closed.is_set():
-            await asyncio.sleep(interval)
-            if not closed.is_set():
-                await _send_sse_event(send, compressor, ":\n\n")
-    except asyncio.CancelledError:
-        pass
-
-async def _watch_disconnect(receive, closed: asyncio.Event):
-    """Watch for client disconnect. Sets the event when detected."""
-    try:
-        while True:
-            msg = await receive()
-            if msg.get("type") == "http.disconnect":
-                closed.set()
-                return
-    except Exception:
-        closed.set()
-
-def create_app(routes: dict | None = None):
-    """Create a Datastar ASGI application.
+def create_relay():
+    """Create a pub/sub relay for broadcasting events.
 
     Usage:
-        application = app()
+        relay = create_relay()
+        relay.publish("chat.new", item)          # sync, thread-safe
 
-        @application.get("/")
+        async for topic, data in relay.subscribe("chat.*"):
+            yield patch_elements(render(data))   # async generator
+    """
+    subs: list[tuple[str, asyncio.Queue]] = []
+    lock = threading.Lock()
+
+    def publish(topic: str, data):
+        with lock:
+            targets = [(p, q) for p, q in subs if fnmatch(topic, p)]
+        for _, queue in targets:
+            try:    queue.put_nowait((topic, data))
+            except: pass  # noqa: E722 — never block the publisher
+
+    async def subscribe(pattern: str):
+        queue = asyncio.Queue()
+        with lock: subs.append((pattern, queue))
+        try:
+            while True: yield await queue.get()
+        except (asyncio.CancelledError, GeneratorExit):
+            pass
+        finally:
+            with lock:
+                try:    subs.remove((pattern, queue))
+                except: pass  # noqa: E722
+
+    class _Relay:
+        __slots__ = ("publish", "subscribe")
+    r = _Relay()
+    r.publish, r.subscribe = publish, subscribe
+    return r
+
+def create_signer(secret: str | bytes | None = None):
+    """Create an HMAC-SHA256 cookie signer.
+
+    Usage:
+        signer = create_signer("my-secret")
+        set_cookie(req, "session", signer.sign("user42"))
+        user = signer.unsign(req["cookies"].get("session", ""))
+    """
+    if secret is None:          secret = os.urandom(32)
+    if isinstance(secret, str): secret = secret.encode()
+
+    def _b64e(data: bytes) -> str:
+        return base64.urlsafe_b64encode(data).rstrip(b"=").decode()
+    def _b64d(s: str) -> bytes:
+        return base64.urlsafe_b64decode((s + "=" * (-len(s) % 4)).encode())
+    def _mac(payload: str) -> str:
+        return _b64e(hmac.new(secret, payload.encode(), hashlib.sha256).digest())
+
+    def sign(value: str, ts: float | None = None) -> str:
+        ts = ts or time.time()
+        payload = f"{_b64e(value.encode())}.{int(ts):x}"
+        return f"{payload}.{_mac(payload)}"
+
+    def unsign(signed: str, max_age: int | None = 3600) -> str | None:
+        if not signed: return None
+        parts = signed.split(".")
+        if len(parts) != 3: return None
+        enc_value, ts_hex, sig = parts
+        payload = f"{enc_value}.{ts_hex}"
+        if not hmac.compare_digest(sig, _mac(payload)): return None
+        if max_age is not None:
+            try:    ts = int(ts_hex, 16)
+            except: return None  # noqa: E722
+            if time.time() - ts > max_age: return None
+        try:    return _b64d(enc_value).decode()
+        except: return None  # noqa: E722
+
+    class _Signer:
+        __slots__ = ("sign", "unsign")
+    s = _Signer()
+    s.sign, s.unsign = sign, unsign
+    return s
+
+def static(app, url_prefix: str, directory: str):
+    """Mount a directory or single file for static serving.
+
+    Uses RSGI response_file for zero-copy file I/O from Rust.
+
+    Usage:
+        static(app, "/static", "static/")
+        static(app, "/favicon.svg", "favicon.svg")
+    """
+    directory = os.path.abspath(directory)
+
+    if os.path.isfile(directory):
+        async def serve_single(req):
+            proto = req["_proto"]
+            proto.response_file(200, [
+                ("cache-control", "public, max-age=3600"),
+            ], directory)
+        app.get(url_prefix)(serve_single)
+        return
+
+    async def serve_dir(req):
+        rel = req["params"].get("path", "")
+        if not rel: return None
+        full = os.path.normpath(os.path.join(directory, rel))
+        if not full.startswith(directory) or not os.path.isfile(full):
+            return None
+        proto = req["_proto"]
+        proto.response_file(200, [
+            ("cache-control", "public, max-age=0, must-revalidate"),
+        ], full)
+        req["_sent"] = True
+
+    app.mount(url_prefix.rstrip("/"), serve_dir)
+
+def create_app(routes: dict | None = None):
+    """Create a Datastar RSGI application.
+
+    Handler return protocol:
+        str | Tag   → 200 HTML response
+        dict        → 200 JSON response
+        None        → 204 No Content
+        (url, int)  → redirect (3xx) or text response (4xx/5xx)
+        async gen   → SSE stream
+
+    Usage:
+        app = create_app()
+
+        @app.before
+        async def auth(req):
+            req["user"] = get_user(req)
+
+        @app.get("/")
         async def index(req):
             return "<h1>Hello</h1>"
 
-        @application.get("/events/{event_id}")
-        async def event(req):
-            eid = req["params"]["event_id"]
-            return f"<h1>Event {eid}</h1>"
-
-        @application.get("/feed")
+        @app.get("/feed")
         async def feed(req):
             while True:
-                yield patch_elements('<div id="time">...</div>')
+                yield patch_elements('<div id="t">...</div>')
                 await asyncio.sleep(1)
 
-        @application.post("/click")
-        async def click(req):
-            return None  # 204 No Content
-
-        static(application, "/static", "static/")
-
-        # Run with: uvicorn module:application
+        # Run with: granian --interface rsgi module:app
     """
     if routes is None:
         routes = {}
 
-    def internal_path_to_regex(path):
-        return re.compile("^" + PARAM_RE.sub(r"(?P<\1>[^/]+)", path) + "$")
-
     param_routes = []
     mounts = []
+    before_hooks = []
+
+    def _path_re(path):
+        return re.compile("^" + PARAM_RE.sub(r"(?P<\1>[^/]+)", path) + "$")
+
+    # ── Routing decorators ───────────────────────────────────
 
     def route(method: str, path: str):
-        """Register a route handler."""
         def decorator(fn):
             if "{" in path:
-                param_routes.append((method.upper(), internal_path_to_regex(path), fn))
+                param_routes.append((method.upper(), _path_re(path), fn))
             else:
                 routes[(method.upper(), path)] = fn
             return fn
         return decorator
 
     def mount(prefix, fn):
-        """Mount a handler at a URL prefix (checked after exact and param routes)."""
         mounts.append((prefix.rstrip("/"), fn))
-        mounts.sort(key=lambda x: -len(x[0]))  # longest prefix first
+        mounts.sort(key=lambda x: -len(x[0]))
 
-    def get(path: str):    return route("GET", path)
-    def post(path: str):   return route("POST", path)
-    def put(path: str):    return route("PUT", path)
-    def patch(path: str):  return route("PATCH", path)
-    def delete(path: str): return route("DELETE", path)
+    def get(path):    return route("GET", path)
+    def post(path):   return route("POST", path)
+    def put(path):    return route("PUT", path)
+    def patch(path):  return route("PATCH", path)
+    def delete(path): return route("DELETE", path)
 
-    async def handle(scope, receive, send):
-        """ASGI callable."""
+    # ── Beforeware ───────────────────────────────────────────
 
-        # --- Lifespan protocol ---
-        if scope["type"] == "lifespan":
-            while True:
-                msg = await receive()
-                if msg["type"] == "lifespan.startup":
-                    await send({"type": "lifespan.startup.complete"})
-                elif msg["type"] == "lifespan.shutdown":
-                    await send({"type": "lifespan.shutdown.complete"})
-                    return
+    def before(fn=None, *, methods=None):
+        """Register a beforeware hook.
+
+        Return None to continue, or any response value to short-circuit.
+
+            @app.before
+            async def auth(req): ...
+
+            @app.before(methods=["POST"])
+            async def require_login(req): ...
+        """
+        def decorator(f):
+            m = {x.upper() for x in methods} if methods else None
+            before_hooks.append((f, m))
+            return f
+        if fn is not None:
+            before_hooks.append((fn, None))
+            return fn
+        return decorator
+
+    # ── Response dispatch ────────────────────────────────────
+
+    def _respond(proto, req, result):
+        """Send a handler result via the RSGI protocol."""
+        headers = _cookie_headers(req)
+
+        if isinstance(result, tuple) and len(result) == 2:
+            content, status = result
+            if isinstance(status, int) and 300 <= status < 400:
+                headers.append(("location", content))
+                proto.response_empty(status, headers)
+            elif isinstance(status, int):
+                headers.append(("content-type", "text/html; charset=utf-8"))
+                proto.response_str(status, headers, content)
             return
 
-        if scope["type"] != "http":
+        if isinstance(result, Tag):
+            result = to_html(result)
+
+        if isinstance(result, str):
+            headers.append(("content-type", "text/html; charset=utf-8"))
+            proto.response_str(200, headers, result)
+        elif isinstance(result, dict):
+            headers.append(("content-type", "application/json"))
+            proto.response_str(200, headers, json.dumps(result))
+        elif result is None:
+            proto.response_empty(204, headers)
+        else:
+            headers.append(("content-type", "text/plain; charset=utf-8"))
+            proto.response_str(500, headers,
+                f"Unsupported return type: {type(result).__name__}")
+
+    # ── SSE keepalive ────────────────────────────────────────
+
+    async def _keepalive(transport, closed: asyncio.Event, interval: int = 15):
+        try:
+            while not closed.is_set():
+                await asyncio.sleep(interval)
+                if not closed.is_set():
+                    await transport.send_str(":\n\n")
+        except (asyncio.CancelledError, Exception):
+            pass
+
+    # ── RSGI entrypoint ──────────────────────────────────────
+
+    async def handle(scope, proto):
+        if scope.proto != "http":
             return
 
-        req = _parse_request(scope, receive)
-        req["internal_send"] = send
-        key = (req["method"], req["path"])
-        handler = routes.get(key)
+        req = _parse_request(scope, proto)
         req["params"] = {}
 
-        # Parameterized routes
+        # Resolve handler: exact → parameterised → prefix mount
+        handler = routes.get((req["method"], req["path"]))
         if handler is None:
             for method, pattern, fn in param_routes:
                 if method == req["method"]:
@@ -253,90 +331,106 @@ def create_app(routes: dict | None = None):
                         req["params"] = m.groupdict()
                         handler = fn
                         break
-
-        # Prefix mounts
         if handler is None:
             for prefix, fn in mounts:
                 if req["path"] == prefix or req["path"].startswith(prefix + "/"):
                     req["params"]["path"] = req["path"][len(prefix) + 1:]
                     handler = fn
                     break
-
         if handler is None:
-            await send_error(send, req, 404, "Not Found")
+            proto.response_str(404, [("content-type", "text/plain")], "Not Found")
             return
 
-        closed = asyncio.Event()
-
         try:
+            # Beforeware
+            for hook, methods in before_hooks:
+                if methods and req["method"] not in methods:
+                    continue
+                hook_result = hook(req)
+                if inspect.isawaitable(hook_result):
+                    hook_result = await hook_result
+                if hook_result is not None:
+                    _respond(proto, req, hook_result)
+                    return
+
             result = handler(req)
 
             if inspect.isasyncgen(result):
-                # --- SSE stream ---
-                watcher = asyncio.create_task(
-                    _watch_disconnect(receive, closed)
-                )
-                compress = "br" in req["headers"].get("accept-encoding", "")
-                compressor = await _open_sse(send, req, compress=compress)
-                keepalive_task = asyncio.create_task(
-                    _keepalive(send, compressor, closed)
-                )
+                # ── SSE stream ───────────────────────────────
+                closed = asyncio.Event()
+                headers = [
+                    ("content-type",      "text/event-stream"),
+                    ("cache-control",     "no-cache"),
+                    ("x-accel-buffering", "no"),
+                ] + _cookie_headers(req)
+
+                transport = proto.response_stream(200, headers)
+                disconnect = asyncio.ensure_future(proto.client_disconnect())
+                keepalive = asyncio.create_task(_keepalive(transport, closed))
+
+                def _on_disconnect(fut):
+                    closed.set()
+                disconnect.add_done_callback(_on_disconnect)
+
                 try:
                     async for event in result:
                         if closed.is_set():
                             break
-                        await _send_sse_event(send, compressor, event)
+                        await transport.send_str(event)
                 finally:
-                    keepalive_task.cancel()
-                    watcher.cancel()
-                    if not closed.is_set():
-                        await _close_sse(send, compressor)
-
+                    keepalive.cancel()
+                    disconnect.cancel()
             else:
-                # --- Regular request/response ---
+                # ── Request/Response ─────────────────────────
                 result = await result
                 if req.get("_sent"):
-                    return  # Handler already sent response directly
-
-                watcher = asyncio.create_task(
-                    _watch_disconnect(receive, closed)
-                )
-                try:
-                    if isinstance(result, tuple) and len(result) == 2:
-                        url, status = result
-                        await send_redirect(send, req, url, status)
-                    elif isinstance(result, Tag):
-                        await send_html(send, req, result)
-                    elif isinstance(result, dict):
-                        await send_json(send, req, result)
-                    elif isinstance(result, str):
-                        await send_html(send, req, result)
-                    elif result is None:
-                        headers = _cookie_headers(req)
-                        await send({"type": "http.response.start", "status": 204, "headers": headers})
-                        await send({"type": "http.response.body", "body": b""})
-                    else:
-                        await send_error(
-                            send, req, 500,
-                            f"Handler returned unsupported type: {type(result).__name__}"
-                        )
-                finally:
-                    watcher.cancel()
+                    return
+                _respond(proto, req, result)
 
         except Exception:
             traceback.print_exc()
             try:
-                await send_error(send, req, 500, "Internal Server Error")
-            except Exception:
-                pass
+                proto.response_str(500,
+                    [("content-type", "text/plain")],
+                    "Internal Server Error")
+            except: pass  # noqa: E722
 
-    # Attach route decorators directly to the ASGI callable
-    handle.route = route
-    handle.get = get
-    handle.post = post
-    handle.put = put
-    handle.patch = patch
+    handle.route  = route
+    handle.get    = get
+    handle.post   = post
+    handle.put    = put
+    handle.patch  = patch
     handle.delete = delete
-    handle.mount = mount
-
+    handle.mount  = mount
+    handle.before = before
     return handle
+
+def serve(app, *, host: str = "127.0.0.1", port: int = 8000, **kwargs):
+    """Run an app with Granian's embedded RSGI server.
+ 
+    Turns a py-sse app into a self-contained script:
+ 
+        app = create_app()
+ 
+        @app.get("/")
+        async def index(req):
+            return "<h1>Hello</h1>"
+ 
+        if __name__ == "__main__":
+            serve(app)
+ 
+    Any extra keyword arguments are forwarded to granian.server.embed.Server
+    (e.g. log_access=True, websockets=False, ssl_cert=...).
+    """
+    from granian.server.embed import Server
+    from granian.constants import Interfaces
+ 
+    server = Server(app, address=host, port=port, interface=Interfaces.RSGI, **kwargs)
+ 
+    async def _run():
+        await server.serve()
+ 
+    try:
+        asyncio.run(_run())
+    except KeyboardInterrupt:
+        pass

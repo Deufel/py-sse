@@ -1,11 +1,49 @@
-# py-sse
+import marimo
 
-> 
+__generated_with = "0.21.1"
+app = marimo.App()
+
+with app.setup:
+    from __future__ import annotations
+    import asyncio, base64, hashlib, hmac, inspect, json
+    import os, re, threading, time, traceback
+    from fnmatch import fnmatch
+    from html_tags import to_html, Tag
+    from urllib.parse import parse_qs
+
+    PARAM_RE = re.compile(r"\{(\w+)\}")
 
 
-## serve
+@app.cell
+def _():
+    import marimo as mo
+
+    return (mo,)
 
 
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # Package: py-sse
+    ## Module: .serve
+    >RSGI application, routing, request handling, SSE streaming.
+
+    - Built for Granian's RSGI interface — no ASGI abstraction layer.
+    - Run with: `granian --interface rsgi module:app`
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Request
+    """)
+    return
+
+
+@app.function
+#| internal
 
 def internal_parse_request(scope, proto) -> dict:
     """Build a request dict from an RSGI scope and protocol."""
@@ -27,6 +65,8 @@ def internal_parse_request(scope, proto) -> dict:
         "_cookies": [],   # queued Set-Cookie headers
     }
 
+
+@app.function
 async def body(req: dict, *, max_size: int = 1_048_576) -> bytes:
     """Read the full request body (cached, with size limit).
 
@@ -40,6 +80,8 @@ async def body(req: dict, *, max_size: int = 1_048_576) -> bytes:
     req["_body"] = raw
     return raw
 
+
+@app.function
 async def signals(req: dict) -> dict:
     """Read Datastar signals from a request.
 
@@ -52,10 +94,23 @@ async def signals(req: dict) -> dict:
     data = json.loads(await body(req))
     return data.get("datastar", data) if isinstance(data, dict) else data
 
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Cookies
+    """)
+    return
+
+
+@app.function
 def set_cookie(req: dict, name: str, value: str, **opts) -> None:
     """Queue a Set-Cookie header on the request."""
     req["_cookies"].append((name, value, opts))
 
+
+@app.function
+#| internal
 
 def internal_serialize_cookie(name: str, value: str, opts: dict) -> str:
     parts = [f"{name}={value}"]
@@ -67,10 +122,23 @@ def internal_serialize_cookie(name: str, value: str, opts: dict) -> str:
     return "; ".join(parts)
 
 
+@app.function
+#| internal
+
 def internal_cookie_headers(req: dict) -> list[tuple[str, str]]:
     return [("set-cookie", internal_serialize_cookie(n, v, o))
             for n, v, o in req["_cookies"]]
 
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Relay
+    """)
+    return
+
+
+@app.function
 def create_relay():
     """Create a pub/sub relay for broadcasting events.
 
@@ -109,6 +177,16 @@ def create_relay():
     r.publish, r.subscribe = publish, subscribe
     return r
 
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Signer
+    """)
+    return
+
+
+@app.function
 def create_signer(secret: str | bytes | None = None):
     """Create an HMAC-SHA256 cookie signer.
 
@@ -152,6 +230,16 @@ def create_signer(secret: str | bytes | None = None):
     s.sign, s.unsign = sign, unsign
     return s
 
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Static
+    """)
+    return
+
+
+@app.function
 def static(app, url_prefix: str, directory: str):
     """Mount a directory or single file for static serving.
 
@@ -186,6 +274,16 @@ def static(app, url_prefix: str, directory: str):
 
     app.mount(url_prefix.rstrip("/"), serve_dir)
 
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Application
+    """)
+    return
+
+
+@app.function
 def create_app(routes: dict | None = None):
     """Create a Datastar RSGI application.
 
@@ -404,6 +502,16 @@ def create_app(routes: dict | None = None):
     handle.before = before
     return handle
 
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Embeded Server
+    """)
+    return
+
+
+@app.function
 def serve(app, *, host: str = "127.0.0.1", port: int = 8000, **kwargs):
     """Run an app with Granian's embedded RSGI server.
  
@@ -434,49 +542,6 @@ def serve(app, *, host: str = "127.0.0.1", port: int = 8000, **kwargs):
     except KeyboardInterrupt:
         pass
 
-## sse
 
-
-def patch_elements(
-    elements: Tag | str,
-    *,
-    selector: str | None = None,
-    mode: str | None = None,
-    namespace: str | None = None,
-    use_view_transition: bool | None = None,
-) -> str:
-    """Format a datastar-patch-elements SSE event."""
-    if isinstance(elements, Tag):
-        elements = to_html(elements)
-    lines = []
-    if selector is not None:    lines.append(f"data: selector {selector}")
-    if mode is not None:        lines.append(f"data: mode {mode}")
-    if namespace is not None:   lines.append(f"data: namespace {namespace}")
-    if use_view_transition is not None:
-        lines.append(f"data: useViewTransition {str(use_view_transition).lower()}")
-    for line in elements.split("\n"):
-        lines.append(f"data: elements {line}")
-    return "event: datastar-patch-elements\n" + "\n".join(lines) + "\n\n"
-
-def patch_signals(signals: dict | str, *, only_if_missing: bool | None = None) -> str:
-    """Format a datastar-patch-signals SSE event."""
-    if isinstance(signals, dict):
-        signals = json.dumps(signals)
-    lines = []
-    if only_if_missing is not None:
-        lines.append(f"data: onlyIfMissing {str(only_if_missing).lower()}")
-    lines.append(f"data: signals {signals}")
-    return "event: datastar-patch-signals\n" + "\n".join(lines) + "\n\n"
-
-def remove_signals(*names: str) -> str:
-    """Remove signals by patching them to null."""
-    return patch_signals({n: None for n in names})
-
-def execute_script(script: str, *, auto_remove: bool = True, attributes: dict | None = None) -> str:
-    """Format a datastar-execute-script SSE event."""
-    lines = []
-    if not auto_remove:         lines.append("data: autoRemove false")
-    if attributes is not None:  lines.append(f"data: attributes {json.dumps(attributes)}")
-    for line in script.split("\n"):
-        lines.append(f"data: script {line}")
-    return "event: datastar-execute-script\n" + "\n".join(lines) + "\n\n"
+if __name__ == "__main__":
+    app.run()

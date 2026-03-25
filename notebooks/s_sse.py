@@ -1,7 +1,35 @@
-from __future__ import annotations
-import json
-from html_tags import to_html, Tag
+import marimo
 
+__generated_with = "0.21.1"
+app = marimo.App(app_title="py-sse.sse")
+
+with app.setup:
+    from __future__ import annotations
+    import json
+    from html_tags import to_html, Tag
+
+
+@app.cell
+def _():
+    import marimo as mo
+
+    return (mo,)
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # Package: py-sse
+    ## Module: .sse
+    >Datastar SSE event formatting.
+
+    - Pure functions — no I/O, no framework dependency.
+    - Each returns a ready-to-send SSE event string.
+    """)
+    return
+
+
+@app.function
 def patch_elements(
     elements: Tag | str,
     *,
@@ -23,6 +51,8 @@ def patch_elements(
         lines.append(f"data: elements {line}")
     return "event: datastar-patch-elements\n" + "\n".join(lines) + "\n\n"
 
+
+@app.function
 def patch_signals(signals: dict | str, *, only_if_missing: bool | None = None) -> str:
     """Format a datastar-patch-signals SSE event."""
     if isinstance(signals, dict):
@@ -33,10 +63,14 @@ def patch_signals(signals: dict | str, *, only_if_missing: bool | None = None) -
     lines.append(f"data: signals {signals}")
     return "event: datastar-patch-signals\n" + "\n".join(lines) + "\n\n"
 
+
+@app.function
 def remove_signals(*names: str) -> str:
     """Remove signals by patching them to null."""
     return patch_signals({n: None for n in names})
 
+
+@app.function
 def execute_script(script: str, *, auto_remove: bool = True, attributes: dict | None = None) -> str:
     """Format a datastar-execute-script SSE event."""
     lines = []
@@ -45,3 +79,7 @@ def execute_script(script: str, *, auto_remove: bool = True, attributes: dict | 
     for line in script.split("\n"):
         lines.append(f"data: script {line}")
     return "event: datastar-execute-script\n" + "\n".join(lines) + "\n\n"
+
+
+if __name__ == "__main__":
+    app.run()

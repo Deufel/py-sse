@@ -1,7 +1,7 @@
 [project]
 name = "py-sse"
-version = "0.0.11"
-description = "Minimal Async implementation for sse"
+version = "0.1.0"
+description = "Minimal Async implementation for sse_[granian refactor]"
 readme = "README.md"
 authors = [
     { name = "Deufel", email = "MDeufel13@gmail.com" }
@@ -9,6 +9,7 @@ authors = [
 requires-python = ">=3.12"
 dependencies = [
     "brotli>=1.2.0",
+    "granian>=2.7.2",
     "html-tags>=0.0.18",
     "requests>=2.32.5",
 ]
@@ -26,3 +27,5 @@ dev = [
 
 [tool.marimo-dev]
   renames = {dunder_ = "__", internal_ = "_"}
+  nbs = "notebooks"
+  out = "src"
