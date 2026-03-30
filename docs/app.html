@@ -1,542 +1,277 @@
-<!doctype html>
-<html>
-  <head>
-<script type="module" src="https://cdn.jsdelivr.net/gh/starfederation/datastar@1.0.0-RC.8/bundles/datastar.js"></script><script src="https://cdn.jsdelivr.net/gh/gnat/css-scope-inline@main/script.js"></script><script src="js/highlight.js" type="module"></script>    <style>body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; } code { font-family: 'SF Mono', Consolas, monospace; }</style>
-    <title>app - py-sse</title>
-  </head>
-  <body data-signals="{search: ''}" style="display: flex; height: 100vh; margin: 0; background: #121212;">
-    <nav>
-      <style>
-            me { padding: 1rem; background: #1a1a1a; min-width: 180px; }
-            me h3 { margin: 0 0 1rem 0; color: #fff; }
-            me ul { list-style: none; padding: 0; margin: 0; }
-            me .back-link { color: #888; text-decoration: none; font-size: 0.85rem; }
-            me .back-link:hover { color: #fff; }
-            me .nav-link { color: #aaa; text-decoration: none; }
-            me .nav-link:hover { color: #fff; }
-            me .nav-link.active { color: #fff; }
-            me input { width: 100%; padding: 0.5rem; border: 1px solid #333; border-radius: 4px; background: #252525; color: #fff; margin-bottom: 1rem; box-sizing: border-box; }
-        </style>
-      <h3>py-sse</h3>
-      <input type="text" placeholder="Search..." data-bind="search">
-      <ul>
-        <li>
-<a href="index.html" class="back-link">← Index</a>        </li>
-        <li>
-<a href="sse.html" class="nav-link ">sse</a>        </li>
-        <li>
-<a href="relay.html" class="nav-link ">relay</a>        </li>
-        <li>
-<a href="app.html" class="nav-link active">app</a>        </li>
-      </ul>
-    </nav>
-    <div style="flex: 1; display: flex; flex-direction: column;">
-      <header>
-        <style>
-            me { padding: 1rem; background: #1e1e1e; border-bottom: 1px solid #333; }
-            me .header-row { display: flex; align-items: center; justify-content: space-between; }
-            me h1 { margin: 0; font-size: 1.5rem; color: #fff; }
-            me .wasm-btn { display: flex; align-items: center; gap: 0.25rem; background: #333; border: 1px solid #444; color: #ccc; padding: 0.5rem 0.75rem; border-radius: 4px; cursor: pointer; font-size: 0.85rem; }
-            me .wasm-link { text-decoration: none; }
-        </style>
-        <div class="header-row">
-          <h1>app</h1>
-<a href="wasm/app/index.html" target="_blank" class="wasm-link"><button class="wasm-btn"><icon-external-link><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-external-link-icon lucide-external-link"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg></icon-external-link>Run in Browser</button></a>        </div>
-      </header>
-      <div>
-        <style>
-            me { padding: 1rem; background: #121212; overflow-y: auto; flex: 1; }
-        </style>
-        <article>
-          <style>
-            me { margin-bottom: 0.75rem; border-radius: 8px; overflow: hidden; background: #1e1e1e; max-width: 100%; }
-            me .header { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; }
-            me .header-left { display: flex; align-items: center; }
-            me .header-right { display: flex; align-items: center; gap: 0.5rem; }
-            me .tag { padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; color: white; }
-            me .full-name { font-weight: 500; font-size: 1rem; margin-left: 0.75rem; }
-            me .mod { color: #666; }
-            me .name { color: #e5e5e5; }
-            me .doc { margin: 0; padding: 0 1rem 0.5rem 1rem; color: #888; font-size: 0.85rem; }
-            me .gh-btn { display: flex; align-items: center; gap: 0.25rem; background: #333; border: 1px solid #444; color: #ccc; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
-            me .gh-link { text-decoration: none; }
-            me .copy-btn { background: transparent; border: none; cursor: pointer; font-size: 0.9rem; padding: 0.25rem; }
-            me pre { background: #1a1a1a; border-top: 1px solid #2a2a2a; margin: 0; padding: 0.5rem 0; }
-            me code { counter-reset: line; font-size: 0.8rem; line-height: 1.6; color: #ccc; }
-            me .code-line { display: block; padding-left: 3.5em; white-space: pre-wrap; word-break: break-all; position: relative; }
-            me .code-line::before { content: counter(line); counter-increment: line; position: absolute; left: 0; width: 2.5em; text-align: right; color: #555; user-select: none; }
-        </style>
-          <div class="header">
-            <div class="header-left">
-<span class="tag" style="background:#10b981;">func</span><span class="full-name"><span class="mod">app.</span><span class="name">internal_parse_request</span></span>            </div>
-            <div class="header-right">
-<button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('code-app-internal_parse_request').textContent).then(() =&gt; this.textContent = '✓').then(() =&gt; setTimeout(() =&gt; this.textContent = '📋', 1500))">📋</button>            </div>
-          </div>
-          <p class="doc">Parse an ASGI scope into a plain request dict.</p>
-<pre><code class="language-python" id="code-app-internal_parse_request"><span class="code-line">def internal_parse_request(scope: dict, receive) -&gt; dict:</span><span class="code-line">    """Parse an ASGI scope into a plain request dict."""</span><span class="code-line">    headers = {k.decode(): v.decode() for k, v in scope.get("headers", [])}</span><span class="code-line">    qs = scope.get("query_string", b"").decode()</span><span class="code-line">    raw_cookies = headers.get("cookie", "")</span><span class="code-line">    return {</span><span class="code-line">        "path": scope["path"],</span><span class="code-line">        "method": scope.get("method", "GET"),</span><span class="code-line">        "headers": headers,</span><span class="code-line">        "query": {k: v[0] if len(v) == 1 else v for k, v in parse_qs(qs).items()},</span><span class="code-line">        "cookies": dict(</span><span class="code-line">            pair.strip().split("=", 1)</span><span class="code-line">            for pair in raw_cookies.split(";")</span><span class="code-line">            if "=" in pair</span><span class="code-line">        ),</span><span class="code-line">        "internal_receive": receive,</span><span class="code-line">        "internal_set_cookies": [],</span><span class="code-line">    }</span></code></pre>        </article>
-        <article>
-          <style>
-            me { margin-bottom: 0.75rem; border-radius: 8px; overflow: hidden; background: #1e1e1e; max-width: 100%; }
-            me .header { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; }
-            me .header-left { display: flex; align-items: center; }
-            me .header-right { display: flex; align-items: center; gap: 0.5rem; }
-            me .tag { padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; color: white; }
-            me .full-name { font-weight: 500; font-size: 1rem; margin-left: 0.75rem; }
-            me .mod { color: #666; }
-            me .name { color: #e5e5e5; }
-            me .doc { margin: 0; padding: 0 1rem 0.5rem 1rem; color: #888; font-size: 0.85rem; }
-            me .gh-btn { display: flex; align-items: center; gap: 0.25rem; background: #333; border: 1px solid #444; color: #ccc; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
-            me .gh-link { text-decoration: none; }
-            me .copy-btn { background: transparent; border: none; cursor: pointer; font-size: 0.9rem; padding: 0.25rem; }
-            me pre { background: #1a1a1a; border-top: 1px solid #2a2a2a; margin: 0; padding: 0.5rem 0; }
-            me code { counter-reset: line; font-size: 0.8rem; line-height: 1.6; color: #ccc; }
-            me .code-line { display: block; padding-left: 3.5em; white-space: pre-wrap; word-break: break-all; position: relative; }
-            me .code-line::before { content: counter(line); counter-increment: line; position: absolute; left: 0; width: 2.5em; text-align: right; color: #555; user-select: none; }
-        </style>
-          <div class="header">
-            <div class="header-left">
-<span class="tag" style="background:#10b981;">func</span><span class="full-name"><span class="mod">app.</span><span class="name">body</span></span>            </div>
-            <div class="header-right">
-<button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('code-app-body').textContent).then(() =&gt; this.textContent = '✓').then(() =&gt; setTimeout(() =&gt; this.textContent = '📋', 1500))">📋</button>            </div>
-          </div>
-          <p class="doc">Read the full request body.</p>
-<pre><code class="language-python" id="code-app-body"><span class="code-line">async def body(req: dict) -&gt; bytes:</span><span class="code-line">    """Read the full request body."""</span><span class="code-line">    receive = req["internal_receive"]</span><span class="code-line">    chunks = []</span><span class="code-line">    while True:</span><span class="code-line">        msg = await receive()</span><span class="code-line">        chunks.append(msg.get("body", b""))</span><span class="code-line">        if not msg.get("more_body"):</span><span class="code-line">            break</span><span class="code-line">    return b"".join(chunks)</span></code></pre>        </article>
-        <article>
-          <style>
-            me { margin-bottom: 0.75rem; border-radius: 8px; overflow: hidden; background: #1e1e1e; max-width: 100%; }
-            me .header { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; }
-            me .header-left { display: flex; align-items: center; }
-            me .header-right { display: flex; align-items: center; gap: 0.5rem; }
-            me .tag { padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; color: white; }
-            me .full-name { font-weight: 500; font-size: 1rem; margin-left: 0.75rem; }
-            me .mod { color: #666; }
-            me .name { color: #e5e5e5; }
-            me .doc { margin: 0; padding: 0 1rem 0.5rem 1rem; color: #888; font-size: 0.85rem; }
-            me .gh-btn { display: flex; align-items: center; gap: 0.25rem; background: #333; border: 1px solid #444; color: #ccc; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
-            me .gh-link { text-decoration: none; }
-            me .copy-btn { background: transparent; border: none; cursor: pointer; font-size: 0.9rem; padding: 0.25rem; }
-            me pre { background: #1a1a1a; border-top: 1px solid #2a2a2a; margin: 0; padding: 0.5rem 0; }
-            me code { counter-reset: line; font-size: 0.8rem; line-height: 1.6; color: #ccc; }
-            me .code-line { display: block; padding-left: 3.5em; white-space: pre-wrap; word-break: break-all; position: relative; }
-            me .code-line::before { content: counter(line); counter-increment: line; position: absolute; left: 0; width: 2.5em; text-align: right; color: #555; user-select: none; }
-        </style>
-          <div class="header">
-            <div class="header-left">
-<span class="tag" style="background:#10b981;">func</span><span class="full-name"><span class="mod">app.</span><span class="name">json_body</span></span>            </div>
-            <div class="header-right">
-<button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('code-app-json_body').textContent).then(() =&gt; this.textContent = '✓').then(() =&gt; setTimeout(() =&gt; this.textContent = '📋', 1500))">📋</button>            </div>
-          </div>
-          <p class="doc">Read and parse JSON request body.</p>
-<pre><code class="language-python" id="code-app-json_body"><span class="code-line">async def json_body(req: dict) -&gt; dict:</span><span class="code-line">    """Read and parse JSON request body."""</span><span class="code-line">    return json.loads(await body(req))</span></code></pre>        </article>
-        <article>
-          <style>
-            me { margin-bottom: 0.75rem; border-radius: 8px; overflow: hidden; background: #1e1e1e; max-width: 100%; }
-            me .header { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; }
-            me .header-left { display: flex; align-items: center; }
-            me .header-right { display: flex; align-items: center; gap: 0.5rem; }
-            me .tag { padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; color: white; }
-            me .full-name { font-weight: 500; font-size: 1rem; margin-left: 0.75rem; }
-            me .mod { color: #666; }
-            me .name { color: #e5e5e5; }
-            me .doc { margin: 0; padding: 0 1rem 0.5rem 1rem; color: #888; font-size: 0.85rem; }
-            me .gh-btn { display: flex; align-items: center; gap: 0.25rem; background: #333; border: 1px solid #444; color: #ccc; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
-            me .gh-link { text-decoration: none; }
-            me .copy-btn { background: transparent; border: none; cursor: pointer; font-size: 0.9rem; padding: 0.25rem; }
-            me pre { background: #1a1a1a; border-top: 1px solid #2a2a2a; margin: 0; padding: 0.5rem 0; }
-            me code { counter-reset: line; font-size: 0.8rem; line-height: 1.6; color: #ccc; }
-            me .code-line { display: block; padding-left: 3.5em; white-space: pre-wrap; word-break: break-all; position: relative; }
-            me .code-line::before { content: counter(line); counter-increment: line; position: absolute; left: 0; width: 2.5em; text-align: right; color: #555; user-select: none; }
-        </style>
-          <div class="header">
-            <div class="header-left">
-<span class="tag" style="background:#10b981;">func</span><span class="full-name"><span class="mod">app.</span><span class="name">signals</span></span>            </div>
-            <div class="header-right">
-<button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('code-app-signals').textContent).then(() =&gt; this.textContent = '✓').then(() =&gt; setTimeout(() =&gt; this.textContent = '📋', 1500))">📋</button>            </div>
-          </div>
-          <p class="doc">Read Datastar signals from the request.
+<!DOCTYPE html>
+<html><head><script type="module" src="https://cdn.jsdelivr.net/gh/starfederation/datastar@1.0.0-RC.8/bundles/datastar.js"></script><script src="https://cdn.jsdelivr.net/gh/gnat/css-scope-inline@main/script.js"></script><script src="js/highlight.js" type="module"></script><title>app - py-sse</title><style>
+            * { scrollbar-gutter:stable; box-sizing:border-box; }
+            body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; margin:0; background:#121212; }
+            code { font-family:'SF Mono',Consolas,monospace; }
+            .layout { display:flex; height:100vh; }
+            .sidenav { width:220px; background:#1a1a1a; padding:1rem; overflow-y:auto; display:flex; flex-direction:column; gap:0.25rem; flex-shrink:0; }
+            .sidenav h3 { margin:0 0 0.75rem 0; color:#fff; font-size:0.9rem; text-transform:uppercase; }
+            .nav-item { display:flex; align-items:center; justify-content:space-between; padding:0.4rem 0.5rem; border-radius:4px; color:#aaa; text-decoration:none; font-size:0.85rem; }
+            .nav-item:hover { background:#252525; color:#fff; }
+            .nav-item.active { color:#fff; background:#252525; }
+            .nav-badge { background:#3b82f6; color:white; padding:0.1rem 0.4rem; border-radius:9999px; font-size:0.7rem; font-weight:600; }
+            .nav-item.disabled { opacity:0.3; pointer-events:none; }
+            .main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+            .topbar { display:flex; align-items:center; justify-content:space-between; padding:0.75rem 1rem; background:#1e1e1e; border-bottom:1px solid #2a2a2a; gap:1rem; flex-shrink:0; }
+            .topbar h1 { margin:0; font-size:1.25rem; color:#fff; }
+            .search-bar { display:flex; gap:0.5rem; align-items:center; }
+            .search-bar input { padding:0.5rem 0.75rem; border:1px solid #333; border-radius:4px; background:#252525; color:#fff; font-size:0.9rem; min-width:220px; }
+            .search-bar input:focus { outline:2px solid #3b82f6; }
+            .btn { padding:0.5rem 0.9rem; background:#3b82f6; color:white; border:none; border-radius:4px; cursor:pointer; font-size:0.85rem; }
+            .btn:hover { background:#2563eb; }
+            .btn.clear { background:#dc2626; }
+            .btn.clear:hover { background:#b91c1c; }
+            .content { flex:1; overflow-y:auto; padding:1rem; display:flex; flex-direction:column; }
+            .tags-bar { display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.5rem; min-height:1.5rem; }
+            .tag-pill { background:#3b82f6; color:white; padding:0.2rem 0.6rem; border-radius:9999px; font-size:0.8rem; }
+        </style></head><body data-signals="{&quot;search&quot;: &quot;&quot;, &quot;tags&quot;: []}" style="margin:0;"><div class="layout"><nav class="sidenav"><h3>py-sse</h3><li><a href="index.html" class="nav-item">← Index</a></li><li><a href="app.html" class="nav-item active"><span>app</span><span class="nav-badge" data-show="$tags.length > 0 || $search.trim().length > 0" data-text="0"></span></a></li><li><a href="sse.html" class="nav-item "><span>sse</span><span class="nav-badge" data-show="$tags.length > 0 || $search.trim().length > 0" data-text="0"></span></a></li><li><a href="mserver.html" class="nav-item "><span>mserver</span><span class="nav-badge" data-show="$tags.length > 0 || $search.trim().length > 0" data-text="0"></span></a></li></nav><div class="main"><div class="topbar"><h1>app</h1><form class="search-bar" data-on:submit--prevent="$search.trim() ? ($tags = [...$tags, $search.trim()], $search = '') : null"><input type="text" placeholder="Search... (Enter to add tag)" data-bind="search"></input><button class="btn" type="submit">Add Tag</button><button class="btn clear" type="button" data-on:click="$tags = [], $search = ''">Clear</button></form></div><div class="content"><div class="tags-bar" data-show="$tags.length > 0"></div><div style="display:flex; flex-direction:column;"><div id="node-app-internal_parse_request" data-signals="{&quot;searchable_node_app_internal_parse_request&quot;: &quot;internal_parse_request app func build a request dict from an rsgi scope and protocol.  def internal_parse_request(scope, proto) -> dict:        build a request dict from an rsgi scope and protocol.        raw_cookies = scope.headers.get( cookie ,   )     return {          path :     scope.path,          method :   scope.method,          headers :  scope.headers,          query :    {k: v[0] if len(v) == 1 else v                      for k, v in parse_qs(scope.query_string).items()},          cookies :  dict(             pair.strip().split( = , 1)             for pair in raw_cookies.split( ; )             if  =  in pair         ),          scheme :   scope.scheme,          client :   scope.client,          _proto :   proto,          _cookies : [],   # queued set-cookie headers     }&quot;, &quot;match_node_app_internal_parse_request&quot;: 0}" data-effect="$match_node_app_internal_parse_request = [...$tags, $search.trim()].filter(t => t.length > 0 &amp;&amp; $searchable_node_app_internal_parse_request.toLowerCase().includes(t.toLowerCase())).length" data-show="($tags.length === 0 &amp;&amp; $search.trim().length === 0) || $match_node_app_internal_parse_request > 0" data-style:order="($tags.length === 0 &amp;&amp; $search.trim().length === 0) ? 0 : -$match_node_app_internal_parse_request"><style>
+            me { margin-bottom:0.75rem; border-radius:8px; overflow:hidden; background:#1e1e1e; position:relative; }
+            me .match-badge { position:absolute; top:1rem; right:1rem; background:#3b82f6; color:white; padding:0.25rem 0.75rem; border-radius:9999px; font-size:0.8rem; font-weight:600; }
+            me .header { display:flex; align-items:center; justify-content:space-between; padding:0.75rem 1rem; }
+            me .header-left { display:flex; align-items:center; gap:0.75rem; }
+            me .header-right { display:flex; align-items:center; gap:0.5rem; }
+            me .tag { padding:0.25rem 0.6rem; border-radius:4px; font-size:0.75rem; font-weight:600; color:white; }
+            me .full-name { font-size:1rem; font-weight:500; }
+            me .mod { color:#666; }
+            me .name { color:#e5e5e5; }
+            me .doc { margin:0; padding:0 1rem 0.5rem; color:#888; font-size:0.85rem; }
+            me .gh-btn { display:flex; align-items:center; gap:0.25rem; background:#333; border:1px solid #444; color:#ccc; padding:0.25rem 0.5rem; border-radius:4px; cursor:pointer; font-size:0.75rem; }
+            me .gh-link { text-decoration:none; }
+            me pre { background:#1a1a1a; border-top:1px solid #2a2a2a; margin:0; padding:0.5rem 0; }
+            me code { font-size:0.8rem; line-height:1.6; color:#ccc; counter-reset:line; }
+            me .code-line { display:block; padding-left:3.5em; white-space:pre-wrap; word-break:break-all; position:relative; }
+            me .code-line::before { content:counter(line); counter-increment:line; position:absolute; left:0; width:2.5em; text-align:right; color:#555; user-select:none; }
+        </style><span class="match-badge" data-show="$tags.length > 0 || $search.trim().length > 0" data-text="$match_node_app_internal_parse_request"></span><div class="header"><div class="header-left"><span class="tag" style="background:#10b981;">func</span><span class="full-name"><span class="mod">app.</span><span class="name">internal_parse_request</span></span></div><div class="header-right"></div></div><p class="doc">Build a request dict from an RSGI scope and protocol.</p><pre><code class="language-python" id="code-node-app-internal_parse_request"><span class="code-line"></span><span class="code-line">def internal_parse_request(scope, proto) -&gt; dict:</span><span class="code-line">    &quot;&quot;&quot;Build a request dict from an RSGI scope and protocol.&quot;&quot;&quot;</span><span class="code-line">    raw_cookies = scope.headers.get(&quot;cookie&quot;, &quot;&quot;)</span><span class="code-line">    return {</span><span class="code-line">        &quot;path&quot;:     scope.path,</span><span class="code-line">        &quot;method&quot;:   scope.method,</span><span class="code-line">        &quot;headers&quot;:  scope.headers,</span><span class="code-line">        &quot;query&quot;:    {k: v[0] if len(v) == 1 else v</span><span class="code-line">                     for k, v in parse_qs(scope.query_string).items()},</span><span class="code-line">        &quot;cookies&quot;:  dict(</span><span class="code-line">            pair.strip().split(&quot;=&quot;, 1)</span><span class="code-line">            for pair in raw_cookies.split(&quot;;&quot;)</span><span class="code-line">            if &quot;=&quot; in pair</span><span class="code-line">        ),</span><span class="code-line">        &quot;scheme&quot;:   scope.scheme,</span><span class="code-line">        &quot;client&quot;:   scope.client,</span><span class="code-line">        &quot;_proto&quot;:   proto,</span><span class="code-line">        &quot;_cookies&quot;: [],   # queued Set-Cookie headers</span><span class="code-line">    }</span></code></pre></div><div id="node-app-body" data-signals="{&quot;searchable_node_app_body&quot;: &quot;body app func read the full request body (cached, with size limit).  raises valueerror if the body exceeds max_size. async def body(req: dict, *, max_size: int = 1_048_576) -> bytes:        read the full request body (cached, with size limit).      raises valueerror if the body exceeds max_size.             if  _body  in req:         return req[ _body ]     raw = await req[ _proto ]()     if max_size and len(raw) > max_size:         raise valueerror(f request body exceeds {max_size} bytes )     req[ _body ] = raw     return raw&quot;, &quot;match_node_app_body&quot;: 0}" data-effect="$match_node_app_body = [...$tags, $search.trim()].filter(t => t.length > 0 &amp;&amp; $searchable_node_app_body.toLowerCase().includes(t.toLowerCase())).length" data-show="($tags.length === 0 &amp;&amp; $search.trim().length === 0) || $match_node_app_body > 0" data-style:order="($tags.length === 0 &amp;&amp; $search.trim().length === 0) ? 0 : -$match_node_app_body"><style>
+            me { margin-bottom:0.75rem; border-radius:8px; overflow:hidden; background:#1e1e1e; position:relative; }
+            me .match-badge { position:absolute; top:1rem; right:1rem; background:#3b82f6; color:white; padding:0.25rem 0.75rem; border-radius:9999px; font-size:0.8rem; font-weight:600; }
+            me .header { display:flex; align-items:center; justify-content:space-between; padding:0.75rem 1rem; }
+            me .header-left { display:flex; align-items:center; gap:0.75rem; }
+            me .header-right { display:flex; align-items:center; gap:0.5rem; }
+            me .tag { padding:0.25rem 0.6rem; border-radius:4px; font-size:0.75rem; font-weight:600; color:white; }
+            me .full-name { font-size:1rem; font-weight:500; }
+            me .mod { color:#666; }
+            me .name { color:#e5e5e5; }
+            me .doc { margin:0; padding:0 1rem 0.5rem; color:#888; font-size:0.85rem; }
+            me .gh-btn { display:flex; align-items:center; gap:0.25rem; background:#333; border:1px solid #444; color:#ccc; padding:0.25rem 0.5rem; border-radius:4px; cursor:pointer; font-size:0.75rem; }
+            me .gh-link { text-decoration:none; }
+            me pre { background:#1a1a1a; border-top:1px solid #2a2a2a; margin:0; padding:0.5rem 0; }
+            me code { font-size:0.8rem; line-height:1.6; color:#ccc; counter-reset:line; }
+            me .code-line { display:block; padding-left:3.5em; white-space:pre-wrap; word-break:break-all; position:relative; }
+            me .code-line::before { content:counter(line); counter-increment:line; position:absolute; left:0; width:2.5em; text-align:right; color:#555; user-select:none; }
+        </style><span class="match-badge" data-show="$tags.length > 0 || $search.trim().length > 0" data-text="$match_node_app_body"></span><div class="header"><div class="header-left"><span class="tag" style="background:#10b981;">func</span><span class="full-name"><span class="mod">app.</span><span class="name">body</span></span></div><div class="header-right"></div></div><p class="doc">Read the full request body (cached, with size limit).
 
-GET requests carry signals as a `datastar` query parameter (JSON-encoded).
-Other methods carry signals in the JSON body.</p>
-<pre><code class="language-python" id="code-app-signals"><span class="code-line">async def signals(req: dict) -&gt; dict:</span><span class="code-line">    """Read Datastar signals from the request.</span><span class="code-line"> </span><span class="code-line">    GET requests carry signals as a `datastar` query parameter (JSON-encoded).</span><span class="code-line">    Other methods carry signals in the JSON body.</span><span class="code-line">    """</span><span class="code-line">    if req["method"] == "GET":</span><span class="code-line">        raw = req["query"].get("datastar", "{}")</span><span class="code-line">        return json.loads(raw) if isinstance(raw, str) else raw</span><span class="code-line">    data = await json_body(req)</span><span class="code-line">    return data.get("datastar", data) if isinstance(data, dict) else data</span></code></pre>        </article>
-        <article>
-          <style>
-            me { margin-bottom: 0.75rem; border-radius: 8px; overflow: hidden; background: #1e1e1e; max-width: 100%; }
-            me .header { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; }
-            me .header-left { display: flex; align-items: center; }
-            me .header-right { display: flex; align-items: center; gap: 0.5rem; }
-            me .tag { padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; color: white; }
-            me .full-name { font-weight: 500; font-size: 1rem; margin-left: 0.75rem; }
-            me .mod { color: #666; }
-            me .name { color: #e5e5e5; }
-            me .doc { margin: 0; padding: 0 1rem 0.5rem 1rem; color: #888; font-size: 0.85rem; }
-            me .gh-btn { display: flex; align-items: center; gap: 0.25rem; background: #333; border: 1px solid #444; color: #ccc; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
-            me .gh-link { text-decoration: none; }
-            me .copy-btn { background: transparent; border: none; cursor: pointer; font-size: 0.9rem; padding: 0.25rem; }
-            me pre { background: #1a1a1a; border-top: 1px solid #2a2a2a; margin: 0; padding: 0.5rem 0; }
-            me code { counter-reset: line; font-size: 0.8rem; line-height: 1.6; color: #ccc; }
-            me .code-line { display: block; padding-left: 3.5em; white-space: pre-wrap; word-break: break-all; position: relative; }
-            me .code-line::before { content: counter(line); counter-increment: line; position: absolute; left: 0; width: 2.5em; text-align: right; color: #555; user-select: none; }
-        </style>
-          <div class="header">
-            <div class="header-left">
-<span class="tag" style="background:#10b981;">func</span><span class="full-name"><span class="mod">app.</span><span class="name">set_cookie</span></span>            </div>
-            <div class="header-right">
-<button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('code-app-set_cookie').textContent).then(() =&gt; this.textContent = '✓').then(() =&gt; setTimeout(() =&gt; this.textContent = '📋', 1500))">📋</button>            </div>
-          </div>
-          <p class="doc">Queue a Set-Cookie header on the request.</p>
-<pre><code class="language-python" id="code-app-set_cookie"><span class="code-line">def set_cookie(req: dict, name: str, value: str, **opts) -&gt; None:</span><span class="code-line">    """Queue a Set-Cookie header on the request."""</span><span class="code-line">    req["internal_set_cookies"].append((name, value, opts))</span></code></pre>        </article>
-        <article>
-          <style>
-            me { margin-bottom: 0.75rem; border-radius: 8px; overflow: hidden; background: #1e1e1e; max-width: 100%; }
-            me .header { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; }
-            me .header-left { display: flex; align-items: center; }
-            me .header-right { display: flex; align-items: center; gap: 0.5rem; }
-            me .tag { padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; color: white; }
-            me .full-name { font-weight: 500; font-size: 1rem; margin-left: 0.75rem; }
-            me .mod { color: #666; }
-            me .name { color: #e5e5e5; }
-            me .doc { margin: 0; padding: 0 1rem 0.5rem 1rem; color: #888; font-size: 0.85rem; }
-            me .gh-btn { display: flex; align-items: center; gap: 0.25rem; background: #333; border: 1px solid #444; color: #ccc; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
-            me .gh-link { text-decoration: none; }
-            me .copy-btn { background: transparent; border: none; cursor: pointer; font-size: 0.9rem; padding: 0.25rem; }
-            me pre { background: #1a1a1a; border-top: 1px solid #2a2a2a; margin: 0; padding: 0.5rem 0; }
-            me code { counter-reset: line; font-size: 0.8rem; line-height: 1.6; color: #ccc; }
-            me .code-line { display: block; padding-left: 3.5em; white-space: pre-wrap; word-break: break-all; position: relative; }
-            me .code-line::before { content: counter(line); counter-increment: line; position: absolute; left: 0; width: 2.5em; text-align: right; color: #555; user-select: none; }
-        </style>
-          <div class="header">
-            <div class="header-left">
-<span class="tag" style="background:#10b981;">func</span><span class="full-name"><span class="mod">app.</span><span class="name">internal_serialize_cookie</span></span>            </div>
-            <div class="header-right">
-<button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('code-app-internal_serialize_cookie').textContent).then(() =&gt; this.textContent = '✓').then(() =&gt; setTimeout(() =&gt; this.textContent = '📋', 1500))">📋</button>            </div>
-          </div>
-          <p class="doc">Serialize a single Set-Cookie header value.</p>
-<pre><code class="language-python" id="code-app-internal_serialize_cookie"><span class="code-line">def internal_serialize_cookie(name: str, value: str, opts: dict) -&gt; bytes:</span><span class="code-line">    """Serialize a single Set-Cookie header value."""</span><span class="code-line">    parts = [f"{name}={value}"]</span><span class="code-line">    for k, v in opts.items():</span><span class="code-line">        k = k.replace("_", "-")</span><span class="code-line">        if isinstance(v, bool):</span><span class="code-line">            if v:</span><span class="code-line">                parts.append(k)</span><span class="code-line">        else:</span><span class="code-line">            parts.append(f"{k}={v}")</span><span class="code-line">    return "; ".join(parts).encode()</span></code></pre>        </article>
-        <article>
-          <style>
-            me { margin-bottom: 0.75rem; border-radius: 8px; overflow: hidden; background: #1e1e1e; max-width: 100%; }
-            me .header { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; }
-            me .header-left { display: flex; align-items: center; }
-            me .header-right { display: flex; align-items: center; gap: 0.5rem; }
-            me .tag { padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; color: white; }
-            me .full-name { font-weight: 500; font-size: 1rem; margin-left: 0.75rem; }
-            me .mod { color: #666; }
-            me .name { color: #e5e5e5; }
-            me .doc { margin: 0; padding: 0 1rem 0.5rem 1rem; color: #888; font-size: 0.85rem; }
-            me .gh-btn { display: flex; align-items: center; gap: 0.25rem; background: #333; border: 1px solid #444; color: #ccc; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
-            me .gh-link { text-decoration: none; }
-            me .copy-btn { background: transparent; border: none; cursor: pointer; font-size: 0.9rem; padding: 0.25rem; }
-            me pre { background: #1a1a1a; border-top: 1px solid #2a2a2a; margin: 0; padding: 0.5rem 0; }
-            me code { counter-reset: line; font-size: 0.8rem; line-height: 1.6; color: #ccc; }
-            me .code-line { display: block; padding-left: 3.5em; white-space: pre-wrap; word-break: break-all; position: relative; }
-            me .code-line::before { content: counter(line); counter-increment: line; position: absolute; left: 0; width: 2.5em; text-align: right; color: #555; user-select: none; }
-        </style>
-          <div class="header">
-            <div class="header-left">
-<span class="tag" style="background:#10b981;">func</span><span class="full-name"><span class="mod">app.</span><span class="name">internal_cookie_headers</span></span>            </div>
-            <div class="header-right">
-<button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('code-app-internal_cookie_headers').textContent).then(() =&gt; this.textContent = '✓').then(() =&gt; setTimeout(() =&gt; this.textContent = '📋', 1500))">📋</button>            </div>
-          </div>
-          <p class="doc">Build Set-Cookie headers from queued cookies on a request.</p>
-<pre><code class="language-python" id="code-app-internal_cookie_headers"><span class="code-line">def internal_cookie_headers(req: dict) -&gt; list:</span><span class="code-line">    """Build Set-Cookie headers from queued cookies on a request."""</span><span class="code-line">    return [</span><span class="code-line">        [b"set-cookie", internal_serialize_cookie(n, v, o)]</span><span class="code-line">        for n, v, o in req["internal_set_cookies"]</span><span class="code-line">    ]</span></code></pre>        </article>
-        <article>
-          <style>
-            me { margin-bottom: 0.75rem; border-radius: 8px; overflow: hidden; background: #1e1e1e; max-width: 100%; }
-            me .header { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; }
-            me .header-left { display: flex; align-items: center; }
-            me .header-right { display: flex; align-items: center; gap: 0.5rem; }
-            me .tag { padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; color: white; }
-            me .full-name { font-weight: 500; font-size: 1rem; margin-left: 0.75rem; }
-            me .mod { color: #666; }
-            me .name { color: #e5e5e5; }
-            me .doc { margin: 0; padding: 0 1rem 0.5rem 1rem; color: #888; font-size: 0.85rem; }
-            me .gh-btn { display: flex; align-items: center; gap: 0.25rem; background: #333; border: 1px solid #444; color: #ccc; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
-            me .gh-link { text-decoration: none; }
-            me .copy-btn { background: transparent; border: none; cursor: pointer; font-size: 0.9rem; padding: 0.25rem; }
-            me pre { background: #1a1a1a; border-top: 1px solid #2a2a2a; margin: 0; padding: 0.5rem 0; }
-            me code { counter-reset: line; font-size: 0.8rem; line-height: 1.6; color: #ccc; }
-            me .code-line { display: block; padding-left: 3.5em; white-space: pre-wrap; word-break: break-all; position: relative; }
-            me .code-line::before { content: counter(line); counter-increment: line; position: absolute; left: 0; width: 2.5em; text-align: right; color: #555; user-select: none; }
-        </style>
-          <div class="header">
-            <div class="header-left">
-<span class="tag" style="background:#10b981;">func</span><span class="full-name"><span class="mod">app.</span><span class="name">internal_send_response</span></span>            </div>
-            <div class="header-right">
-<button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('code-app-internal_send_response').textContent).then(() =&gt; this.textContent = '✓').then(() =&gt; setTimeout(() =&gt; this.textContent = '📋', 1500))">📋</button>            </div>
-          </div>
-          <p class="doc">Send a complete HTTP response.</p>
-<pre><code class="language-python" id="code-app-internal_send_response"><span class="code-line">async def internal_send_response(send, req: dict, status: int, content_type: bytes, content: str | bytes):</span><span class="code-line">    """Send a complete HTTP response."""</span><span class="code-line">    if isinstance(content, str):</span><span class="code-line">        content = content.encode()</span><span class="code-line">    headers = [[b"content-type", content_type]] + internal_cookie_headers(req)</span><span class="code-line">    await send({"type": "http.response.start", "status": status, "headers": headers})</span><span class="code-line">    await send({"type": "http.response.body", "body": content})</span></code></pre>        </article>
-        <article>
-          <style>
-            me { margin-bottom: 0.75rem; border-radius: 8px; overflow: hidden; background: #1e1e1e; max-width: 100%; }
-            me .header { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; }
-            me .header-left { display: flex; align-items: center; }
-            me .header-right { display: flex; align-items: center; gap: 0.5rem; }
-            me .tag { padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; color: white; }
-            me .full-name { font-weight: 500; font-size: 1rem; margin-left: 0.75rem; }
-            me .mod { color: #666; }
-            me .name { color: #e5e5e5; }
-            me .doc { margin: 0; padding: 0 1rem 0.5rem 1rem; color: #888; font-size: 0.85rem; }
-            me .gh-btn { display: flex; align-items: center; gap: 0.25rem; background: #333; border: 1px solid #444; color: #ccc; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
-            me .gh-link { text-decoration: none; }
-            me .copy-btn { background: transparent; border: none; cursor: pointer; font-size: 0.9rem; padding: 0.25rem; }
-            me pre { background: #1a1a1a; border-top: 1px solid #2a2a2a; margin: 0; padding: 0.5rem 0; }
-            me code { counter-reset: line; font-size: 0.8rem; line-height: 1.6; color: #ccc; }
-            me .code-line { display: block; padding-left: 3.5em; white-space: pre-wrap; word-break: break-all; position: relative; }
-            me .code-line::before { content: counter(line); counter-increment: line; position: absolute; left: 0; width: 2.5em; text-align: right; color: #555; user-select: none; }
-        </style>
-          <div class="header">
-            <div class="header-left">
-<span class="tag" style="background:#10b981;">func</span><span class="full-name"><span class="mod">app.</span><span class="name">send_html</span></span>            </div>
-            <div class="header-right">
-<button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('code-app-send_html').textContent).then(() =&gt; this.textContent = '✓').then(() =&gt; setTimeout(() =&gt; this.textContent = '📋', 1500))">📋</button>            </div>
-          </div>
-          <p class="doc">Send an HTML response. Tag objects are rendered automatically.</p>
-<pre><code class="language-python" id="code-app-send_html"><span class="code-line">async def send_html(send, req: dict, content: str | Tag, status: int = 200):</span><span class="code-line">    """Send an HTML response. Tag objects are rendered automatically."""</span><span class="code-line">    if isinstance(content, Tag):</span><span class="code-line">        content = to_html(content)</span><span class="code-line">    await internal_send_response(send, req, status, b"text/html; charset=utf-8", content)</span></code></pre>        </article>
-        <article>
-          <style>
-            me { margin-bottom: 0.75rem; border-radius: 8px; overflow: hidden; background: #1e1e1e; max-width: 100%; }
-            me .header { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; }
-            me .header-left { display: flex; align-items: center; }
-            me .header-right { display: flex; align-items: center; gap: 0.5rem; }
-            me .tag { padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; color: white; }
-            me .full-name { font-weight: 500; font-size: 1rem; margin-left: 0.75rem; }
-            me .mod { color: #666; }
-            me .name { color: #e5e5e5; }
-            me .doc { margin: 0; padding: 0 1rem 0.5rem 1rem; color: #888; font-size: 0.85rem; }
-            me .gh-btn { display: flex; align-items: center; gap: 0.25rem; background: #333; border: 1px solid #444; color: #ccc; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
-            me .gh-link { text-decoration: none; }
-            me .copy-btn { background: transparent; border: none; cursor: pointer; font-size: 0.9rem; padding: 0.25rem; }
-            me pre { background: #1a1a1a; border-top: 1px solid #2a2a2a; margin: 0; padding: 0.5rem 0; }
-            me code { counter-reset: line; font-size: 0.8rem; line-height: 1.6; color: #ccc; }
-            me .code-line { display: block; padding-left: 3.5em; white-space: pre-wrap; word-break: break-all; position: relative; }
-            me .code-line::before { content: counter(line); counter-increment: line; position: absolute; left: 0; width: 2.5em; text-align: right; color: #555; user-select: none; }
-        </style>
-          <div class="header">
-            <div class="header-left">
-<span class="tag" style="background:#10b981;">func</span><span class="full-name"><span class="mod">app.</span><span class="name">send_json</span></span>            </div>
-            <div class="header-right">
-<button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('code-app-send_json').textContent).then(() =&gt; this.textContent = '✓').then(() =&gt; setTimeout(() =&gt; this.textContent = '📋', 1500))">📋</button>            </div>
-          </div>
-          <p class="doc">Send a JSON response.</p>
-<pre><code class="language-python" id="code-app-send_json"><span class="code-line">async def send_json(send, req: dict, data: dict, status: int = 200):</span><span class="code-line">    """Send a JSON response."""</span><span class="code-line">    await internal_send_response(send, req, status, b"application/json", json.dumps(data))</span></code></pre>        </article>
-        <article>
-          <style>
-            me { margin-bottom: 0.75rem; border-radius: 8px; overflow: hidden; background: #1e1e1e; max-width: 100%; }
-            me .header { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; }
-            me .header-left { display: flex; align-items: center; }
-            me .header-right { display: flex; align-items: center; gap: 0.5rem; }
-            me .tag { padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; color: white; }
-            me .full-name { font-weight: 500; font-size: 1rem; margin-left: 0.75rem; }
-            me .mod { color: #666; }
-            me .name { color: #e5e5e5; }
-            me .doc { margin: 0; padding: 0 1rem 0.5rem 1rem; color: #888; font-size: 0.85rem; }
-            me .gh-btn { display: flex; align-items: center; gap: 0.25rem; background: #333; border: 1px solid #444; color: #ccc; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
-            me .gh-link { text-decoration: none; }
-            me .copy-btn { background: transparent; border: none; cursor: pointer; font-size: 0.9rem; padding: 0.25rem; }
-            me pre { background: #1a1a1a; border-top: 1px solid #2a2a2a; margin: 0; padding: 0.5rem 0; }
-            me code { counter-reset: line; font-size: 0.8rem; line-height: 1.6; color: #ccc; }
-            me .code-line { display: block; padding-left: 3.5em; white-space: pre-wrap; word-break: break-all; position: relative; }
-            me .code-line::before { content: counter(line); counter-increment: line; position: absolute; left: 0; width: 2.5em; text-align: right; color: #555; user-select: none; }
-        </style>
-          <div class="header">
-            <div class="header-left">
-<span class="tag" style="background:#10b981;">func</span><span class="full-name"><span class="mod">app.</span><span class="name">send_text</span></span>            </div>
-            <div class="header-right">
-<button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('code-app-send_text').textContent).then(() =&gt; this.textContent = '✓').then(() =&gt; setTimeout(() =&gt; this.textContent = '📋', 1500))">📋</button>            </div>
-          </div>
-          <p class="doc">Send a plain text response.</p>
-<pre><code class="language-python" id="code-app-send_text"><span class="code-line">async def send_text(send, req: dict, text: str, status: int = 200):</span><span class="code-line">    """Send a plain text response."""</span><span class="code-line">    await internal_send_response(send, req, status, b"text/plain; charset=utf-8", text)</span></code></pre>        </article>
-        <article>
-          <style>
-            me { margin-bottom: 0.75rem; border-radius: 8px; overflow: hidden; background: #1e1e1e; max-width: 100%; }
-            me .header { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; }
-            me .header-left { display: flex; align-items: center; }
-            me .header-right { display: flex; align-items: center; gap: 0.5rem; }
-            me .tag { padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; color: white; }
-            me .full-name { font-weight: 500; font-size: 1rem; margin-left: 0.75rem; }
-            me .mod { color: #666; }
-            me .name { color: #e5e5e5; }
-            me .doc { margin: 0; padding: 0 1rem 0.5rem 1rem; color: #888; font-size: 0.85rem; }
-            me .gh-btn { display: flex; align-items: center; gap: 0.25rem; background: #333; border: 1px solid #444; color: #ccc; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
-            me .gh-link { text-decoration: none; }
-            me .copy-btn { background: transparent; border: none; cursor: pointer; font-size: 0.9rem; padding: 0.25rem; }
-            me pre { background: #1a1a1a; border-top: 1px solid #2a2a2a; margin: 0; padding: 0.5rem 0; }
-            me code { counter-reset: line; font-size: 0.8rem; line-height: 1.6; color: #ccc; }
-            me .code-line { display: block; padding-left: 3.5em; white-space: pre-wrap; word-break: break-all; position: relative; }
-            me .code-line::before { content: counter(line); counter-increment: line; position: absolute; left: 0; width: 2.5em; text-align: right; color: #555; user-select: none; }
-        </style>
-          <div class="header">
-            <div class="header-left">
-<span class="tag" style="background:#10b981;">func</span><span class="full-name"><span class="mod">app.</span><span class="name">send_redirect</span></span>            </div>
-            <div class="header-right">
-<button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('code-app-send_redirect').textContent).then(() =&gt; this.textContent = '✓').then(() =&gt; setTimeout(() =&gt; this.textContent = '📋', 1500))">📋</button>            </div>
-          </div>
-          <p class="doc">Send a redirect response.</p>
-<pre><code class="language-python" id="code-app-send_redirect"><span class="code-line">async def send_redirect(send, req: dict, url: str, status: int = 302):</span><span class="code-line">    """Send a redirect response."""</span><span class="code-line">    headers = [[b"location", url.encode()]] + internal_cookie_headers(req)</span><span class="code-line">    await send({"type": "http.response.start", "status": status, "headers": headers})</span><span class="code-line">    await send({"type": "http.response.body", "body": b""})</span></code></pre>        </article>
-        <article>
-          <style>
-            me { margin-bottom: 0.75rem; border-radius: 8px; overflow: hidden; background: #1e1e1e; max-width: 100%; }
-            me .header { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; }
-            me .header-left { display: flex; align-items: center; }
-            me .header-right { display: flex; align-items: center; gap: 0.5rem; }
-            me .tag { padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; color: white; }
-            me .full-name { font-weight: 500; font-size: 1rem; margin-left: 0.75rem; }
-            me .mod { color: #666; }
-            me .name { color: #e5e5e5; }
-            me .doc { margin: 0; padding: 0 1rem 0.5rem 1rem; color: #888; font-size: 0.85rem; }
-            me .gh-btn { display: flex; align-items: center; gap: 0.25rem; background: #333; border: 1px solid #444; color: #ccc; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
-            me .gh-link { text-decoration: none; }
-            me .copy-btn { background: transparent; border: none; cursor: pointer; font-size: 0.9rem; padding: 0.25rem; }
-            me pre { background: #1a1a1a; border-top: 1px solid #2a2a2a; margin: 0; padding: 0.5rem 0; }
-            me code { counter-reset: line; font-size: 0.8rem; line-height: 1.6; color: #ccc; }
-            me .code-line { display: block; padding-left: 3.5em; white-space: pre-wrap; word-break: break-all; position: relative; }
-            me .code-line::before { content: counter(line); counter-increment: line; position: absolute; left: 0; width: 2.5em; text-align: right; color: #555; user-select: none; }
-        </style>
-          <div class="header">
-            <div class="header-left">
-<span class="tag" style="background:#10b981;">func</span><span class="full-name"><span class="mod">app.</span><span class="name">send_error</span></span>            </div>
-            <div class="header-right">
-<button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('code-app-send_error').textContent).then(() =&gt; this.textContent = '✓').then(() =&gt; setTimeout(() =&gt; this.textContent = '📋', 1500))">📋</button>            </div>
-          </div>
-          <p class="doc">Send an error response.</p>
-<pre><code class="language-python" id="code-app-send_error"><span class="code-line">async def send_error(send, req: dict, status: int = 500, message: str = "Internal Server Error"):</span><span class="code-line">    """Send an error response."""</span><span class="code-line">    await internal_send_response(send, req, status, b"text/plain; charset=utf-8", message)</span></code></pre>        </article>
-        <article>
-          <style>
-            me { margin-bottom: 0.75rem; border-radius: 8px; overflow: hidden; background: #1e1e1e; max-width: 100%; }
-            me .header { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; }
-            me .header-left { display: flex; align-items: center; }
-            me .header-right { display: flex; align-items: center; gap: 0.5rem; }
-            me .tag { padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; color: white; }
-            me .full-name { font-weight: 500; font-size: 1rem; margin-left: 0.75rem; }
-            me .mod { color: #666; }
-            me .name { color: #e5e5e5; }
-            me .doc { margin: 0; padding: 0 1rem 0.5rem 1rem; color: #888; font-size: 0.85rem; }
-            me .gh-btn { display: flex; align-items: center; gap: 0.25rem; background: #333; border: 1px solid #444; color: #ccc; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
-            me .gh-link { text-decoration: none; }
-            me .copy-btn { background: transparent; border: none; cursor: pointer; font-size: 0.9rem; padding: 0.25rem; }
-            me pre { background: #1a1a1a; border-top: 1px solid #2a2a2a; margin: 0; padding: 0.5rem 0; }
-            me code { counter-reset: line; font-size: 0.8rem; line-height: 1.6; color: #ccc; }
-            me .code-line { display: block; padding-left: 3.5em; white-space: pre-wrap; word-break: break-all; position: relative; }
-            me .code-line::before { content: counter(line); counter-increment: line; position: absolute; left: 0; width: 2.5em; text-align: right; color: #555; user-select: none; }
-        </style>
-          <div class="header">
-            <div class="header-left">
-<span class="tag" style="background:#10b981;">func</span><span class="full-name"><span class="mod">app.</span><span class="name">internal_open_sse</span></span>            </div>
-            <div class="header-right">
-<button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('code-app-internal_open_sse').textContent).then(() =&gt; this.textContent = '✓').then(() =&gt; setTimeout(() =&gt; this.textContent = '📋', 1500))">📋</button>            </div>
-          </div>
-          <p class="doc">Open an SSE stream. Returns a brotli compressor or None.</p>
-<pre><code class="language-python" id="code-app-internal_open_sse"><span class="code-line">async def internal_open_sse(send, req: dict, *, compress: bool = False):</span><span class="code-line">    """Open an SSE stream. Returns a brotli compressor or None."""</span><span class="code-line">    headers = [</span><span class="code-line">        [b"content-type", b"text/event-stream"],</span><span class="code-line">        [b"cache-control", b"no-cache"],</span><span class="code-line">        [b"connection", b"keep-alive"],</span><span class="code-line">        [b"x-accel-buffering", b"no"],</span><span class="code-line">    ] + internal_cookie_headers(req)</span><span class="code-line"> </span><span class="code-line">    compressor = None</span><span class="code-line">    if compress:</span><span class="code-line">        try:</span><span class="code-line">            import brotli</span><span class="code-line">            headers.append([b"content-encoding", b"br"])</span><span class="code-line">            compressor = brotli.Compressor(mode=brotli.MODE_TEXT, quality=1)</span><span class="code-line">        except ImportError:</span><span class="code-line">            pass  # No brotli available, send uncompressed</span><span class="code-line"> </span><span class="code-line">    await send({"type": "http.response.start", "status": 200, "headers": headers})</span><span class="code-line">    return compressor</span></code></pre>        </article>
-        <article>
-          <style>
-            me { margin-bottom: 0.75rem; border-radius: 8px; overflow: hidden; background: #1e1e1e; max-width: 100%; }
-            me .header { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; }
-            me .header-left { display: flex; align-items: center; }
-            me .header-right { display: flex; align-items: center; gap: 0.5rem; }
-            me .tag { padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; color: white; }
-            me .full-name { font-weight: 500; font-size: 1rem; margin-left: 0.75rem; }
-            me .mod { color: #666; }
-            me .name { color: #e5e5e5; }
-            me .doc { margin: 0; padding: 0 1rem 0.5rem 1rem; color: #888; font-size: 0.85rem; }
-            me .gh-btn { display: flex; align-items: center; gap: 0.25rem; background: #333; border: 1px solid #444; color: #ccc; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
-            me .gh-link { text-decoration: none; }
-            me .copy-btn { background: transparent; border: none; cursor: pointer; font-size: 0.9rem; padding: 0.25rem; }
-            me pre { background: #1a1a1a; border-top: 1px solid #2a2a2a; margin: 0; padding: 0.5rem 0; }
-            me code { counter-reset: line; font-size: 0.8rem; line-height: 1.6; color: #ccc; }
-            me .code-line { display: block; padding-left: 3.5em; white-space: pre-wrap; word-break: break-all; position: relative; }
-            me .code-line::before { content: counter(line); counter-increment: line; position: absolute; left: 0; width: 2.5em; text-align: right; color: #555; user-select: none; }
-        </style>
-          <div class="header">
-            <div class="header-left">
-<span class="tag" style="background:#10b981;">func</span><span class="full-name"><span class="mod">app.</span><span class="name">internal_send_sse_event</span></span>            </div>
-            <div class="header-right">
-<button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('code-app-internal_send_sse_event').textContent).then(() =&gt; this.textContent = '✓').then(() =&gt; setTimeout(() =&gt; this.textContent = '📋', 1500))">📋</button>            </div>
-          </div>
-          <p class="doc">Send a single SSE event over an open stream.</p>
-<pre><code class="language-python" id="code-app-internal_send_sse_event"><span class="code-line">async def internal_send_sse_event(send, compressor, data: str):</span><span class="code-line">    """Send a single SSE event over an open stream."""</span><span class="code-line">    raw = data.encode()</span><span class="code-line">    if compressor:</span><span class="code-line">        raw = compressor.process(raw) + compressor.flush()</span><span class="code-line">    await send({"type": "http.response.body", "body": raw, "more_body": True})</span></code></pre>        </article>
-        <article>
-          <style>
-            me { margin-bottom: 0.75rem; border-radius: 8px; overflow: hidden; background: #1e1e1e; max-width: 100%; }
-            me .header { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; }
-            me .header-left { display: flex; align-items: center; }
-            me .header-right { display: flex; align-items: center; gap: 0.5rem; }
-            me .tag { padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; color: white; }
-            me .full-name { font-weight: 500; font-size: 1rem; margin-left: 0.75rem; }
-            me .mod { color: #666; }
-            me .name { color: #e5e5e5; }
-            me .doc { margin: 0; padding: 0 1rem 0.5rem 1rem; color: #888; font-size: 0.85rem; }
-            me .gh-btn { display: flex; align-items: center; gap: 0.25rem; background: #333; border: 1px solid #444; color: #ccc; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
-            me .gh-link { text-decoration: none; }
-            me .copy-btn { background: transparent; border: none; cursor: pointer; font-size: 0.9rem; padding: 0.25rem; }
-            me pre { background: #1a1a1a; border-top: 1px solid #2a2a2a; margin: 0; padding: 0.5rem 0; }
-            me code { counter-reset: line; font-size: 0.8rem; line-height: 1.6; color: #ccc; }
-            me .code-line { display: block; padding-left: 3.5em; white-space: pre-wrap; word-break: break-all; position: relative; }
-            me .code-line::before { content: counter(line); counter-increment: line; position: absolute; left: 0; width: 2.5em; text-align: right; color: #555; user-select: none; }
-        </style>
-          <div class="header">
-            <div class="header-left">
-<span class="tag" style="background:#10b981;">func</span><span class="full-name"><span class="mod">app.</span><span class="name">internal_close_sse</span></span>            </div>
-            <div class="header-right">
-<button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('code-app-internal_close_sse').textContent).then(() =&gt; this.textContent = '✓').then(() =&gt; setTimeout(() =&gt; this.textContent = '📋', 1500))">📋</button>            </div>
-          </div>
-          <p class="doc">Close an SSE stream cleanly.</p>
-<pre><code class="language-python" id="code-app-internal_close_sse"><span class="code-line">async def internal_close_sse(send, compressor):</span><span class="code-line">    """Close an SSE stream cleanly."""</span><span class="code-line">    tail = b""</span><span class="code-line">    if compressor:</span><span class="code-line">        tail = compressor.finish()</span><span class="code-line">    await send({"type": "http.response.body", "body": tail})</span></code></pre>        </article>
-        <article>
-          <style>
-            me { margin-bottom: 0.75rem; border-radius: 8px; overflow: hidden; background: #1e1e1e; max-width: 100%; }
-            me .header { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; }
-            me .header-left { display: flex; align-items: center; }
-            me .header-right { display: flex; align-items: center; gap: 0.5rem; }
-            me .tag { padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; color: white; }
-            me .full-name { font-weight: 500; font-size: 1rem; margin-left: 0.75rem; }
-            me .mod { color: #666; }
-            me .name { color: #e5e5e5; }
-            me .doc { margin: 0; padding: 0 1rem 0.5rem 1rem; color: #888; font-size: 0.85rem; }
-            me .gh-btn { display: flex; align-items: center; gap: 0.25rem; background: #333; border: 1px solid #444; color: #ccc; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
-            me .gh-link { text-decoration: none; }
-            me .copy-btn { background: transparent; border: none; cursor: pointer; font-size: 0.9rem; padding: 0.25rem; }
-            me pre { background: #1a1a1a; border-top: 1px solid #2a2a2a; margin: 0; padding: 0.5rem 0; }
-            me code { counter-reset: line; font-size: 0.8rem; line-height: 1.6; color: #ccc; }
-            me .code-line { display: block; padding-left: 3.5em; white-space: pre-wrap; word-break: break-all; position: relative; }
-            me .code-line::before { content: counter(line); counter-increment: line; position: absolute; left: 0; width: 2.5em; text-align: right; color: #555; user-select: none; }
-        </style>
-          <div class="header">
-            <div class="header-left">
-<span class="tag" style="background:#10b981;">func</span><span class="full-name"><span class="mod">app.</span><span class="name">internal_keepalive</span></span>            </div>
-            <div class="header-right">
-<button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('code-app-internal_keepalive').textContent).then(() =&gt; this.textContent = '✓').then(() =&gt; setTimeout(() =&gt; this.textContent = '📋', 1500))">📋</button>            </div>
-          </div>
-          <p class="doc">Send SSE keepalive comments to prevent proxy timeouts.</p>
-<pre><code class="language-python" id="code-app-internal_keepalive"><span class="code-line">async def internal_keepalive(send, compressor, closed: asyncio.Event, interval: int = 15):</span><span class="code-line">    """Send SSE keepalive comments to prevent proxy timeouts."""</span><span class="code-line">    try:</span><span class="code-line">        while not closed.is_set():</span><span class="code-line">            await asyncio.sleep(interval)</span><span class="code-line">            if not closed.is_set():</span><span class="code-line">                await internal_send_sse_event(send, compressor, ":\n\n")</span><span class="code-line">    except asyncio.CancelledError:</span><span class="code-line">        pass</span></code></pre>        </article>
-        <article>
-          <style>
-            me { margin-bottom: 0.75rem; border-radius: 8px; overflow: hidden; background: #1e1e1e; max-width: 100%; }
-            me .header { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; }
-            me .header-left { display: flex; align-items: center; }
-            me .header-right { display: flex; align-items: center; gap: 0.5rem; }
-            me .tag { padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; color: white; }
-            me .full-name { font-weight: 500; font-size: 1rem; margin-left: 0.75rem; }
-            me .mod { color: #666; }
-            me .name { color: #e5e5e5; }
-            me .doc { margin: 0; padding: 0 1rem 0.5rem 1rem; color: #888; font-size: 0.85rem; }
-            me .gh-btn { display: flex; align-items: center; gap: 0.25rem; background: #333; border: 1px solid #444; color: #ccc; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
-            me .gh-link { text-decoration: none; }
-            me .copy-btn { background: transparent; border: none; cursor: pointer; font-size: 0.9rem; padding: 0.25rem; }
-            me pre { background: #1a1a1a; border-top: 1px solid #2a2a2a; margin: 0; padding: 0.5rem 0; }
-            me code { counter-reset: line; font-size: 0.8rem; line-height: 1.6; color: #ccc; }
-            me .code-line { display: block; padding-left: 3.5em; white-space: pre-wrap; word-break: break-all; position: relative; }
-            me .code-line::before { content: counter(line); counter-increment: line; position: absolute; left: 0; width: 2.5em; text-align: right; color: #555; user-select: none; }
-        </style>
-          <div class="header">
-            <div class="header-left">
-<span class="tag" style="background:#10b981;">func</span><span class="full-name"><span class="mod">app.</span><span class="name">internal_watch_disconnect</span></span>            </div>
-            <div class="header-right">
-<button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('code-app-internal_watch_disconnect').textContent).then(() =&gt; this.textContent = '✓').then(() =&gt; setTimeout(() =&gt; this.textContent = '📋', 1500))">📋</button>            </div>
-          </div>
-          <p class="doc">Watch for client disconnect. Sets the event when detected.</p>
-<pre><code class="language-python" id="code-app-internal_watch_disconnect"><span class="code-line">async def internal_watch_disconnect(receive, closed: asyncio.Event):</span><span class="code-line">    """Watch for client disconnect. Sets the event when detected."""</span><span class="code-line">    try:</span><span class="code-line">        while True:</span><span class="code-line">            msg = await receive()</span><span class="code-line">            if msg.get("type") == "http.disconnect":</span><span class="code-line">                closed.set()</span><span class="code-line">                return</span><span class="code-line">    except Exception:</span><span class="code-line">        closed.set()</span></code></pre>        </article>
-      </div>
-    </div>
-  </body>
-</html>
+Raises ValueError if the body exceeds max_size.</p><pre><code class="language-python" id="code-node-app-body"><span class="code-line">async def body(req: dict, *, max_size: int = 1_048_576) -&gt; bytes:</span><span class="code-line">    &quot;&quot;&quot;Read the full request body (cached, with size limit).</span><span class="code-line"></span><span class="code-line">    Raises ValueError if the body exceeds max_size.</span><span class="code-line">    &quot;&quot;&quot;</span><span class="code-line">    if &quot;_body&quot; in req:</span><span class="code-line">        return req[&quot;_body&quot;]</span><span class="code-line">    raw = await req[&quot;_proto&quot;]()</span><span class="code-line">    if max_size and len(raw) &gt; max_size:</span><span class="code-line">        raise ValueError(f&quot;Request body exceeds {max_size} bytes&quot;)</span><span class="code-line">    req[&quot;_body&quot;] = raw</span><span class="code-line">    return raw</span></code></pre></div><div id="node-app-signals" data-signals="{&quot;searchable_node_app_signals&quot;: &quot;signals app func read datastar signals from a request.  get: json-encoded   datastar   query parameter. other: json body, optionally wrapped in   {datastar: ...}  . async def signals(req: dict) -> dict:        read datastar signals from a request.      get: json-encoded   datastar   query parameter.     other: json body, optionally wrapped in   {datastar: ...}  .             if req[ method ] ==  get :         raw = req[ query ].get( datastar ,  {} )         return json.loads(raw) if isinstance(raw, str) else raw     data = json.loads(await body(req))     return data.get( datastar , data) if isinstance(data, dict) else data&quot;, &quot;match_node_app_signals&quot;: 0}" data-effect="$match_node_app_signals = [...$tags, $search.trim()].filter(t => t.length > 0 &amp;&amp; $searchable_node_app_signals.toLowerCase().includes(t.toLowerCase())).length" data-show="($tags.length === 0 &amp;&amp; $search.trim().length === 0) || $match_node_app_signals > 0" data-style:order="($tags.length === 0 &amp;&amp; $search.trim().length === 0) ? 0 : -$match_node_app_signals"><style>
+            me { margin-bottom:0.75rem; border-radius:8px; overflow:hidden; background:#1e1e1e; position:relative; }
+            me .match-badge { position:absolute; top:1rem; right:1rem; background:#3b82f6; color:white; padding:0.25rem 0.75rem; border-radius:9999px; font-size:0.8rem; font-weight:600; }
+            me .header { display:flex; align-items:center; justify-content:space-between; padding:0.75rem 1rem; }
+            me .header-left { display:flex; align-items:center; gap:0.75rem; }
+            me .header-right { display:flex; align-items:center; gap:0.5rem; }
+            me .tag { padding:0.25rem 0.6rem; border-radius:4px; font-size:0.75rem; font-weight:600; color:white; }
+            me .full-name { font-size:1rem; font-weight:500; }
+            me .mod { color:#666; }
+            me .name { color:#e5e5e5; }
+            me .doc { margin:0; padding:0 1rem 0.5rem; color:#888; font-size:0.85rem; }
+            me .gh-btn { display:flex; align-items:center; gap:0.25rem; background:#333; border:1px solid #444; color:#ccc; padding:0.25rem 0.5rem; border-radius:4px; cursor:pointer; font-size:0.75rem; }
+            me .gh-link { text-decoration:none; }
+            me pre { background:#1a1a1a; border-top:1px solid #2a2a2a; margin:0; padding:0.5rem 0; }
+            me code { font-size:0.8rem; line-height:1.6; color:#ccc; counter-reset:line; }
+            me .code-line { display:block; padding-left:3.5em; white-space:pre-wrap; word-break:break-all; position:relative; }
+            me .code-line::before { content:counter(line); counter-increment:line; position:absolute; left:0; width:2.5em; text-align:right; color:#555; user-select:none; }
+        </style><span class="match-badge" data-show="$tags.length > 0 || $search.trim().length > 0" data-text="$match_node_app_signals"></span><div class="header"><div class="header-left"><span class="tag" style="background:#10b981;">func</span><span class="full-name"><span class="mod">app.</span><span class="name">signals</span></span></div><div class="header-right"></div></div><p class="doc">Read Datastar signals from a request.
+
+GET: JSON-encoded ``datastar`` query parameter.
+Other: JSON body, optionally wrapped in ``{datastar: ...}``.</p><pre><code class="language-python" id="code-node-app-signals"><span class="code-line">async def signals(req: dict) -&gt; dict:</span><span class="code-line">    &quot;&quot;&quot;Read Datastar signals from a request.</span><span class="code-line"></span><span class="code-line">    GET: JSON-encoded ``datastar`` query parameter.</span><span class="code-line">    Other: JSON body, optionally wrapped in ``{datastar: ...}``.</span><span class="code-line">    &quot;&quot;&quot;</span><span class="code-line">    if req[&quot;method&quot;] == &quot;GET&quot;:</span><span class="code-line">        raw = req[&quot;query&quot;].get(&quot;datastar&quot;, &quot;{}&quot;)</span><span class="code-line">        return json.loads(raw) if isinstance(raw, str) else raw</span><span class="code-line">    data = json.loads(await body(req))</span><span class="code-line">    return data.get(&quot;datastar&quot;, data) if isinstance(data, dict) else data</span></code></pre></div><div id="node-app-set_cookie" data-signals="{&quot;searchable_node_app_set_cookie&quot;: &quot;set_cookie app func queue a set-cookie header on the request. def set_cookie(req: dict, name: str, value: str, **opts) -> none:        queue a set-cookie header on the request.        req[ _cookies ].append((name, value, opts))&quot;, &quot;match_node_app_set_cookie&quot;: 0}" data-effect="$match_node_app_set_cookie = [...$tags, $search.trim()].filter(t => t.length > 0 &amp;&amp; $searchable_node_app_set_cookie.toLowerCase().includes(t.toLowerCase())).length" data-show="($tags.length === 0 &amp;&amp; $search.trim().length === 0) || $match_node_app_set_cookie > 0" data-style:order="($tags.length === 0 &amp;&amp; $search.trim().length === 0) ? 0 : -$match_node_app_set_cookie"><style>
+            me { margin-bottom:0.75rem; border-radius:8px; overflow:hidden; background:#1e1e1e; position:relative; }
+            me .match-badge { position:absolute; top:1rem; right:1rem; background:#3b82f6; color:white; padding:0.25rem 0.75rem; border-radius:9999px; font-size:0.8rem; font-weight:600; }
+            me .header { display:flex; align-items:center; justify-content:space-between; padding:0.75rem 1rem; }
+            me .header-left { display:flex; align-items:center; gap:0.75rem; }
+            me .header-right { display:flex; align-items:center; gap:0.5rem; }
+            me .tag { padding:0.25rem 0.6rem; border-radius:4px; font-size:0.75rem; font-weight:600; color:white; }
+            me .full-name { font-size:1rem; font-weight:500; }
+            me .mod { color:#666; }
+            me .name { color:#e5e5e5; }
+            me .doc { margin:0; padding:0 1rem 0.5rem; color:#888; font-size:0.85rem; }
+            me .gh-btn { display:flex; align-items:center; gap:0.25rem; background:#333; border:1px solid #444; color:#ccc; padding:0.25rem 0.5rem; border-radius:4px; cursor:pointer; font-size:0.75rem; }
+            me .gh-link { text-decoration:none; }
+            me pre { background:#1a1a1a; border-top:1px solid #2a2a2a; margin:0; padding:0.5rem 0; }
+            me code { font-size:0.8rem; line-height:1.6; color:#ccc; counter-reset:line; }
+            me .code-line { display:block; padding-left:3.5em; white-space:pre-wrap; word-break:break-all; position:relative; }
+            me .code-line::before { content:counter(line); counter-increment:line; position:absolute; left:0; width:2.5em; text-align:right; color:#555; user-select:none; }
+        </style><span class="match-badge" data-show="$tags.length > 0 || $search.trim().length > 0" data-text="$match_node_app_set_cookie"></span><div class="header"><div class="header-left"><span class="tag" style="background:#10b981;">func</span><span class="full-name"><span class="mod">app.</span><span class="name">set_cookie</span></span></div><div class="header-right"></div></div><p class="doc">Queue a Set-Cookie header on the request.</p><pre><code class="language-python" id="code-node-app-set_cookie"><span class="code-line">def set_cookie(req: dict, name: str, value: str, **opts) -&gt; None:</span><span class="code-line">    &quot;&quot;&quot;Queue a Set-Cookie header on the request.&quot;&quot;&quot;</span><span class="code-line">    req[&quot;_cookies&quot;].append((name, value, opts))</span></code></pre></div><div id="node-app-internal_serialize_cookie" data-signals="{&quot;searchable_node_app_internal_serialize_cookie&quot;: &quot;internal_serialize_cookie app func   def internal_serialize_cookie(name: str, value: str, opts: dict) -> str:     parts = [f {name}={value} ]     for k, v in opts.items():         k = k.replace( _ ,  - )         if isinstance(v, bool):             if v: parts.append(k)         else:   parts.append(f {k}={v} )     return  ;  .join(parts)&quot;, &quot;match_node_app_internal_serialize_cookie&quot;: 0}" data-effect="$match_node_app_internal_serialize_cookie = [...$tags, $search.trim()].filter(t => t.length > 0 &amp;&amp; $searchable_node_app_internal_serialize_cookie.toLowerCase().includes(t.toLowerCase())).length" data-show="($tags.length === 0 &amp;&amp; $search.trim().length === 0) || $match_node_app_internal_serialize_cookie > 0" data-style:order="($tags.length === 0 &amp;&amp; $search.trim().length === 0) ? 0 : -$match_node_app_internal_serialize_cookie"><style>
+            me { margin-bottom:0.75rem; border-radius:8px; overflow:hidden; background:#1e1e1e; position:relative; }
+            me .match-badge { position:absolute; top:1rem; right:1rem; background:#3b82f6; color:white; padding:0.25rem 0.75rem; border-radius:9999px; font-size:0.8rem; font-weight:600; }
+            me .header { display:flex; align-items:center; justify-content:space-between; padding:0.75rem 1rem; }
+            me .header-left { display:flex; align-items:center; gap:0.75rem; }
+            me .header-right { display:flex; align-items:center; gap:0.5rem; }
+            me .tag { padding:0.25rem 0.6rem; border-radius:4px; font-size:0.75rem; font-weight:600; color:white; }
+            me .full-name { font-size:1rem; font-weight:500; }
+            me .mod { color:#666; }
+            me .name { color:#e5e5e5; }
+            me .doc { margin:0; padding:0 1rem 0.5rem; color:#888; font-size:0.85rem; }
+            me .gh-btn { display:flex; align-items:center; gap:0.25rem; background:#333; border:1px solid #444; color:#ccc; padding:0.25rem 0.5rem; border-radius:4px; cursor:pointer; font-size:0.75rem; }
+            me .gh-link { text-decoration:none; }
+            me pre { background:#1a1a1a; border-top:1px solid #2a2a2a; margin:0; padding:0.5rem 0; }
+            me code { font-size:0.8rem; line-height:1.6; color:#ccc; counter-reset:line; }
+            me .code-line { display:block; padding-left:3.5em; white-space:pre-wrap; word-break:break-all; position:relative; }
+            me .code-line::before { content:counter(line); counter-increment:line; position:absolute; left:0; width:2.5em; text-align:right; color:#555; user-select:none; }
+        </style><span class="match-badge" data-show="$tags.length > 0 || $search.trim().length > 0" data-text="$match_node_app_internal_serialize_cookie"></span><div class="header"><div class="header-left"><span class="tag" style="background:#10b981;">func</span><span class="full-name"><span class="mod">app.</span><span class="name">internal_serialize_cookie</span></span></div><div class="header-right"></div></div><pre><code class="language-python" id="code-node-app-internal_serialize_cookie"><span class="code-line"></span><span class="code-line">def internal_serialize_cookie(name: str, value: str, opts: dict) -&gt; str:</span><span class="code-line">    parts = [f&quot;{name}={value}&quot;]</span><span class="code-line">    for k, v in opts.items():</span><span class="code-line">        k = k.replace(&quot;_&quot;, &quot;-&quot;)</span><span class="code-line">        if isinstance(v, bool):</span><span class="code-line">            if v: parts.append(k)</span><span class="code-line">        else:   parts.append(f&quot;{k}={v}&quot;)</span><span class="code-line">    return &quot;; &quot;.join(parts)</span></code></pre></div><div id="node-app-internal_cookie_headers" data-signals="{&quot;searchable_node_app_internal_cookie_headers&quot;: &quot;internal_cookie_headers app func   def internal_cookie_headers(req: dict) -> list[tuple[str, str]]:     return [( set-cookie , internal_serialize_cookie(n, v, o))             for n, v, o in req[ _cookies ]]&quot;, &quot;match_node_app_internal_cookie_headers&quot;: 0}" data-effect="$match_node_app_internal_cookie_headers = [...$tags, $search.trim()].filter(t => t.length > 0 &amp;&amp; $searchable_node_app_internal_cookie_headers.toLowerCase().includes(t.toLowerCase())).length" data-show="($tags.length === 0 &amp;&amp; $search.trim().length === 0) || $match_node_app_internal_cookie_headers > 0" data-style:order="($tags.length === 0 &amp;&amp; $search.trim().length === 0) ? 0 : -$match_node_app_internal_cookie_headers"><style>
+            me { margin-bottom:0.75rem; border-radius:8px; overflow:hidden; background:#1e1e1e; position:relative; }
+            me .match-badge { position:absolute; top:1rem; right:1rem; background:#3b82f6; color:white; padding:0.25rem 0.75rem; border-radius:9999px; font-size:0.8rem; font-weight:600; }
+            me .header { display:flex; align-items:center; justify-content:space-between; padding:0.75rem 1rem; }
+            me .header-left { display:flex; align-items:center; gap:0.75rem; }
+            me .header-right { display:flex; align-items:center; gap:0.5rem; }
+            me .tag { padding:0.25rem 0.6rem; border-radius:4px; font-size:0.75rem; font-weight:600; color:white; }
+            me .full-name { font-size:1rem; font-weight:500; }
+            me .mod { color:#666; }
+            me .name { color:#e5e5e5; }
+            me .doc { margin:0; padding:0 1rem 0.5rem; color:#888; font-size:0.85rem; }
+            me .gh-btn { display:flex; align-items:center; gap:0.25rem; background:#333; border:1px solid #444; color:#ccc; padding:0.25rem 0.5rem; border-radius:4px; cursor:pointer; font-size:0.75rem; }
+            me .gh-link { text-decoration:none; }
+            me pre { background:#1a1a1a; border-top:1px solid #2a2a2a; margin:0; padding:0.5rem 0; }
+            me code { font-size:0.8rem; line-height:1.6; color:#ccc; counter-reset:line; }
+            me .code-line { display:block; padding-left:3.5em; white-space:pre-wrap; word-break:break-all; position:relative; }
+            me .code-line::before { content:counter(line); counter-increment:line; position:absolute; left:0; width:2.5em; text-align:right; color:#555; user-select:none; }
+        </style><span class="match-badge" data-show="$tags.length > 0 || $search.trim().length > 0" data-text="$match_node_app_internal_cookie_headers"></span><div class="header"><div class="header-left"><span class="tag" style="background:#10b981;">func</span><span class="full-name"><span class="mod">app.</span><span class="name">internal_cookie_headers</span></span></div><div class="header-right"></div></div><pre><code class="language-python" id="code-node-app-internal_cookie_headers"><span class="code-line"></span><span class="code-line">def internal_cookie_headers(req: dict) -&gt; list[tuple[str, str]]:</span><span class="code-line">    return [(&quot;set-cookie&quot;, internal_serialize_cookie(n, v, o))</span><span class="code-line">            for n, v, o in req[&quot;_cookies&quot;]]</span></code></pre></div><div id="node-app-create_relay" data-signals="{&quot;searchable_node_app_create_relay&quot;: &quot;create_relay app class create a pub sub relay for broadcasting events.  usage:     relay = create_relay()     relay.publish( chat.new , item)          # sync, thread-safe      async for topic, data in relay.subscribe( chat.* ):         yield patch_elements(render(data))   # async generator def create_relay():        create a pub sub relay for broadcasting events.      usage:         relay = create_relay()         relay.publish( chat.new , item)          # sync, thread-safe          async for topic, data in relay.subscribe( chat.* ):             yield patch_elements(render(data))   # async generator             subs: list[tuple[str, asyncio.queue]] = []     lock = threading.lock()      def publish(topic: str, data):         with lock:             targets = [(p, q) for p, q in subs if fnmatch(topic, p)]         for _, queue in targets:             try:    queue.put_nowait((topic, data))             except: pass  # noqa: e722 — never block the publisher      async def subscribe(pattern: str):         queue = asyncio.queue()         with lock: subs.append((pattern, queue))         try:             while true: yield await queue.get()         except (asyncio.cancellederror, generatorexit):             pass         finally:             with lock:                 try:    subs.remove((pattern, queue))                 except: pass  # noqa: e722      class _relay:         __slots__ = ( publish ,  subscribe )     r = _relay()     r.publish, r.subscribe = publish, subscribe     return r&quot;, &quot;match_node_app_create_relay&quot;: 0}" data-effect="$match_node_app_create_relay = [...$tags, $search.trim()].filter(t => t.length > 0 &amp;&amp; $searchable_node_app_create_relay.toLowerCase().includes(t.toLowerCase())).length" data-show="($tags.length === 0 &amp;&amp; $search.trim().length === 0) || $match_node_app_create_relay > 0" data-style:order="($tags.length === 0 &amp;&amp; $search.trim().length === 0) ? 0 : -$match_node_app_create_relay"><style>
+            me { margin-bottom:0.75rem; border-radius:8px; overflow:hidden; background:#1e1e1e; position:relative; }
+            me .match-badge { position:absolute; top:1rem; right:1rem; background:#3b82f6; color:white; padding:0.25rem 0.75rem; border-radius:9999px; font-size:0.8rem; font-weight:600; }
+            me .header { display:flex; align-items:center; justify-content:space-between; padding:0.75rem 1rem; }
+            me .header-left { display:flex; align-items:center; gap:0.75rem; }
+            me .header-right { display:flex; align-items:center; gap:0.5rem; }
+            me .tag { padding:0.25rem 0.6rem; border-radius:4px; font-size:0.75rem; font-weight:600; color:white; }
+            me .full-name { font-size:1rem; font-weight:500; }
+            me .mod { color:#666; }
+            me .name { color:#e5e5e5; }
+            me .doc { margin:0; padding:0 1rem 0.5rem; color:#888; font-size:0.85rem; }
+            me .gh-btn { display:flex; align-items:center; gap:0.25rem; background:#333; border:1px solid #444; color:#ccc; padding:0.25rem 0.5rem; border-radius:4px; cursor:pointer; font-size:0.75rem; }
+            me .gh-link { text-decoration:none; }
+            me pre { background:#1a1a1a; border-top:1px solid #2a2a2a; margin:0; padding:0.5rem 0; }
+            me code { font-size:0.8rem; line-height:1.6; color:#ccc; counter-reset:line; }
+            me .code-line { display:block; padding-left:3.5em; white-space:pre-wrap; word-break:break-all; position:relative; }
+            me .code-line::before { content:counter(line); counter-increment:line; position:absolute; left:0; width:2.5em; text-align:right; color:#555; user-select:none; }
+        </style><span class="match-badge" data-show="$tags.length > 0 || $search.trim().length > 0" data-text="$match_node_app_create_relay"></span><div class="header"><div class="header-left"><span class="tag" style="background:#8b5cf6;">class</span><span class="full-name"><span class="mod">app.</span><span class="name">create_relay</span></span></div><div class="header-right"></div></div><p class="doc">Create a pub/sub relay for broadcasting events.
+
+Usage:
+    relay = create_relay()
+    relay.publish(&quot;chat.new&quot;, item)          # sync, thread-safe
+
+    async for topic, data in relay.subscribe(&quot;chat.*&quot;):
+        yield patch_elements(render(data))   # async generator</p><pre><code class="language-python" id="code-node-app-create_relay"><span class="code-line">def create_relay():</span><span class="code-line">    &quot;&quot;&quot;Create a pub/sub relay for broadcasting events.</span><span class="code-line"></span><span class="code-line">    Usage:</span><span class="code-line">        relay = create_relay()</span><span class="code-line">        relay.publish(&quot;chat.new&quot;, item)          # sync, thread-safe</span><span class="code-line"></span><span class="code-line">        async for topic, data in relay.subscribe(&quot;chat.*&quot;):</span><span class="code-line">            yield patch_elements(render(data))   # async generator</span><span class="code-line">    &quot;&quot;&quot;</span><span class="code-line">    subs: list[tuple[str, asyncio.Queue]] = []</span><span class="code-line">    lock = threading.Lock()</span><span class="code-line"></span><span class="code-line">    def publish(topic: str, data):</span><span class="code-line">        with lock:</span><span class="code-line">            targets = [(p, q) for p, q in subs if fnmatch(topic, p)]</span><span class="code-line">        for _, queue in targets:</span><span class="code-line">            try:    queue.put_nowait((topic, data))</span><span class="code-line">            except: pass  # noqa: E722 — never block the publisher</span><span class="code-line"></span><span class="code-line">    async def subscribe(pattern: str):</span><span class="code-line">        queue = asyncio.Queue()</span><span class="code-line">        with lock: subs.append((pattern, queue))</span><span class="code-line">        try:</span><span class="code-line">            while True: yield await queue.get()</span><span class="code-line">        except (asyncio.CancelledError, GeneratorExit):</span><span class="code-line">            pass</span><span class="code-line">        finally:</span><span class="code-line">            with lock:</span><span class="code-line">                try:    subs.remove((pattern, queue))</span><span class="code-line">                except: pass  # noqa: E722</span><span class="code-line"></span><span class="code-line">    class _Relay:</span><span class="code-line">        __slots__ = (&quot;publish&quot;, &quot;subscribe&quot;)</span><span class="code-line">    r = _Relay()</span><span class="code-line">    r.publish, r.subscribe = publish, subscribe</span><span class="code-line">    return r</span></code></pre></div><div id="node-app-create_signer" data-signals="{&quot;searchable_node_app_create_signer&quot;: &quot;create_signer app class create an hmac-sha256 cookie signer.  usage:     signer = create_signer( my-secret )     set_cookie(req,  session , signer.sign( user42 ))     user = signer.unsign(req[ cookies ].get( session ,   )) def create_signer(secret: str | bytes | none = none):        create an hmac-sha256 cookie signer.      usage:         signer = create_signer( my-secret )         set_cookie(req,  session , signer.sign( user42 ))         user = signer.unsign(req[ cookies ].get( session ,   ))             if secret is none:          secret = os.urandom(32)     if isinstance(secret, str): secret = secret.encode()      def _b64e(data: bytes) -> str:         return base64.urlsafe_b64encode(data).rstrip(b = ).decode()     def _b64d(s: str) -> bytes:         return base64.urlsafe_b64decode((s +  =  * (-len(s) % 4)).encode())     def _mac(payload: str) -> str:         return _b64e(hmac.new(secret, payload.encode(), hashlib.sha256).digest())      def sign(value: str, ts: float | none = none) -> str:         ts = ts or time.time()         payload = f {_b64e(value.encode())}.{int(ts):x}          return f {payload}.{_mac(payload)}       def unsign(signed: str, max_age: int | none = 3600) -> str | none:         if not signed: return none         parts = signed.split( . )         if len(parts) != 3: return none         enc_value, ts_hex, sig = parts         payload = f {enc_value}.{ts_hex}          if not hmac.compare_digest(sig, _mac(payload)): return none         if max_age is not none:             try:    ts = int(ts_hex, 16)             except: return none  # noqa: e722             if time.time() - ts > max_age: return none         try:    return _b64d(enc_value).decode()         except: return none  # noqa: e722      class _signer:         __slots__ = ( sign ,  unsign )     s = _signer()     s.sign, s.unsign = sign, unsign     return s&quot;, &quot;match_node_app_create_signer&quot;: 0}" data-effect="$match_node_app_create_signer = [...$tags, $search.trim()].filter(t => t.length > 0 &amp;&amp; $searchable_node_app_create_signer.toLowerCase().includes(t.toLowerCase())).length" data-show="($tags.length === 0 &amp;&amp; $search.trim().length === 0) || $match_node_app_create_signer > 0" data-style:order="($tags.length === 0 &amp;&amp; $search.trim().length === 0) ? 0 : -$match_node_app_create_signer"><style>
+            me { margin-bottom:0.75rem; border-radius:8px; overflow:hidden; background:#1e1e1e; position:relative; }
+            me .match-badge { position:absolute; top:1rem; right:1rem; background:#3b82f6; color:white; padding:0.25rem 0.75rem; border-radius:9999px; font-size:0.8rem; font-weight:600; }
+            me .header { display:flex; align-items:center; justify-content:space-between; padding:0.75rem 1rem; }
+            me .header-left { display:flex; align-items:center; gap:0.75rem; }
+            me .header-right { display:flex; align-items:center; gap:0.5rem; }
+            me .tag { padding:0.25rem 0.6rem; border-radius:4px; font-size:0.75rem; font-weight:600; color:white; }
+            me .full-name { font-size:1rem; font-weight:500; }
+            me .mod { color:#666; }
+            me .name { color:#e5e5e5; }
+            me .doc { margin:0; padding:0 1rem 0.5rem; color:#888; font-size:0.85rem; }
+            me .gh-btn { display:flex; align-items:center; gap:0.25rem; background:#333; border:1px solid #444; color:#ccc; padding:0.25rem 0.5rem; border-radius:4px; cursor:pointer; font-size:0.75rem; }
+            me .gh-link { text-decoration:none; }
+            me pre { background:#1a1a1a; border-top:1px solid #2a2a2a; margin:0; padding:0.5rem 0; }
+            me code { font-size:0.8rem; line-height:1.6; color:#ccc; counter-reset:line; }
+            me .code-line { display:block; padding-left:3.5em; white-space:pre-wrap; word-break:break-all; position:relative; }
+            me .code-line::before { content:counter(line); counter-increment:line; position:absolute; left:0; width:2.5em; text-align:right; color:#555; user-select:none; }
+        </style><span class="match-badge" data-show="$tags.length > 0 || $search.trim().length > 0" data-text="$match_node_app_create_signer"></span><div class="header"><div class="header-left"><span class="tag" style="background:#8b5cf6;">class</span><span class="full-name"><span class="mod">app.</span><span class="name">create_signer</span></span></div><div class="header-right"></div></div><p class="doc">Create an HMAC-SHA256 cookie signer.
+
+Usage:
+    signer = create_signer(&quot;my-secret&quot;)
+    set_cookie(req, &quot;session&quot;, signer.sign(&quot;user42&quot;))
+    user = signer.unsign(req[&quot;cookies&quot;].get(&quot;session&quot;, &quot;&quot;))</p><pre><code class="language-python" id="code-node-app-create_signer"><span class="code-line">def create_signer(secret: str | bytes | None = None):</span><span class="code-line">    &quot;&quot;&quot;Create an HMAC-SHA256 cookie signer.</span><span class="code-line"></span><span class="code-line">    Usage:</span><span class="code-line">        signer = create_signer(&quot;my-secret&quot;)</span><span class="code-line">        set_cookie(req, &quot;session&quot;, signer.sign(&quot;user42&quot;))</span><span class="code-line">        user = signer.unsign(req[&quot;cookies&quot;].get(&quot;session&quot;, &quot;&quot;))</span><span class="code-line">    &quot;&quot;&quot;</span><span class="code-line">    if secret is None:          secret = os.urandom(32)</span><span class="code-line">    if isinstance(secret, str): secret = secret.encode()</span><span class="code-line"></span><span class="code-line">    def _b64e(data: bytes) -&gt; str:</span><span class="code-line">        return base64.urlsafe_b64encode(data).rstrip(b&quot;=&quot;).decode()</span><span class="code-line">    def _b64d(s: str) -&gt; bytes:</span><span class="code-line">        return base64.urlsafe_b64decode((s + &quot;=&quot; * (-len(s) % 4)).encode())</span><span class="code-line">    def _mac(payload: str) -&gt; str:</span><span class="code-line">        return _b64e(hmac.new(secret, payload.encode(), hashlib.sha256).digest())</span><span class="code-line"></span><span class="code-line">    def sign(value: str, ts: float | None = None) -&gt; str:</span><span class="code-line">        ts = ts or time.time()</span><span class="code-line">        payload = f&quot;{_b64e(value.encode())}.{int(ts):x}&quot;</span><span class="code-line">        return f&quot;{payload}.{_mac(payload)}&quot;</span><span class="code-line"></span><span class="code-line">    def unsign(signed: str, max_age: int | None = 3600) -&gt; str | None:</span><span class="code-line">        if not signed: return None</span><span class="code-line">        parts = signed.split(&quot;.&quot;)</span><span class="code-line">        if len(parts) != 3: return None</span><span class="code-line">        enc_value, ts_hex, sig = parts</span><span class="code-line">        payload = f&quot;{enc_value}.{ts_hex}&quot;</span><span class="code-line">        if not hmac.compare_digest(sig, _mac(payload)): return None</span><span class="code-line">        if max_age is not None:</span><span class="code-line">            try:    ts = int(ts_hex, 16)</span><span class="code-line">            except: return None  # noqa: E722</span><span class="code-line">            if time.time() - ts &gt; max_age: return None</span><span class="code-line">        try:    return _b64d(enc_value).decode()</span><span class="code-line">        except: return None  # noqa: E722</span><span class="code-line"></span><span class="code-line">    class _Signer:</span><span class="code-line">        __slots__ = (&quot;sign&quot;, &quot;unsign&quot;)</span><span class="code-line">    s = _Signer()</span><span class="code-line">    s.sign, s.unsign = sign, unsign</span><span class="code-line">    return s</span></code></pre></div><div id="node-app-static" data-signals="{&quot;searchable_node_app_static&quot;: &quot;static app func mount a directory or single file for static serving.  uses rsgi response_file for zero-copy file i o from rust.  usage:     static(app,   static ,  static  )     static(app,   favicon.svg ,  favicon.svg ) def static(app, url_prefix: str, directory: str):        mount a directory or single file for static serving.      uses rsgi response_file for zero-copy file i o from rust.      usage:         static(app,   static ,  static  )         static(app,   favicon.svg ,  favicon.svg )             directory = os.path.abspath(directory)      if os.path.isfile(directory):         async def serve_single(req):             proto = req[ _proto ]             proto.response_file(200, [                 ( cache-control ,  public, max-age=3600 ),             ], directory)         app.get(url_prefix)(serve_single)         return      async def serve_dir(req):         rel = req[ params ].get( path ,   )         if not rel: return none         full = os.path.normpath(os.path.join(directory, rel))         if not full.startswith(directory) or not os.path.isfile(full):             return none         proto = req[ _proto ]         proto.response_file(200, [             ( cache-control ,  public, max-age=0, must-revalidate ),         ], full)         req[ _sent ] = true      app.mount(url_prefix.rstrip(   ), serve_dir)&quot;, &quot;match_node_app_static&quot;: 0}" data-effect="$match_node_app_static = [...$tags, $search.trim()].filter(t => t.length > 0 &amp;&amp; $searchable_node_app_static.toLowerCase().includes(t.toLowerCase())).length" data-show="($tags.length === 0 &amp;&amp; $search.trim().length === 0) || $match_node_app_static > 0" data-style:order="($tags.length === 0 &amp;&amp; $search.trim().length === 0) ? 0 : -$match_node_app_static"><style>
+            me { margin-bottom:0.75rem; border-radius:8px; overflow:hidden; background:#1e1e1e; position:relative; }
+            me .match-badge { position:absolute; top:1rem; right:1rem; background:#3b82f6; color:white; padding:0.25rem 0.75rem; border-radius:9999px; font-size:0.8rem; font-weight:600; }
+            me .header { display:flex; align-items:center; justify-content:space-between; padding:0.75rem 1rem; }
+            me .header-left { display:flex; align-items:center; gap:0.75rem; }
+            me .header-right { display:flex; align-items:center; gap:0.5rem; }
+            me .tag { padding:0.25rem 0.6rem; border-radius:4px; font-size:0.75rem; font-weight:600; color:white; }
+            me .full-name { font-size:1rem; font-weight:500; }
+            me .mod { color:#666; }
+            me .name { color:#e5e5e5; }
+            me .doc { margin:0; padding:0 1rem 0.5rem; color:#888; font-size:0.85rem; }
+            me .gh-btn { display:flex; align-items:center; gap:0.25rem; background:#333; border:1px solid #444; color:#ccc; padding:0.25rem 0.5rem; border-radius:4px; cursor:pointer; font-size:0.75rem; }
+            me .gh-link { text-decoration:none; }
+            me pre { background:#1a1a1a; border-top:1px solid #2a2a2a; margin:0; padding:0.5rem 0; }
+            me code { font-size:0.8rem; line-height:1.6; color:#ccc; counter-reset:line; }
+            me .code-line { display:block; padding-left:3.5em; white-space:pre-wrap; word-break:break-all; position:relative; }
+            me .code-line::before { content:counter(line); counter-increment:line; position:absolute; left:0; width:2.5em; text-align:right; color:#555; user-select:none; }
+        </style><span class="match-badge" data-show="$tags.length > 0 || $search.trim().length > 0" data-text="$match_node_app_static"></span><div class="header"><div class="header-left"><span class="tag" style="background:#10b981;">func</span><span class="full-name"><span class="mod">app.</span><span class="name">static</span></span></div><div class="header-right"></div></div><p class="doc">Mount a directory or single file for static serving.
+
+Uses RSGI response_file for zero-copy file I/O from Rust.
+
+Usage:
+    static(app, &quot;/static&quot;, &quot;static/&quot;)
+    static(app, &quot;/favicon.svg&quot;, &quot;favicon.svg&quot;)</p><pre><code class="language-python" id="code-node-app-static"><span class="code-line">def static(app, url_prefix: str, directory: str):</span><span class="code-line">    &quot;&quot;&quot;Mount a directory or single file for static serving.</span><span class="code-line"></span><span class="code-line">    Uses RSGI response_file for zero-copy file I/O from Rust.</span><span class="code-line"></span><span class="code-line">    Usage:</span><span class="code-line">        static(app, &quot;/static&quot;, &quot;static/&quot;)</span><span class="code-line">        static(app, &quot;/favicon.svg&quot;, &quot;favicon.svg&quot;)</span><span class="code-line">    &quot;&quot;&quot;</span><span class="code-line">    directory = os.path.abspath(directory)</span><span class="code-line"></span><span class="code-line">    if os.path.isfile(directory):</span><span class="code-line">        async def serve_single(req):</span><span class="code-line">            proto = req[&quot;_proto&quot;]</span><span class="code-line">            proto.response_file(200, [</span><span class="code-line">                (&quot;cache-control&quot;, &quot;public, max-age=3600&quot;),</span><span class="code-line">            ], directory)</span><span class="code-line">        app.get(url_prefix)(serve_single)</span><span class="code-line">        return</span><span class="code-line"></span><span class="code-line">    async def serve_dir(req):</span><span class="code-line">        rel = req[&quot;params&quot;].get(&quot;path&quot;, &quot;&quot;)</span><span class="code-line">        if not rel: return None</span><span class="code-line">        full = os.path.normpath(os.path.join(directory, rel))</span><span class="code-line">        if not full.startswith(directory) or not os.path.isfile(full):</span><span class="code-line">            return None</span><span class="code-line">        proto = req[&quot;_proto&quot;]</span><span class="code-line">        proto.response_file(200, [</span><span class="code-line">            (&quot;cache-control&quot;, &quot;public, max-age=0, must-revalidate&quot;),</span><span class="code-line">        ], full)</span><span class="code-line">        req[&quot;_sent&quot;] = True</span><span class="code-line"></span><span class="code-line">    app.mount(url_prefix.rstrip(&quot;/&quot;), serve_dir)</span></code></pre></div><div id="node-app-create_app" data-signals="{&quot;searchable_node_app_create_app&quot;: &quot;create_app app func create a datastar rsgi application.  handler return protocol:     str | tag   → 200 html response     dict        → 200 json response     none        → 204 no content     (url, int)  → redirect (3xx) or text response (4xx 5xx)     async gen   → sse stream  usage:     app = create_app()      @app.before     async def auth(req):         req[ user ] = get_user(req)      @app.get(   )     async def index(req):         return  &lt;h1>hello&lt; h1>       @app.get(  feed )     async def feed(req):         while true:             yield patch_elements( &lt;div id= t >...&lt; div> )             await asyncio.sleep(1)      # run with: granian --interface rsgi module:app def create_app(routes: dict | none = none):        create a datastar rsgi application.      handler return protocol:         str | tag   → 200 html response         dict        → 200 json response         none        → 204 no content         (url, int)  → redirect (3xx) or text response (4xx 5xx)         async gen   → sse stream      usage:         app = create_app()          @app.before         async def auth(req):             req[ user ] = get_user(req)          @app.get(   )         async def index(req):             return  &lt;h1>hello&lt; h1>           @app.get(  feed )         async def feed(req):             while true:                 yield patch_elements( &lt;div id= t >...&lt; div> )                 await asyncio.sleep(1)          # run with: granian --interface rsgi module:app             if routes is none:         routes = {}      param_routes = []     mounts = []     before_hooks = []      def _path_re(path):         return re.compile( ^  + param_re.sub(r (?p&lt; 1>[^ ]+) , path) +  $ )      # ── routing decorators ───────────────────────────────────      def route(method: str, path: str):         def decorator(fn):             if  {  in path:                 param_routes.append((method.upper(), _path_re(path), fn))             else:                 routes[(method.upper(), path)] = fn             return fn         return decorator      def mount(prefix, fn):         mounts.append((prefix.rstrip(   ), fn))         mounts.sort(key=lambda x: -len(x[0]))      def get(path):    return route( get , path)     def post(path):   return route( post , path)     def put(path):    return route( put , path)     def patch(path):  return route( patch , path)     def delete(path): return route( delete , path)      # ── beforeware ───────────────────────────────────────────      def before(fn=none, *, methods=none):            register a beforeware hook.          return none to continue, or any response value to short-circuit.              @app.before             async def auth(req): ...              @app.before(methods=[ post ])             async def require_login(req): ...                     def decorator(f):             m = {x.upper() for x in methods} if methods else none             before_hooks.append((f, m))             return f         if fn is not none:             before_hooks.append((fn, none))             return fn         return decorator      # ── response dispatch ────────────────────────────────────      def _respond(proto, req, result):            send a handler result via the rsgi protocol.            headers = _cookie_headers(req)          if isinstance(result, tuple) and len(result) == 2:             content, status = result             if isinstance(status, int) and 300 &lt;= status &lt; 400:                 headers.append(( location , content))                 proto.response_empty(status, headers)             elif isinstance(status, int):                 headers.append(( content-type ,  text html; charset=utf-8 ))                 proto.response_str(status, headers, content)             return          if isinstance(result, tag):             result = to_html(result)          if isinstance(result, str):             headers.append(( content-type ,  text html; charset=utf-8 ))             proto.response_str(200, headers, result)         elif isinstance(result, dict):             headers.append(( content-type ,  application json ))             proto.response_str(200, headers, json.dumps(result))         elif result is none:             proto.response_empty(204, headers)         else:             headers.append(( content-type ,  text plain; charset=utf-8 ))             proto.response_str(500, headers,                 f unsupported return type: {type(result).__name__} )      # ── sse keepalive ────────────────────────────────────────      async def _keepalive(transport, closed: asyncio.event, interval: int = 15):         try:             while not closed.is_set():                 await asyncio.sleep(interval)                 if not closed.is_set():                     await transport.send_str( : n n )         except (asyncio.cancellederror, exception):             pass      # ── rsgi entrypoint ──────────────────────────────────────      async def handle(scope, proto):         if scope.proto !=  http :             return          req = internal_parse_request(scope, proto)         req[ params ] = {}          # resolve handler: exact → parameterised → prefix mount         handler = routes.get((req[ method ], req[ path ]))         if handler is none:             for method, pattern, fn in param_routes:                 if method == req[ method ]:                     m = pattern.match(req[ path ])                     if m:                         req[ params ] = m.groupdict()                         handler = fn                         break         if handler is none:             for prefix, fn in mounts:                 if req[ path ] == prefix or req[ path ].startswith(prefix +    ):                     req[ params ][ path ] = req[ path ][len(prefix) + 1:]                     handler = fn                     break         if handler is none:             proto.response_str(404, [( content-type ,  text plain )],  not found )             return          try:             # beforeware             for hook, methods in before_hooks:                 if methods and req[ method ] not in methods:                     continue                 hook_result = hook(req)                 if inspect.isawaitable(hook_result):                     hook_result = await hook_result                 if hook_result is not none:                     _respond(proto, req, hook_result)                     return              result = handler(req)              if inspect.isasyncgen(result):                 # ── sse stream ───────────────────────────────                 closed = asyncio.event()                 headers = [                     ( content-type ,       text event-stream ),                     ( cache-control ,      no-cache ),                     ( x-accel-buffering ,  no ),                 ] + _cookie_headers(req)                  transport = proto.response_stream(200, headers)                 disconnect = asyncio.ensure_future(proto.client_disconnect())                 keepalive = asyncio.create_task(_keepalive(transport, closed))                  def _on_disconnect(fut):                     closed.set()                 disconnect.add_done_callback(_on_disconnect)                  try:                     async for event in result:                         if closed.is_set():                             break                         await transport.send_str(event)                 finally:                     keepalive.cancel()                     disconnect.cancel()             else:                 # ── request response ─────────────────────────                 result = await result                 if req.get( _sent ):                     return                 _respond(proto, req, result)          except exception:             traceback.print_exc()             try:                 proto.response_str(500,                     [( content-type ,  text plain )],                      internal server error )             except: pass  # noqa: e722      handle.route  = route     handle.get    = get     handle.post   = post     handle.put    = put     handle.patch  = patch     handle.delete = delete     handle.mount  = mount     handle.before = before     return handle&quot;, &quot;match_node_app_create_app&quot;: 0}" data-effect="$match_node_app_create_app = [...$tags, $search.trim()].filter(t => t.length > 0 &amp;&amp; $searchable_node_app_create_app.toLowerCase().includes(t.toLowerCase())).length" data-show="($tags.length === 0 &amp;&amp; $search.trim().length === 0) || $match_node_app_create_app > 0" data-style:order="($tags.length === 0 &amp;&amp; $search.trim().length === 0) ? 0 : -$match_node_app_create_app"><style>
+            me { margin-bottom:0.75rem; border-radius:8px; overflow:hidden; background:#1e1e1e; position:relative; }
+            me .match-badge { position:absolute; top:1rem; right:1rem; background:#3b82f6; color:white; padding:0.25rem 0.75rem; border-radius:9999px; font-size:0.8rem; font-weight:600; }
+            me .header { display:flex; align-items:center; justify-content:space-between; padding:0.75rem 1rem; }
+            me .header-left { display:flex; align-items:center; gap:0.75rem; }
+            me .header-right { display:flex; align-items:center; gap:0.5rem; }
+            me .tag { padding:0.25rem 0.6rem; border-radius:4px; font-size:0.75rem; font-weight:600; color:white; }
+            me .full-name { font-size:1rem; font-weight:500; }
+            me .mod { color:#666; }
+            me .name { color:#e5e5e5; }
+            me .doc { margin:0; padding:0 1rem 0.5rem; color:#888; font-size:0.85rem; }
+            me .gh-btn { display:flex; align-items:center; gap:0.25rem; background:#333; border:1px solid #444; color:#ccc; padding:0.25rem 0.5rem; border-radius:4px; cursor:pointer; font-size:0.75rem; }
+            me .gh-link { text-decoration:none; }
+            me pre { background:#1a1a1a; border-top:1px solid #2a2a2a; margin:0; padding:0.5rem 0; }
+            me code { font-size:0.8rem; line-height:1.6; color:#ccc; counter-reset:line; }
+            me .code-line { display:block; padding-left:3.5em; white-space:pre-wrap; word-break:break-all; position:relative; }
+            me .code-line::before { content:counter(line); counter-increment:line; position:absolute; left:0; width:2.5em; text-align:right; color:#555; user-select:none; }
+        </style><span class="match-badge" data-show="$tags.length > 0 || $search.trim().length > 0" data-text="$match_node_app_create_app"></span><div class="header"><div class="header-left"><span class="tag" style="background:#10b981;">func</span><span class="full-name"><span class="mod">app.</span><span class="name">create_app</span></span></div><div class="header-right"></div></div><p class="doc">Create a Datastar RSGI application.
+
+Handler return protocol:
+    str | Tag   → 200 HTML response
+    dict        → 200 JSON response
+    None        → 204 No Content
+    (url, int)  → redirect (3xx) or text response (4xx/5xx)
+    async gen   → SSE stream
+
+Usage:
+    app = create_app()
+
+    @app.before
+    async def auth(req):
+        req[&quot;user&quot;] = get_user(req)
+
+    @app.get(&quot;/&quot;)
+    async def index(req):
+        return &quot;&lt;h1&gt;Hello&lt;/h1&gt;&quot;
+
+    @app.get(&quot;/feed&quot;)
+    async def feed(req):
+        while True:
+            yield patch_elements(&#x27;&lt;div id=&quot;t&quot;&gt;...&lt;/div&gt;&#x27;)
+            await asyncio.sleep(1)
+
+    # Run with: granian --interface rsgi module:app</p><pre><code class="language-python" id="code-node-app-create_app"><span class="code-line">def create_app(routes: dict | None = None):</span><span class="code-line">    &quot;&quot;&quot;Create a Datastar RSGI application.</span><span class="code-line"></span><span class="code-line">    Handler return protocol:</span><span class="code-line">        str | Tag   → 200 HTML response</span><span class="code-line">        dict        → 200 JSON response</span><span class="code-line">        None        → 204 No Content</span><span class="code-line">        (url, int)  → redirect (3xx) or text response (4xx/5xx)</span><span class="code-line">        async gen   → SSE stream</span><span class="code-line"></span><span class="code-line">    Usage:</span><span class="code-line">        app = create_app()</span><span class="code-line"></span><span class="code-line">        @app.before</span><span class="code-line">        async def auth(req):</span><span class="code-line">            req[&quot;user&quot;] = get_user(req)</span><span class="code-line"></span><span class="code-line">        @app.get(&quot;/&quot;)</span><span class="code-line">        async def index(req):</span><span class="code-line">            return &quot;&lt;h1&gt;Hello&lt;/h1&gt;&quot;</span><span class="code-line"></span><span class="code-line">        @app.get(&quot;/feed&quot;)</span><span class="code-line">        async def feed(req):</span><span class="code-line">            while True:</span><span class="code-line">                yield patch_elements(&#x27;&lt;div id=&quot;t&quot;&gt;...&lt;/div&gt;&#x27;)</span><span class="code-line">                await asyncio.sleep(1)</span><span class="code-line"></span><span class="code-line">        # Run with: granian --interface rsgi module:app</span><span class="code-line">    &quot;&quot;&quot;</span><span class="code-line">    if routes is None:</span><span class="code-line">        routes = {}</span><span class="code-line"></span><span class="code-line">    param_routes = []</span><span class="code-line">    mounts = []</span><span class="code-line">    before_hooks = []</span><span class="code-line"></span><span class="code-line">    def _path_re(path):</span><span class="code-line">        return re.compile(&quot;^&quot; + PARAM_RE.sub(r&quot;(?P&lt;\1&gt;[^/]+)&quot;, path) + &quot;$&quot;)</span><span class="code-line"></span><span class="code-line">    # ── Routing decorators ───────────────────────────────────</span><span class="code-line"></span><span class="code-line">    def route(method: str, path: str):</span><span class="code-line">        def decorator(fn):</span><span class="code-line">            if &quot;{&quot; in path:</span><span class="code-line">                param_routes.append((method.upper(), _path_re(path), fn))</span><span class="code-line">            else:</span><span class="code-line">                routes[(method.upper(), path)] = fn</span><span class="code-line">            return fn</span><span class="code-line">        return decorator</span><span class="code-line"></span><span class="code-line">    def mount(prefix, fn):</span><span class="code-line">        mounts.append((prefix.rstrip(&quot;/&quot;), fn))</span><span class="code-line">        mounts.sort(key=lambda x: -len(x[0]))</span><span class="code-line"></span><span class="code-line">    def get(path):    return route(&quot;GET&quot;, path)</span><span class="code-line">    def post(path):   return route(&quot;POST&quot;, path)</span><span class="code-line">    def put(path):    return route(&quot;PUT&quot;, path)</span><span class="code-line">    def patch(path):  return route(&quot;PATCH&quot;, path)</span><span class="code-line">    def delete(path): return route(&quot;DELETE&quot;, path)</span><span class="code-line"></span><span class="code-line">    # ── Beforeware ───────────────────────────────────────────</span><span class="code-line"></span><span class="code-line">    def before(fn=None, *, methods=None):</span><span class="code-line">        &quot;&quot;&quot;Register a beforeware hook.</span><span class="code-line"></span><span class="code-line">        Return None to continue, or any response value to short-circuit.</span><span class="code-line"></span><span class="code-line">            @app.before</span><span class="code-line">            async def auth(req): ...</span><span class="code-line"></span><span class="code-line">            @app.before(methods=[&quot;POST&quot;])</span><span class="code-line">            async def require_login(req): ...</span><span class="code-line">        &quot;&quot;&quot;</span><span class="code-line">        def decorator(f):</span><span class="code-line">            m = {x.upper() for x in methods} if methods else None</span><span class="code-line">            before_hooks.append((f, m))</span><span class="code-line">            return f</span><span class="code-line">        if fn is not None:</span><span class="code-line">            before_hooks.append((fn, None))</span><span class="code-line">            return fn</span><span class="code-line">        return decorator</span><span class="code-line"></span><span class="code-line">    # ── Response dispatch ────────────────────────────────────</span><span class="code-line"></span><span class="code-line">    def _respond(proto, req, result):</span><span class="code-line">        &quot;&quot;&quot;Send a handler result via the RSGI protocol.&quot;&quot;&quot;</span><span class="code-line">        headers = _cookie_headers(req)</span><span class="code-line"></span><span class="code-line">        if isinstance(result, tuple) and len(result) == 2:</span><span class="code-line">            content, status = result</span><span class="code-line">            if isinstance(status, int) and 300 &lt;= status &lt; 400:</span><span class="code-line">                headers.append((&quot;location&quot;, content))</span><span class="code-line">                proto.response_empty(status, headers)</span><span class="code-line">            elif isinstance(status, int):</span><span class="code-line">                headers.append((&quot;content-type&quot;, &quot;text/html; charset=utf-8&quot;))</span><span class="code-line">                proto.response_str(status, headers, content)</span><span class="code-line">            return</span><span class="code-line"></span><span class="code-line">        if isinstance(result, Tag):</span><span class="code-line">            result = to_html(result)</span><span class="code-line"></span><span class="code-line">        if isinstance(result, str):</span><span class="code-line">            headers.append((&quot;content-type&quot;, &quot;text/html; charset=utf-8&quot;))</span><span class="code-line">            proto.response_str(200, headers, result)</span><span class="code-line">        elif isinstance(result, dict):</span><span class="code-line">            headers.append((&quot;content-type&quot;, &quot;application/json&quot;))</span><span class="code-line">            proto.response_str(200, headers, json.dumps(result))</span><span class="code-line">        elif result is None:</span><span class="code-line">            proto.response_empty(204, headers)</span><span class="code-line">        else:</span><span class="code-line">            headers.append((&quot;content-type&quot;, &quot;text/plain; charset=utf-8&quot;))</span><span class="code-line">            proto.response_str(500, headers,</span><span class="code-line">                f&quot;Unsupported return type: {type(result).__name__}&quot;)</span><span class="code-line"></span><span class="code-line">    # ── SSE keepalive ────────────────────────────────────────</span><span class="code-line"></span><span class="code-line">    async def _keepalive(transport, closed: asyncio.Event, interval: int = 15):</span><span class="code-line">        try:</span><span class="code-line">            while not closed.is_set():</span><span class="code-line">                await asyncio.sleep(interval)</span><span class="code-line">                if not closed.is_set():</span><span class="code-line">                    await transport.send_str(&quot;:\n\n&quot;)</span><span class="code-line">        except (asyncio.CancelledError, Exception):</span><span class="code-line">            pass</span><span class="code-line"></span><span class="code-line">    # ── RSGI entrypoint ──────────────────────────────────────</span><span class="code-line"></span><span class="code-line">    async def handle(scope, proto):</span><span class="code-line">        if scope.proto != &quot;http&quot;:</span><span class="code-line">            return</span><span class="code-line"></span><span class="code-line">        req = internal_parse_request(scope, proto)</span><span class="code-line">        req[&quot;params&quot;] = {}</span><span class="code-line"></span><span class="code-line">        # Resolve handler: exact → parameterised → prefix mount</span><span class="code-line">        handler = routes.get((req[&quot;method&quot;], req[&quot;path&quot;]))</span><span class="code-line">        if handler is None:</span><span class="code-line">            for method, pattern, fn in param_routes:</span><span class="code-line">                if method == req[&quot;method&quot;]:</span><span class="code-line">                    m = pattern.match(req[&quot;path&quot;])</span><span class="code-line">                    if m:</span><span class="code-line">                        req[&quot;params&quot;] = m.groupdict()</span><span class="code-line">                        handler = fn</span><span class="code-line">                        break</span><span class="code-line">        if handler is None:</span><span class="code-line">            for prefix, fn in mounts:</span><span class="code-line">                if req[&quot;path&quot;] == prefix or req[&quot;path&quot;].startswith(prefix + &quot;/&quot;):</span><span class="code-line">                    req[&quot;params&quot;][&quot;path&quot;] = req[&quot;path&quot;][len(prefix) + 1:]</span><span class="code-line">                    handler = fn</span><span class="code-line">                    break</span><span class="code-line">        if handler is None:</span><span class="code-line">            proto.response_str(404, [(&quot;content-type&quot;, &quot;text/plain&quot;)], &quot;Not Found&quot;)</span><span class="code-line">            return</span><span class="code-line"></span><span class="code-line">        try:</span><span class="code-line">            # Beforeware</span><span class="code-line">            for hook, methods in before_hooks:</span><span class="code-line">                if methods and req[&quot;method&quot;] not in methods:</span><span class="code-line">                    continue</span><span class="code-line">                hook_result = hook(req)</span><span class="code-line">                if inspect.isawaitable(hook_result):</span><span class="code-line">                    hook_result = await hook_result</span><span class="code-line">                if hook_result is not None:</span><span class="code-line">                    _respond(proto, req, hook_result)</span><span class="code-line">                    return</span><span class="code-line"></span><span class="code-line">            result = handler(req)</span><span class="code-line"></span><span class="code-line">            if inspect.isasyncgen(result):</span><span class="code-line">                # ── SSE stream ───────────────────────────────</span><span class="code-line">                closed = asyncio.Event()</span><span class="code-line">                headers = [</span><span class="code-line">                    (&quot;content-type&quot;,      &quot;text/event-stream&quot;),</span><span class="code-line">                    (&quot;cache-control&quot;,     &quot;no-cache&quot;),</span><span class="code-line">                    (&quot;x-accel-buffering&quot;, &quot;no&quot;),</span><span class="code-line">                ] + _cookie_headers(req)</span><span class="code-line"></span><span class="code-line">                transport = proto.response_stream(200, headers)</span><span class="code-line">                disconnect = asyncio.ensure_future(proto.client_disconnect())</span><span class="code-line">                keepalive = asyncio.create_task(_keepalive(transport, closed))</span><span class="code-line"></span><span class="code-line">                def _on_disconnect(fut):</span><span class="code-line">                    closed.set()</span><span class="code-line">                disconnect.add_done_callback(_on_disconnect)</span><span class="code-line"></span><span class="code-line">                try:</span><span class="code-line">                    async for event in result:</span><span class="code-line">                        if closed.is_set():</span><span class="code-line">                            break</span><span class="code-line">                        await transport.send_str(event)</span><span class="code-line">                finally:</span><span class="code-line">                    keepalive.cancel()</span><span class="code-line">                    disconnect.cancel()</span><span class="code-line">            else:</span><span class="code-line">                # ── Request/Response ─────────────────────────</span><span class="code-line">                result = await result</span><span class="code-line">                if req.get(&quot;_sent&quot;):</span><span class="code-line">                    return</span><span class="code-line">                _respond(proto, req, result)</span><span class="code-line"></span><span class="code-line">        except Exception:</span><span class="code-line">            traceback.print_exc()</span><span class="code-line">            try:</span><span class="code-line">                proto.response_str(500,</span><span class="code-line">                    [(&quot;content-type&quot;, &quot;text/plain&quot;)],</span><span class="code-line">                    &quot;Internal Server Error&quot;)</span><span class="code-line">            except: pass  # noqa: E722</span><span class="code-line"></span><span class="code-line">    handle.route  = route</span><span class="code-line">    handle.get    = get</span><span class="code-line">    handle.post   = post</span><span class="code-line">    handle.put    = put</span><span class="code-line">    handle.patch  = patch</span><span class="code-line">    handle.delete = delete</span><span class="code-line">    handle.mount  = mount</span><span class="code-line">    handle.before = before</span><span class="code-line">    return handle</span></code></pre></div><div id="node-app-serve" data-signals="{&quot;searchable_node_app_serve&quot;: &quot;serve app func run an app with granian s embedded rsgi server.  turns a py-sse app into a self-contained script:      app = create_app()      @app.get(   )     async def index(req):         return  &lt;h1>hello&lt; h1>       if __name__ ==  __main__ :         serve(app)  any extra keyword arguments are forwarded to granian.server.embed.server (e.g. log_access=true, websockets=false, ssl_cert=...). def serve(app, *, host: str =  127.0.0.1 , port: int = 8000, **kwargs):        run an app with granian s embedded rsgi server.      turns a py-sse app into a self-contained script:          app = create_app()          @app.get(   )         async def index(req):             return  &lt;h1>hello&lt; h1>           if __name__ ==  __main__ :             serve(app)      any extra keyword arguments are forwarded to granian.server.embed.server     (e.g. log_access=true, websockets=false, ssl_cert=...).             from granian.server.embed import server     from granian.constants import interfaces      server = server(app, address=host, port=port, interface=interfaces.rsgi, **kwargs)      async def _run():         await server.serve()      try:         asyncio.run(_run())     except keyboardinterrupt:         pass&quot;, &quot;match_node_app_serve&quot;: 0}" data-effect="$match_node_app_serve = [...$tags, $search.trim()].filter(t => t.length > 0 &amp;&amp; $searchable_node_app_serve.toLowerCase().includes(t.toLowerCase())).length" data-show="($tags.length === 0 &amp;&amp; $search.trim().length === 0) || $match_node_app_serve > 0" data-style:order="($tags.length === 0 &amp;&amp; $search.trim().length === 0) ? 0 : -$match_node_app_serve"><style>
+            me { margin-bottom:0.75rem; border-radius:8px; overflow:hidden; background:#1e1e1e; position:relative; }
+            me .match-badge { position:absolute; top:1rem; right:1rem; background:#3b82f6; color:white; padding:0.25rem 0.75rem; border-radius:9999px; font-size:0.8rem; font-weight:600; }
+            me .header { display:flex; align-items:center; justify-content:space-between; padding:0.75rem 1rem; }
+            me .header-left { display:flex; align-items:center; gap:0.75rem; }
+            me .header-right { display:flex; align-items:center; gap:0.5rem; }
+            me .tag { padding:0.25rem 0.6rem; border-radius:4px; font-size:0.75rem; font-weight:600; color:white; }
+            me .full-name { font-size:1rem; font-weight:500; }
+            me .mod { color:#666; }
+            me .name { color:#e5e5e5; }
+            me .doc { margin:0; padding:0 1rem 0.5rem; color:#888; font-size:0.85rem; }
+            me .gh-btn { display:flex; align-items:center; gap:0.25rem; background:#333; border:1px solid #444; color:#ccc; padding:0.25rem 0.5rem; border-radius:4px; cursor:pointer; font-size:0.75rem; }
+            me .gh-link { text-decoration:none; }
+            me pre { background:#1a1a1a; border-top:1px solid #2a2a2a; margin:0; padding:0.5rem 0; }
+            me code { font-size:0.8rem; line-height:1.6; color:#ccc; counter-reset:line; }
+            me .code-line { display:block; padding-left:3.5em; white-space:pre-wrap; word-break:break-all; position:relative; }
+            me .code-line::before { content:counter(line); counter-increment:line; position:absolute; left:0; width:2.5em; text-align:right; color:#555; user-select:none; }
+        </style><span class="match-badge" data-show="$tags.length > 0 || $search.trim().length > 0" data-text="$match_node_app_serve"></span><div class="header"><div class="header-left"><span class="tag" style="background:#10b981;">func</span><span class="full-name"><span class="mod">app.</span><span class="name">serve</span></span></div><div class="header-right"></div></div><p class="doc">Run an app with Granian&#x27;s embedded RSGI server.
+
+Turns a py-sse app into a self-contained script:
+
+    app = create_app()
+
+    @app.get(&quot;/&quot;)
+    async def index(req):
+        return &quot;&lt;h1&gt;Hello&lt;/h1&gt;&quot;
+
+    if __name__ == &quot;__main__&quot;:
+        serve(app)
+
+Any extra keyword arguments are forwarded to granian.server.embed.Server
+(e.g. log_access=True, websockets=False, ssl_cert=...).</p><pre><code class="language-python" id="code-node-app-serve"><span class="code-line">def serve(app, *, host: str = &quot;127.0.0.1&quot;, port: int = 8000, **kwargs):</span><span class="code-line">    &quot;&quot;&quot;Run an app with Granian&#x27;s embedded RSGI server.</span><span class="code-line"></span><span class="code-line">    Turns a py-sse app into a self-contained script:</span><span class="code-line"></span><span class="code-line">        app = create_app()</span><span class="code-line"></span><span class="code-line">        @app.get(&quot;/&quot;)</span><span class="code-line">        async def index(req):</span><span class="code-line">            return &quot;&lt;h1&gt;Hello&lt;/h1&gt;&quot;</span><span class="code-line"></span><span class="code-line">        if __name__ == &quot;__main__&quot;:</span><span class="code-line">            serve(app)</span><span class="code-line"></span><span class="code-line">    Any extra keyword arguments are forwarded to granian.server.embed.Server</span><span class="code-line">    (e.g. log_access=True, websockets=False, ssl_cert=...).</span><span class="code-line">    &quot;&quot;&quot;</span><span class="code-line">    from granian.server.embed import Server</span><span class="code-line">    from granian.constants import Interfaces</span><span class="code-line"></span><span class="code-line">    server = Server(app, address=host, port=port, interface=Interfaces.RSGI, **kwargs)</span><span class="code-line"></span><span class="code-line">    async def _run():</span><span class="code-line">        await server.serve()</span><span class="code-line"></span><span class="code-line">    try:</span><span class="code-line">        asyncio.run(_run())</span><span class="code-line">    except KeyboardInterrupt:</span><span class="code-line">        pass</span></code></pre></div></div></div></div></div></body></html>

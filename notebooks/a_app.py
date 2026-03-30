@@ -66,6 +66,12 @@ def internal_parse_request(scope, proto) -> dict:
     }
 
 
+@app.cell
+def _():
+    internal_parse_request
+    return
+
+
 @app.function
 async def body(req: dict, *, max_size: int = 1_048_576) -> bytes:
     """Read the full request body (cached, with size limit).
@@ -79,6 +85,12 @@ async def body(req: dict, *, max_size: int = 1_048_576) -> bytes:
         raise ValueError(f"Request body exceeds {max_size} bytes")
     req["_body"] = raw
     return raw
+
+
+@app.cell
+def _():
+    body
+    return
 
 
 @app.function
@@ -95,6 +107,12 @@ async def signals(req: dict) -> dict:
     return data.get("datastar", data) if isinstance(data, dict) else data
 
 
+@app.cell
+def _():
+    signals
+    return
+
+
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
@@ -109,6 +127,12 @@ def set_cookie(req: dict, name: str, value: str, **opts) -> None:
     req["_cookies"].append((name, value, opts))
 
 
+@app.cell
+def _():
+    set_cookie
+    return
+
+
 @app.function
 #| internal
 
@@ -120,6 +144,11 @@ def internal_serialize_cookie(name: str, value: str, opts: dict) -> str:
             if v: parts.append(k)
         else:   parts.append(f"{k}={v}")
     return "; ".join(parts)
+
+
+@app.cell
+def _():
+    return
 
 
 @app.function
@@ -178,6 +207,12 @@ def create_relay():
     return r
 
 
+@app.cell
+def _():
+    create_relay
+    return
+
+
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
@@ -231,6 +266,12 @@ def create_signer(secret: str | bytes | None = None):
     return s
 
 
+@app.cell
+def _():
+    create_signer
+    return
+
+
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
@@ -273,6 +314,12 @@ def static(app, url_prefix: str, directory: str):
         req["_sent"] = True
 
     app.mount(url_prefix.rstrip("/"), serve_dir)
+
+
+@app.cell
+def _():
+    static
+    return
 
 
 @app.cell(hide_code=True)
@@ -503,6 +550,12 @@ def create_app(routes: dict | None = None):
     return handle
 
 
+@app.cell
+def _():
+    create_app
+    return
+
+
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
@@ -514,33 +567,44 @@ def _(mo):
 @app.function
 def serve(app, *, host: str = "127.0.0.1", port: int = 8000, **kwargs):
     """Run an app with Granian's embedded RSGI server.
- 
+
     Turns a py-sse app into a self-contained script:
- 
+
         app = create_app()
- 
+
         @app.get("/")
         async def index(req):
             return "<h1>Hello</h1>"
- 
+
         if __name__ == "__main__":
             serve(app)
- 
+
     Any extra keyword arguments are forwarded to granian.server.embed.Server
     (e.g. log_access=True, websockets=False, ssl_cert=...).
     """
     from granian.server.embed import Server
     from granian.constants import Interfaces
- 
+
     server = Server(app, address=host, port=port, interface=Interfaces.RSGI, **kwargs)
- 
+
     async def _run():
         await server.serve()
- 
+
     try:
         asyncio.run(_run())
     except KeyboardInterrupt:
         pass
+
+
+@app.cell
+def _():
+    serve
+    return
+
+
+@app.cell
+def _():
+    return
 
 
 if __name__ == "__main__":

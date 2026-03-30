@@ -407,29 +407,29 @@ def create_app(routes: dict | None = None):
 
 def serve(app, *, host: str = "127.0.0.1", port: int = 8000, **kwargs):
     """Run an app with Granian's embedded RSGI server.
- 
+
     Turns a py-sse app into a self-contained script:
- 
+
         app = create_app()
- 
+
         @app.get("/")
         async def index(req):
             return "<h1>Hello</h1>"
- 
+
         if __name__ == "__main__":
             serve(app)
- 
+
     Any extra keyword arguments are forwarded to granian.server.embed.Server
     (e.g. log_access=True, websockets=False, ssl_cert=...).
     """
     from granian.server.embed import Server
     from granian.constants import Interfaces
- 
+
     server = Server(app, address=host, port=port, interface=Interfaces.RSGI, **kwargs)
- 
+
     async def _run():
         await server.serve()
- 
+
     try:
         asyncio.run(_run())
     except KeyboardInterrupt:

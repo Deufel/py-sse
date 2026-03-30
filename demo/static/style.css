@@ -1,0 +1,334 @@
+    /*
+
+    PREFIX       RULE
+    --cfg-*      Core calc params. Set once.
+    data-ui-*    User prefs. HTML attributes.
+    --*          Public. Set freely. Core eats.
+    --_*         Private. Don't touch. Ever.
+
+    */
+    
+    /* must be on root ie. can not be in a layer */
+
+    /* public: the five knobs */
+    @property --hue       { syntax: "<number>";  inherits: true;  initial-value: 250; }
+    @property --surface   { syntax: "<number>";  inherits: true;  initial-value: 0; }
+    @property --contrast  { syntax: "<number>";  inherits: true;  initial-value: 0.93; }
+    @property --type      { syntax: "<number>";  inherits: false; initial-value: 0; }
+
+    /* config */
+    @property --chroma    { syntax: "<number>";  inherits: true;  initial-value: 0.02; }
+    @property --cfg-dark       { syntax: "<number>";  inherits: true;  initial-value: 0; }
+    @property --cfg-motion     { syntax: "<integer>"; inherits: true;  initial-value: 1; }
+    @property --cfg-type-scale { syntax: "<number>";  inherits: true;  initial-value: 1; }
+
+    /* private: leapfrog state */
+    @property --_depth-a  { syntax: "<integer>"; inherits: true;  initial-value: 0; }
+    @property --_depth-b  { syntax: "<integer>"; inherits: true;  initial-value: 0; }
+    @property --_parity   { syntax: "<integer>"; inherits: true;  initial-value: 0; }
+    @property --_bg       { syntax: "<color>";   inherits: true;  initial-value: oklch(95% 0.02 250); }
+    
+    @layer reset.fix,          /* FIX CSS Working group admitted mistakes */
+           reset.opinion,      /* Project Specific Global Resets  */
+           core.config,        /* --cfg variable that set the math in the core "engine" and data-ui settings */
+           core.color,         /* Complex but user friendly color engine bg & contrast conrtol everything */
+           core.type,          /* --type fluid system */
+           core.spacing,       /* -- fluid spacing & fixed */
+           theme,              /* theme should be quite minimal... */
+           layout.page,        /* Page Level Layout decisions...RULE-only target by id here */
+           layout.composition, /* how components will fill out */
+           component.complex,  /* Components that are complex... */
+           component.simple,   /* Classic layout building blocks... */
+           utility;            /* Use this — don't use !important anywhere... */
+    
+    @layer reset.fixes {
+        *, *::before, *::after { box-sizing: border-box; margin: 0; background-repeat: no-repeat; }
+        :root { interpolate-size: allow-keywords; }
+        :where(html) { color-scheme: light dark; line-height: 1.5; -moz-text-size-adjust: none; -webkit-text-size-adjust: none; text-size-adjust: none; }
+        :where(body, figure, blockquote, dl, dd, p) { margin-block-end: 0; }
+        :where(img, picture, svg) { max-width: 100%; display: block; height: auto; }
+        :where(table, thead, tbody, tfoot, tr) { isolation: isolate; }
+        :where(input, button, textarea, select) { font: inherit; }
+    }
+    
+    @layer reset.opinion {
+        :where(html) { scrollbar-width: thin; }
+        :where(p) { text-wrap: pretty; }
+        :where(h1, h2, h3, h4, h5, h6) { text-wrap: balance; }
+        :where(body) { overflow-wrap: break-word; }             /* Prevent long strings from blowing out layouts */
+        :where(img, picture, video, canvas, svg) { height: auto; }                  /* Preserve aspect ratios — height: auto is the missing piece */
+        :where(svg) { color: currentColor; }                     /* SVG inherits text color by default — use color not fill for stroke compadibility */
+        :where(button, [role="button"], summary, label[for],  input[type="file"]::file-selector-button) { cursor: pointer; } /* Cursor affordance for interactive elements */
+        :where(:disabled, [aria-disabled="true"]) { cursor: not-allowed; }          /* Disable cursor on disabled elements */
+        :where(table) { border-collapse: collapse; }            /* Universal table opinion — almost no one wants separated borders */
+        :where(fieldset) { border: 0; padding: 0; margin: 0; min-inline-size: 0; }  /* Strip fieldset chrome — you'll restyle in components */
+        :where(legend) { padding: 0; }                          /* Strip fieldset chrome — you'll restyle in components */
+        :where(textarea) { resize: vertical; }                  /* Sensible textarea resize constraint */
+        :where(textarea:not([rows])) { min-block-size: 10em; }  /* Sensible textarea resize constraint */
+        :where(abbr[title]) { cursor: help; text-decoration: underline dotted; }   /* Abbreviation affordance */
+        :where(summary) { list-style: none; }                   /* only if you want full control */
+        :where(a) {text-decoration: none; }                     /* No underline on links /*
+
+        :where(input) { autofill:shadow-[inset_0_0_0px_1000px_var(--bg_color)]  }
+
+        /* Remove list semantics reset — use the :where([role="list"]) pattern
+           so VoiceOver doesn't strip semantics when you remove list-style in CSS */
+        :where(ul, ol):where([role="list"]) { list-style: none; padding: 0; }
+
+        /* Hidden attribute should always mean hidden */
+        :where([hidden]) { display: none; }
+    
+    @layer core.config {
+
+      :root {
+        --cfg-dark: 0;
+        --cfg-motion: 1;
+
+        /* surface curve: two numbers drive light ↔ dark */
+        --_surf-base: calc(95% - var(--cfg-dark) * 82%);
+        --_surf-step: calc(-2.5% + var(--cfg-dark) * 6.5%);
+
+        /* type */
+        --cfg-fluid-min-vp:  22.5rem;
+        --cfg-fluid-max-vp:  77.5rem;
+        --cfg-type-min:       1.125rem;
+        --cfg-type-max:       1.25rem;
+        --cfg-type-min-ratio: 1.2;
+        --cfg-type-max-ratio: 1.25;
+
+        /* shape */
+        --cfg-radius: 0.375rem;
+      }
+
+      @media (prefers-color-scheme: dark)     { :root { --cfg-dark: 1; } }
+      @media (prefers-reduced-motion: reduce) { :root { --cfg-motion: 0; } }
+
+      html[data-ui-scheme="dark"]  { --cfg-dark: 1; }
+      html[data-ui-scheme="light"] { --cfg-dark: 0; }
+      html[data-ui-motion="none"]  { --cfg-motion: 0; }
+
+
+    
+    @layer core.color {
+
+      :where(*) {
+        --_bg: oklch(
+          clamp(10%, calc(var(--_surf-base) + var(--surface) * var(--_surf-step)), 99%)
+          var(--chroma)
+          var(--hue)
+        );
+        background: var(--_bg);
+        color: oklch(from var(--_bg)
+          calc(l + (clamp(0, calc((0.5 - l) * 999), 1) - l) * var(--contrast))
+          calc(c * (1 - var(--contrast)))
+          h
+        );
+      }
+
+      /* ── fill: vibrant bg, auto-contrast text ──
+         Bypasses the surface staircase.
+         Lands at a fixed mid-lightness with real chroma.
+         --hue and --chroma still work. Text still derives. */
+
+      .fill {
+        --_bg: oklch(
+          calc(65% - var(--cfg-dark) * 15%)
+          max(var(--chroma), 0.12)
+          var(--hue)
+        );
+        background: var(--_bg);
+      }
+
+
+      /* ── leapfrog: parity 0 ── */
+
+      @container style(--_parity: 0) {
+        .surface {
+          --_depth-b: calc(var(--_depth-a) + 1);
+          --surface: var(--_depth-b);
+          --_parity: 1;
+        }
+        .well {
+          --_depth-b: calc(var(--_depth-a) - 1);
+          --surface: var(--_depth-b);
+          --_parity: 1;
+        }
+      }
+
+      /* ── leapfrog: parity 1 ── */
+
+      @container style(--_parity: 1) {
+        .surface {
+          --_depth-a: calc(var(--_depth-b) + 1);
+          --surface: var(--_depth-a);
+          --_parity: 0;
+        }
+        .well {
+          --_depth-a: calc(var(--_depth-b) - 1);
+          --surface: var(--_depth-a);
+          --_parity: 0;
+        }
+      }
+    }
+    
+    @layer core.type {
+      body,
+      :where(h1, h2, h3, h4, h5, h6, small),
+      :where([style*="--type:"]) {
+        --_t-min: calc(var(--cfg-type-min) * pow(var(--cfg-type-min-ratio), var(--type)));
+        --_t-max: calc(var(--cfg-type-max) * pow(var(--cfg-type-max-ratio), var(--type)));
+        font-size: calc(
+          clamp(var(--_t-min),
+            calc(var(--_t-min) + (var(--_t-max) - var(--_t-min)) *
+              (100vi - var(--cfg-fluid-min-vp)) /
+              (var(--cfg-fluid-max-vp) - var(--cfg-fluid-min-vp))),
+            var(--_t-max)
+          ) * var(--cfg-type-scale)
+        );
+        letter-spacing: calc(0.01em - var(--type) * 0.01em);
+        line-height: calc(1.5 - var(--type) * 0.075);
+      }
+    }
+    
+    @layer core.spacing {
+      :root {
+        --space-0: clamp(0.5rem, 0.409rem + 0.364vi, 0.75rem);
+        --space-1: clamp(0.7rem, 0.473rem + 0.909vi, 1.238rem);
+        --space-2: clamp(0.98rem, 0.48rem + 2vi, 2.042rem);
+        --space-3: clamp(1.372rem, 0.382rem + 3.959vi, 3.369rem);
+      }
+    }
+    
+    @layer theme {
+      :root {
+        --font-body:    'Charter', 'Bitstream Charter', 'Sitka Text', Cambria, serif;
+        --font-heading: 'Iowan Old Style', 'Palatino Linotype', 'URW Palladio L', P052, serif;
+        --font-mono:    'Dank Mono', 'Operator Mono', Inconsolata, 'Fira Mono', ui-monospace, 'SF Mono', Monaco, monospace;
+      }
+
+      body  { --type:  0.0; font-family: var(--font-body); }
+      h1    { --type:  2.0; font-family: var(--font-heading); }
+      h2    { --type:  1.4; font-family: var(--font-heading); }
+      h3    { --type:  1.2; font-family: var(--font-heading); }
+      h4    { --type:  1.0; font-family: var(--font-heading); }
+      small { --type: -1.0; font-family: var(--font-heading); text-transform: uppercase }
+      code  { --type: -0.8; font-family: var(--font-mono) }
+      pre   { --type: -0.8; font-family: var(--font-mono) }
+
+    }
+
+    
+    @layer composition {
+      /* containers */
+      .stack { display: flex; flex-direction: column; gap: var(--_gap, .75rem); }
+      .row   { display: flex; flex-wrap: wrap; gap: var(--_gap, .5rem); }
+      .split { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--_gap, .5rem); }
+      .grid  { display: grid; grid-template-columns: repeat(auto-fit, minmax(var(--_col, 15rem), 1fr)); gap: var(--_gap, 1rem); }
+      .flank { display: flex; flex-wrap: wrap; gap: var(--_gap, 1rem); }
+      .flank > :first-child { flex: 1 1 var(--_flank, auto); }
+      .flank > :last-child { flex: 999 1 0; }
+      .flank-end { display: flex; flex-wrap: wrap; gap: var(--_gap, 1rem); }
+      .flank-end > :first-child { flex: 999 1 0; }
+      .flank-end > :last-child { flex: 1 1 var(--_flank, auto); }
+      /* modifiers */
+      .span { grid-column: 1 / -1; }
+      .wrap { flex-wrap: wrap; } .nowrap { flex-wrap: nowrap; }
+      /* alignment */
+      .ai-start { align-items: flex-start; } .ai-center { align-items: center; } .ai-end { align-items: flex-end; } .ai-baseline { align-items: baseline; } .ai-stretch { align-items: stretch; }
+      .jc-start { justify-content: flex-start; } .jc-center { justify-content: center; } .jc-end { justify-content: flex-end; } .jc-between { justify-content: space-between; } .jc-around { justify-content: space-around; } .jc-evenly { justify-content: space-evenly; }
+      .as-start { align-self: flex-start; } .as-center { align-self: center; } .as-end { align-self: flex-end; } .as-baseline { align-self: baseline; } .as-stretch { align-self: stretch; }
+    }
+
+    
+    @layer layout.page{
+        /* Hero Layout */
+    }
+
+    
+    @layer components.complex {
+       .datatable { }
+    }
+
+    
+    @layer components.simple {
+       .card {
+        padding: var(--space-1);
+        border-radius: var(--cfg-radius);
+      }
+    
+    @layer components.simple {
+      .btn {
+        all: unset;
+        background: var(--_bg);
+        color: oklch(from var(--_bg)
+          calc(l + (clamp(0, calc((0.5 - l) * 999), 1) - l) * var(--contrast))
+          calc(c * (1 - var(--contrast)))
+          h);
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.4em;
+        padding: 0.45em 1.1em;
+        border-radius: var(--cfg-radius);
+        font-weight: 500;
+        --type: -1;
+        transition: opacity 0.15s;
+      }
+      .btn:hover { opacity: 0.85; }
+      .btn:active { opacity: 0.7; }
+
+      .btn-icon {
+        all: unset;
+        background: var(--_bg);
+        color: oklch(from var(--_bg)
+          calc(l + (clamp(0, calc((0.5 - l) * 999), 1) - l) * var(--contrast))
+          calc(c * (1 - var(--contrast)))
+          h);
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.25em;
+        height: 2.25em;
+        border-radius: var(--cfg-radius);
+        transition: opacity 0.15s;
+      }
+      .btn-icon:hover { opacity: 0.85; }
+    }
+    
+    @layer components.simple {
+      .badge {
+        display: inline-block;
+        padding: 0.15em 0.6em;
+        border-radius: 999px;
+        --type: -2;
+      }
+    }
+    
+    @layer components.simple {
+      .divider {
+        border: none;
+        border-block-start: 1px solid oklch(from var(--_bg) calc(l + 0.08) c h);
+      }
+    }
+    
+    @layer components.simple {
+      [popover].popover { position: fixed; inset: auto; margin: 0; border: none; min-width: clamp(10rem, 40vw, 18rem); max-width: min(90vw, 24rem); max-height: 80vh; overflow: auto; --_bg: --surface(1); background: var(--_bg); color: --contrast(0.7); border-radius: 0.5rem; box-shadow: --shadow(5); padding: --space(1); opacity: 1; transform: scale(1); position-area: self-block-start self-inline-end; position-try-order: most-block-size; position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline; position-visibility: anchors-visible; transition: opacity calc(var(--_motion) * 0.18s) ease-out, transform calc(var(--_motion) * 0.18s) ease-out, display calc(var(--_motion) * 0.18s) allow-discrete, overlay calc(var(--_motion) * 0.18s) allow-discrete; }
+      [popover].popover:not(:popover-open) { opacity: 0; transform: scale(0.95); }
+      [popover].popover.below-start { position-area: self-block-end self-inline-start; }
+      [popover].popover.below-end { position-area: self-block-end self-inline-end; }
+      [popover].popover.above-start { position-area: self-block-start self-inline-start; }
+      [popover].popover.above-end { position-area: self-block-start self-inline-end; }
+    }
+    
+    @layer overrides {
+      .mobile, .tablet, .desktop { display: none; }
+      @media (width < 768px)           { .mobile  { display: revert-layer; } }
+      @media (768px <= width < 1024px) { .tablet  { display: revert-layer; } }
+      @media (width >= 1024px)         { .desktop { display: revert-layer; } }
+      @media print                     { .np      { display: none; } }
+      .vh { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+    }
+
+    
