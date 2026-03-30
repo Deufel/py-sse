@@ -1,7 +1,7 @@
 [project]
 name = "py-sse"
-version = "0.1.0"
-description = "Minimal Async implementation for sse_[granian refactor]"
+version = "0.1.2"
+description = "Minimal application wrapper for granian"
 readme = "README.md"
 authors = [
     { name = "Deufel", email = "MDeufel13@gmail.com" }
@@ -22,6 +22,7 @@ build-backend = "uv_build"
 dev = [
     "marimo-dev>=0.3.3",
     "marimo>=0.21.1",
+    "ngrok>=1.7.0",
     "uvicorn>=0.42.0",
 ]
 

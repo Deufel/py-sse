@@ -1,10 +1,11 @@
-"""Minimal Async implementation for sse_[granian refactor]"""
-__version__ = '0.1.0'
+"""Minimal application wrapper for granian"""
+__version__ = '0.1.1'
 __author__ = 'Deufel'
 from .app import body, signals, set_cookie, create_relay, create_signer, static, create_app, serve
 from .sse import patch_elements, patch_signals, remove_signals, execute_script
-from .mserver import serve_background, stop_background, dev_alive, recent, request_logger
+from .mserver import ServerState, serve_background, stop_background, dev_alive, request_logger
 __all__ = [
+    "ServerState",
     "body",
     "create_app",
     "create_relay",
@@ -13,7 +14,6 @@ __all__ = [
     "execute_script",
     "patch_elements",
     "patch_signals",
-    "recent",
     "remove_signals",
     "request_logger",
     "serve",
