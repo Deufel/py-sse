@@ -1,9 +1,9 @@
-from __future__ import annotations
 import asyncio, base64, hashlib, hmac, inspect, json
 import os, re, threading, time, traceback
 from fnmatch import fnmatch
 from html_tags import to_html, Tag
 from urllib.parse import parse_qs
+import mimetypes
 
 PARAM_RE = re.compile('\\{(\\w+)\\}')
 
@@ -12,20 +12,23 @@ def _parse_request(scope, proto) -> dict:
     """Build a request dict from an RSGI scope and protocol."""
     raw_cookies = scope.headers.get("cookie", "")
     return {
-        "path":     scope.path,
-        "method":   scope.method,
-        "headers":  scope.headers,
-        "query":    {k: v[0] if len(v) == 1 else v
-                     for k, v in parse_qs(scope.query_string).items()},
-        "cookies":  dict(
+        "path":         scope.path,
+        "method":       scope.method,
+        "headers":      scope.headers,
+        "query":        {k: v[0] if len(v) == 1 else v
+                         for k, v in parse_qs(scope.query_string).items()},
+        "cookies":      dict(
             pair.strip().split("=", 1)
             for pair in raw_cookies.split(";")
             if "=" in pair
         ),
-        "scheme":   scope.scheme,
-        "client":   scope.client,
-        "_proto":   proto,
-        "_cookies": [],   # queued Set-Cookie headers
+        "scheme":       scope.scheme,
+        "client":       scope.client,
+        "http_version": scope.http_version,                  # "1", "1.1", or "2"
+        "server":       scope.server,                        # "host:port"
+        "authority":    getattr(scope, "authority", None),   # HTTP/2 pseudo-header
+        "_proto":       proto,
+        "_cookies":     [],
     }
 
 async def body(req: dict, *, max_size: int = 1_048_576) -> bytes:
@@ -40,6 +43,39 @@ async def body(req: dict, *, max_size: int = 1_048_576) -> bytes:
         raise ValueError(f"Request body exceeds {max_size} bytes")
     req["_body"] = raw
     return raw
+
+def header_values(req: dict, name: str) -> list[str]:
+    """Return all values for a header (multi-value safe).
+
+    Uses RSGI's native get_all() for correct handling of
+    repeated headers like X-Forwarded-For, Via, Set-Cookie.
+
+    Usage:
+        ips = header_values(req, "x-forwarded-for")
+    """
+    return req["headers"].get_all(name)
+
+async def body_stream(req: dict, *, max_size: int = 1_048_576):
+    """Yield request body in chunks without buffering the full payload.
+
+    Uses RSGI's __aiter__ for streaming reads from Rust.
+    Mutually exclusive with body() — use one or the other.
+
+    Usage:
+        @app.post("/upload")
+        async def upload(req):
+            chunks = []
+            async for chunk in body_stream(req):
+                chunks.append(chunk)
+            data = b"".join(chunks)
+    """
+    proto = req["_proto"]
+    total = 0
+    async for chunk in proto:
+        total += len(chunk)
+        if max_size and total > max_size:
+            raise ValueError(f"Request body exceeds {max_size} bytes")
+        yield chunk
 
 async def signals(req: dict) -> dict:
     """Read Datastar signals from a request.
@@ -156,7 +192,9 @@ def create_signer(secret: str | bytes | None = None):
 def static(app, url_prefix: str, directory: str):
     """Mount a directory or single file for static serving.
 
-    Uses RSGI response_file for zero-copy file I/O from Rust.
+    Uses RSGI response_file and response_file_range for zero-copy
+    file I/O from Rust. Supports HTTP Range requests for resumable
+    downloads and media seeking.
 
     Usage:
         static(app, "/static", "static/")
@@ -164,31 +202,91 @@ def static(app, url_prefix: str, directory: str):
     """
     directory = os.path.abspath(directory)
 
+    def _guess_type(path):
+        ct, _ = mimetypes.guess_type(path)
+        return ct or "application/octet-stream"
+
+    def _parse_range(header, file_size):
+        """Parse Range header → (start, end_exclusive) or None."""
+        if not header or not header.startswith("bytes="):
+            return None
+        spec = header[6:].strip()
+        if "," in spec:
+            return None
+        left, _, right = spec.partition("-")
+        try:
+            if left and right:
+                start, end = int(left), int(right) + 1
+            elif left:
+                start, end = int(left), file_size
+            elif right:
+                start, end = max(0, file_size - int(right)), file_size
+            else:
+                return None
+        except ValueError:
+            return None
+        if start < 0 or start >= file_size or end > file_size or start >= end:
+            return None
+        return start, end
+
+    def _serve_file(req, full_path):
+        proto = req["_proto"]
+        file_size = os.path.getsize(full_path)
+        content_type = _guess_type(full_path)
+        range_header = req["headers"].get("range", "")
+        parsed = _parse_range(range_header, file_size)
+
+        if parsed:
+            start, end = parsed
+            proto.response_file_range(206, [
+                ("content-type",   content_type),
+                ("content-length", str(end - start)),
+                ("content-range",  f"bytes {start}-{end - 1}/{file_size}"),
+                ("accept-ranges",  "bytes"),
+                ("cache-control",  "public, max-age=0, must-revalidate"),
+            ], full_path, start, end)
+        elif range_header:
+            proto.response_str(416, [
+                ("content-range", f"bytes */{file_size}"),
+            ], "Range Not Satisfiable")
+        else:
+            proto.response_file(200, [
+                ("content-type",   content_type),
+                ("content-length", str(file_size)),
+                ("accept-ranges",  "bytes"),
+                ("cache-control",  "public, max-age=3600"),
+            ], full_path)
+        req["_sent"] = True
+
+    # ── Single file mount ────────────────────────────────────
     if os.path.isfile(directory):
         async def serve_single(req):
-            proto = req["_proto"]
-            proto.response_file(200, [
-                ("cache-control", "public, max-age=3600"),
-            ], directory)
+            _serve_file(req, directory)
+
         app.get(url_prefix)(serve_single)
         return
 
+    # ── Directory mount ──────────────────────────────────────
     async def serve_dir(req):
         rel = req["params"].get("path", "")
-        if not rel: return None
+        if not rel:
+            return ("Not Found", 404)
         full = os.path.normpath(os.path.join(directory, rel))
-        if not full.startswith(directory) or not os.path.isfile(full):
-            return None
-        proto = req["_proto"]
-        proto.response_file(200, [
-            ("cache-control", "public, max-age=0, must-revalidate"),
-        ], full)
-        req["_sent"] = True
+        # Directory traversal guard
+        if not full.startswith(directory + os.sep) or not os.path.isfile(full):
+            return ("Not Found", 404)
+        _serve_file(req, full)
 
     app.mount(url_prefix.rstrip("/"), serve_dir)
 
-def create_app(routes: dict | None = None):
+def create_app(routes: dict | None = None, *, on_init=None, on_del=None):
     """Create a Datastar RSGI application.
+
+    Lifecycle hooks:
+        on_init(loop)  → called at server startup (loop not yet running)
+        on_del(loop)   → called at server shutdown (loop not yet running)
+
+        Can be sync or async — async hooks are run via loop.run_until_complete.
 
     Handler return protocol:
         str | Tag   → 200 HTML response
@@ -198,23 +296,17 @@ def create_app(routes: dict | None = None):
         async gen   → SSE stream
 
     Usage:
-        app = create_app()
+        async def startup(loop):
+            app.db = await create_pool()
 
-        @app.before
-        async def auth(req):
-            req["user"] = get_user(req)
+        def shutdown(loop):
+            print("goodbye")
+
+        app = create_app(on_init=startup, on_del=shutdown)
 
         @app.get("/")
         async def index(req):
             return "<h1>Hello</h1>"
-
-        @app.get("/feed")
-        async def feed(req):
-            while True:
-                yield patch_elements('<div id="t">...</div>')
-                await asyncio.sleep(1)
-
-        # Run with: granian --interface rsgi module:app
     """
     if routes is None:
         routes = {}
@@ -250,16 +342,6 @@ def create_app(routes: dict | None = None):
     # ── Beforeware ───────────────────────────────────────────
 
     def before(fn=None, *, methods=None):
-        """Register a beforeware hook.
-
-        Return None to continue, or any response value to short-circuit.
-
-            @app.before
-            async def auth(req): ...
-
-            @app.before(methods=["POST"])
-            async def require_login(req): ...
-        """
         def decorator(f):
             m = {x.upper() for x in methods} if methods else None
             before_hooks.append((f, m))
@@ -272,7 +354,6 @@ def create_app(routes: dict | None = None):
     # ── Response dispatch ────────────────────────────────────
 
     def _respond(proto, req, result):
-        """Send a handler result via the RSGI protocol."""
         headers = _cookie_headers(req)
 
         if isinstance(result, tuple) and len(result) == 2:
@@ -288,7 +369,11 @@ def create_app(routes: dict | None = None):
         if isinstance(result, Tag):
             result = to_html(result)
 
-        if isinstance(result, str):
+        if isinstance(result, bytes):                                          
+            ct = req.get("_content_type", "application/octet-stream")          
+            headers.append(("content-type", ct))                               
+            proto.response_bytes(200, headers, result)                         
+        elif isinstance(result, str):
             headers.append(("content-type", "text/html; charset=utf-8"))
             proto.response_str(200, headers, result)
         elif isinstance(result, dict):
@@ -321,7 +406,6 @@ def create_app(routes: dict | None = None):
         req = _parse_request(scope, proto)
         req["params"] = {}
 
-        # Resolve handler: exact → parameterised → prefix mount
         handler = routes.get((req["method"], req["path"]))
         if handler is None:
             for method, pattern, fn in param_routes:
@@ -342,7 +426,6 @@ def create_app(routes: dict | None = None):
             return
 
         try:
-            # Beforeware
             for hook, methods in before_hooks:
                 if methods and req["method"] not in methods:
                     continue
@@ -356,7 +439,6 @@ def create_app(routes: dict | None = None):
             result = handler(req)
 
             if inspect.isasyncgen(result):
-                # ── SSE stream ───────────────────────────────
                 closed = asyncio.Event()
                 headers = [
                     ("content-type",      "text/event-stream"),
@@ -381,7 +463,6 @@ def create_app(routes: dict | None = None):
                     keepalive.cancel()
                     disconnect.cancel()
             else:
-                # ── Request/Response ─────────────────────────
                 result = await result
                 if req.get("_sent"):
                     return
@@ -394,6 +475,25 @@ def create_app(routes: dict | None = None):
                     [("content-type", "text/plain")],
                     "Internal Server Error")
             except: pass  # noqa: E722
+
+    # ── RSGI lifecycle hooks ─────────────────────────────────
+
+    def _rsgi_init(loop):
+        if on_init:
+            result = on_init(loop)
+            if inspect.iscoroutine(result):
+                loop.run_until_complete(result)
+
+    def _rsgi_del(loop):
+        if on_del:
+            result = on_del(loop)
+            if inspect.iscoroutine(result):
+                loop.run_until_complete(result)
+
+    handle.__rsgi_init__ = _rsgi_init
+    handle.__rsgi_del__  = _rsgi_del
+
+    # ── Attach decorators ────────────────────────────────────
 
     handle.route  = route
     handle.get    = get

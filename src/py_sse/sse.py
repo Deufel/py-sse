@@ -1,4 +1,3 @@
-from __future__ import annotations
 import json
 from html_tags import to_html, Tag
 

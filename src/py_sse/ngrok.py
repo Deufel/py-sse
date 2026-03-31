@@ -1,40 +1,18 @@
-import marimo
+from dataclasses import dataclass
+import ngrok
 
-__generated_with = "0.21.1"
-app = marimo.App()
-
-with app.setup:
-    from dataclasses import dataclass
-    import ngrok
-
-
-@app.cell(hide_code=True)
-def _(mo):
-    mo.md(r"""
-    # Package: py-sse
-    ## Module: .ngrok
-    > ngrok for live testing
-    """)
-    return
-
-
-@app.class_definition
 @dataclass
 class TunnelState:
     """Handle returned by start_tunnel, passed to stop_tunnel."""
     listener: object = None
     url:      str    = ""
 
-
-@app.function
 def load_env(path=".env"):
     for line in open(path):
         if "=" in (line := line.strip()) and not line.startswith("#"):
             k, v = line.split("=", 1)
             __import__("os").environ.setdefault(k.strip(), v.strip())
 
-
-@app.function
 def start_tunnel(port=8000, **kwargs) -> TunnelState:
     """Open an ngrok tunnel to localhost:port.
  
@@ -61,21 +39,8 @@ def start_tunnel(port=8000, **kwargs) -> TunnelState:
     listener = result[0]
     return TunnelState(listener=listener, url=listener.url())
 
-
-@app.function
 def stop_tunnel(tunnel: TunnelState) -> None:
     """Close an ngrok tunnel."""
     if tunnel.listener:
         import ngrok
         ngrok.disconnect(tunnel.url)
-
-
-@app.cell
-def _():
-    import marimo as mo
-
-    return (mo,)
-
-
-if __name__ == "__main__":
-    app.run()

@@ -1,10 +1,10 @@
 import marimo
 
 __generated_with = "0.21.1"
-app = marimo.App(app_title="py-sse.sse")
+app = marimo.App(app_title="")
 
 with app.setup:
-    from __future__ import annotations
+
     import json
     from html_tags import to_html, Tag
 
