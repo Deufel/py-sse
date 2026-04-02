@@ -1,22 +1,22 @@
 [project]
 name = "py-sse"
-version = "0.1.5"
-description = "Minimal application wrapper for granian"
+version = "0.1.7"
+description = "opinionated application wrapper for granian"
 readme = "README.md"
 authors = [
     { name = "Deufel", email = "MDeufel13@gmail.com" }
 ]
 requires-python = ">=3.12"
 dependencies = [
-    "brotli>=1.2.0",
+
     "granian>=2.7.2",
     "html-tags>=0.0.18",
-    "mcp>=1.26.0",
+
     "requests>=2.32.5",
 ]
 
 [build-system]
-requires = ["uv_build>=0.9.18,<0.10.0"]
+requires = ["uv_build>=0.11,<0.13"]
 build-backend = "uv_build"
 
 [dependency-groups]

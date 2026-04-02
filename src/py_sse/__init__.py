@@ -1,5 +1,5 @@
-"""Minimal application wrapper for granian"""
-__version__ = '0.1.5'
+"""opinionated application wrapper for granian"""
+__version__ = '0.1.7'
 __author__ = 'Deufel'
 from .app import body, header_values, body_stream, signals, set_cookie, create_relay, create_signer, static, create_app, serve
 from .sse import patch_elements, patch_signals, remove_signals, execute_script

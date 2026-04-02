@@ -1,34 +1,10 @@
 # py-sse
 
-> 
+> Minimal application wrapper for granian
 
 
 ## app
 
-
-
-def internal_parse_request(scope, proto) -> dict:
-    """Build a request dict from an RSGI scope and protocol."""
-    raw_cookies = scope.headers.get("cookie", "")
-    return {
-        "path":         scope.path,
-        "method":       scope.method,
-        "headers":      scope.headers,
-        "query":        {k: v[0] if len(v) == 1 else v
-                         for k, v in parse_qs(scope.query_string).items()},
-        "cookies":      dict(
-            pair.strip().split("=", 1)
-            for pair in raw_cookies.split(";")
-            if "=" in pair
-        ),
-        "scheme":       scope.scheme,
-        "client":       scope.client,
-        "http_version": scope.http_version,                  # "1", "1.1", or "2"
-        "server":       scope.server,                        # "host:port"
-        "authority":    getattr(scope, "authority", None),   # HTTP/2 pseudo-header
-        "_proto":       proto,
-        "_cookies":     [],
-    }
 
 async def body(req: dict, *, max_size: int = 1_048_576) -> bytes:
     """Read the full request body (cached, with size limit).
@@ -91,21 +67,6 @@ async def signals(req: dict) -> dict:
 def set_cookie(req: dict, name: str, value: str, **opts) -> None:
     """Queue a Set-Cookie header on the request."""
     req["_cookies"].append((name, value, opts))
-
-
-def internal_serialize_cookie(name: str, value: str, opts: dict) -> str:
-    parts = [f"{name}={value}"]
-    for k, v in opts.items():
-        k = k.replace("_", "-")
-        if isinstance(v, bool):
-            if v: parts.append(k)
-        else:   parts.append(f"{k}={v}")
-    return "; ".join(parts)
-
-
-def internal_cookie_headers(req: dict) -> list[tuple[str, str]]:
-    return [("set-cookie", internal_serialize_cookie(n, v, o))
-            for n, v, o in req["_cookies"]]
 
 def create_relay():
     """Create a pub/sub relay for broadcasting events.

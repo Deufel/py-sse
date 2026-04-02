@@ -1,7 +1,7 @@
 import marimo
 
-__generated_with = "0.21.1"
-app = marimo.App()
+__generated_with = "0.22.0"
+app = marimo.App(width="medium")
 
 with app.setup:
 
@@ -187,8 +187,6 @@ def _():
 
 
 @app.function
-#| internal
-
 def internal_serialize_cookie(name: str, value: str, opts: dict) -> str:
     parts = [f"{name}={value}"]
     for k, v in opts.items():
@@ -197,11 +195,6 @@ def internal_serialize_cookie(name: str, value: str, opts: dict) -> str:
             if v: parts.append(k)
         else:   parts.append(f"{k}={v}")
     return "; ".join(parts)
-
-
-@app.cell
-def _():
-    return
 
 
 @app.function
@@ -527,8 +520,8 @@ def create_app(routes: dict | None = None, *, on_init=None, on_del=None):
                 proto.response_str(status, headers, content)
             return
 
-        if isinstance(result, Tag):
-            result = to_html(result)
+        if hasattr(result, '__html__'):
+            result = result.__html__()
 
         if isinstance(result, bytes):                                          
             ct = req.get("_content_type", "application/octet-stream")          

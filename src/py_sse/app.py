@@ -7,6 +7,7 @@ import mimetypes
 
 PARAM_RE = re.compile('\\{(\\w+)\\}')
 
+#| internal
 
 def _parse_request(scope, proto) -> dict:
     """Build a request dict from an RSGI scope and protocol."""
@@ -93,7 +94,6 @@ def set_cookie(req: dict, name: str, value: str, **opts) -> None:
     """Queue a Set-Cookie header on the request."""
     req["_cookies"].append((name, value, opts))
 
-
 def _serialize_cookie(name: str, value: str, opts: dict) -> str:
     parts = [f"{name}={value}"]
     for k, v in opts.items():
@@ -103,6 +103,7 @@ def _serialize_cookie(name: str, value: str, opts: dict) -> str:
         else:   parts.append(f"{k}={v}")
     return "; ".join(parts)
 
+#| internal
 
 def _cookie_headers(req: dict) -> list[tuple[str, str]]:
     return [("set-cookie", _serialize_cookie(n, v, o))
@@ -366,8 +367,8 @@ def create_app(routes: dict | None = None, *, on_init=None, on_del=None):
                 proto.response_str(status, headers, content)
             return
 
-        if isinstance(result, Tag):
-            result = to_html(result)
+        if hasattr(result, '__html__'):
+            result = result.__html__()
 
         if isinstance(result, bytes):                                          
             ct = req.get("_content_type", "application/octet-stream")          

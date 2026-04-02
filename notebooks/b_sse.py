@@ -1,12 +1,12 @@
 import marimo
 
-__generated_with = "0.21.1"
+__generated_with = "0.22.0"
 app = marimo.App(app_title="")
 
 with app.setup:
 
     import json
-    from html_tags import to_html, Tag
+    from html_tags import to_html
 
 
 @app.cell
@@ -31,7 +31,7 @@ def _(mo):
 
 @app.function
 def patch_elements(
-    elements: Tag | str,
+    elements: str,  # essentially the Tag()s from html_tags
     *,
     selector: str | None = None,
     mode: str | None = None,
@@ -39,8 +39,8 @@ def patch_elements(
     use_view_transition: bool | None = None,
 ) -> str:
     """Format a datastar-patch-elements SSE event."""
-    if isinstance(elements, Tag):
-        elements = to_html(elements)
+    if hasattr(elements, '__html__'):
+        elements = elements.__html__()
     lines = []
     if selector is not None:    lines.append(f"data: selector {selector}")
     if mode is not None:        lines.append(f"data: mode {mode}")
