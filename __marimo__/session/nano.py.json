@@ -1,0 +1,347 @@
+{
+  "version": "1",
+  "metadata": {
+    "marimo_version": "0.23.6",
+    "script_metadata_hash": null
+  },
+  "cells": [
+    {
+      "id": "setup",
+      "code_hash": "cbea42cde456892216d5cdb3f8554645",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "Hbol",
+      "code_hash": "1d0db38904205bec4d6f6f6a1f6cec3e",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "BKYD",
+      "code_hash": "8a63d19d09fd6efa3ccee43c21094567",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "OYfN",
+      "code_hash": "100ea181d613eb0bfea45e235f015303",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "AayZ",
+      "code_hash": "308b00cf773c6983697466596fdfb24a",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "axJA",
+      "code_hash": "9e7242c1d76a4e354b58fbc18b6b8bf2",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "FNrW",
+      "code_hash": "227eb0aa75aa59051ca8e3e57a2334d1",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "PTEl",
+      "code_hash": "28ab293df2417e30b346efcccc945222",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "ppfn",
+      "code_hash": "ffe557e8f6a115a41b3fbd33c985e96b",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "sjSU",
+      "code_hash": "1d4f7221aa3fe521f91562d0df28398a",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "cIII",
+      "code_hash": "a7bcf528257ddac4e09a9b5dfd09fe7c",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "VaCn",
+      "code_hash": "fea4ca0719a937743f917e8acd19b36a",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "uEUW",
+      "code_hash": "3da527083fb935c52d51c1d6fb6cdf51",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "TKau",
+      "code_hash": "173d799489e5f11cf400d3fba6e5bc83",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "dAwG",
+      "code_hash": "96c10edf97313a894491fcb2628d4040",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "osQJ",
+      "code_hash": "2f3a7073fb76d4ab33f4329afe9b2eb8",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "jySH",
+      "code_hash": "02111514e925ff314d8fa0dc29424474",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "QOJL",
+      "code_hash": "422091e0c85a050c97aed3ab262a755d",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "znZc",
+      "code_hash": "b5f3433db29b6031f5e0f5910cc581a6",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "sMIM",
+      "code_hash": "faaaf68b47a07cde7390afa922528fc3",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "IXfW",
+      "code_hash": "968bdef37021b0f04278fa5ead156c51",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "YKmT",
+      "code_hash": "cf46957b8f0c62577bebfd121c590021",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "jLGK",
+      "code_hash": "7f62f722c898eb93c668495e9b7deb5c",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "vIjM",
+      "code_hash": "cea8722d57918e6c1255a5bac4770c56",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "hPsR",
+      "code_hash": "e9098b1390ec438bdbf4b9475abcb712",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "toGa",
+      "code_hash": "09a62f1f43dda409c3e55eb7d32b8f6d",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    }
+  ]
+}

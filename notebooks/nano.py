@@ -1,11 +1,81 @@
-# py-sse
+import marimo
 
-> minimal python sse server
+__generated_with = "0.23.6"
+app = marimo.App(width="full")
+
+with app.setup:
+    """nano_sse — a Wirth-style minimal SSE web framework.
+
+    Pure Python. Pure stdlib. One OS thread per connection. No async/await.
+
+    Goal: see every byte from socket to handler. Each function does one
+    thing, named for it. Data structures are plain dicts. The flow is:
+
+        serve(routes)               accepts TCP, spawns threads
+            handle_connection(...)  parses request, finds route, calls handler
+                handler(req)        returns a Response or yields SSE frames
+
+    DEPLOYMENT MODEL:
+        nano_sse is meant to run BEHIND a reverse proxy (caddy, nginx).
+        The proxy terminates TLS, speaks HTTP/1.1 cleartext to us on
+        localhost, and handles all the things we deliberately don't:
+        TLS, HTTP/2, keepalive coalescing, response compression, IP
+        spoofing defense.
+
+        Wire protocol to nano_sse: HTTP/1.1 cleartext. One request per
+        connection — we close after responding. Simpler than keepalive
+        and fine because the proxy keeps its own pool to us.
+
+    HARDENING (relevant for any non-local exposure, even behind a proxy):
+      * Per-connection timeouts (slowloris defense)
+      * Bounded concurrent connections (thread/RAM cap)
+      * Strict request-line and header validation
+      * Cookie value sanitization (no response splitting)
+      * Generic 500 responses (no exception text leaked to clients)
+      * Graceful shutdown on SIGINT/SIGTERM
+      * Access logging
+    """
+
+    import logging
+    import re
+    import signal
+    import socket
+    import threading
+    import time
+    from urllib.parse import parse_qs, unquote
 
 
-## nano
+    # ─── Constants ─────────────────────────────────────────────────────────
+
+    MAX_HEADER_BYTES      = 64 * 1024           # 64 KiB total for request head
+    MAX_BODY_BYTES        = 16 * 1024 * 1024    # 16 MiB default; raise per-route
+    MAX_CONNECTIONS       = 256                 # cap concurrent connection threads
+    HEADER_READ_TIMEOUT   = 10                  # seconds to receive request head
+    BODY_READ_TIMEOUT     = 60                  # seconds to receive request body
+    SSE_WRITE_TIMEOUT     = 60                  # max stall on a send
+    SHUTDOWN_GRACE        = 5                   # seconds to wait on Ctrl-C
+
+    # Strict regexes. RFC 7230 token + path-printable subsets, plus a length cap.
+    _METHOD_RE  = re.compile(rb"^[A-Z]{1,16}$")
+    _TARGET_RE  = re.compile(rb"^/[\x21-\x7e]{0,2047}$")  # printable ASCII, no spaces
+    _HEADER_NAME_RE = re.compile(rb"^[!#$%&'*+\-.0-9A-Z^_`a-z|~]{1,128}$")
+    # Forbid CR/LF in cookie name+value to prevent response-splitting attacks.
+    _COOKIE_FORBIDDEN = re.compile(r"[\r\n\x00]")
+
+    logger = logging.getLogger("nano_sse")
 
 
+    PARAM_RE = re.compile(r"\{(\w+)\}")
+
+
+@app.cell
+def _():
+    import marimo as mo
+
+    return
+
+
+@app.function
 # ─── Section 0: low-level I/O ─────────────────────────────────────────
 #
 # Read until we see the end of headers (`\r\n\r\n`). Write status/headers/
@@ -24,6 +94,8 @@ def read_until_double_crlf(sock):
     head, _, leftover = buf.partition(b"\r\n\r\n")
     return head, leftover
 
+
+@app.function
 def read_body(sock, content_length, already_have, limit=MAX_BODY_BYTES):
     "Read exactly content_length bytes, with `already_have` as a prefix."
     if content_length < 0:
@@ -38,6 +110,8 @@ def read_body(sock, content_length, already_have, limit=MAX_BODY_BYTES):
         buf += chunk
     return buf[:content_length]
 
+
+@app.function
 def write_response(sock, status, headers, body=b""):
     "Write a complete HTTP/1.1 response. Body may be bytes or str."
     if isinstance(body, str):
@@ -59,6 +133,8 @@ def write_response(sock, status, headers, body=b""):
     except OSError:
         pass
 
+
+@app.function
 def write_sse_headers(sock, extra_headers=()):
     "Write the response head for a streaming SSE response. No content-length."
     lines = [
@@ -72,11 +148,15 @@ def write_sse_headers(sock, extra_headers=()):
         lines.append(f"{k}: {v}")
     sock.sendall("\r\n".join(lines).encode("ascii") + b"\r\n\r\n")
 
+
+@app.function
 def write_sse_frame(sock, payload):
     """Write one SSE frame. `payload` is the data line(s) verbatim — caller
     decides whether to send 'data: …', 'event: …\\ndata: …', etc."""
     sock.sendall(payload.encode("utf-8") + b"\n\n")
 
+
+@app.function
 # ─── Section 2: parsing ───────────────────────────────────────────────
 #
 # An HTTP request becomes a plain dict. Cookies are parsed once. Path
@@ -175,6 +255,8 @@ def parse_request(sock):
         "_cookies_out": [],
     }
 
+
+@app.function
 def parse_cookies(cookie_header):
     "Parse a Cookie: header value into a {name: value} dict."
     out = {}
@@ -187,6 +269,8 @@ def parse_cookies(cookie_header):
                 out[k] = v
     return out
 
+
+@app.function
 def set_cookie(req, name, value, **opts):
     """Queue a Set-Cookie on the response. Called from inside a handler.
     Options: max_age (int), path (str), httponly (bool), samesite ('Lax'|...)
@@ -207,6 +291,8 @@ def set_cookie(req, name, value, **opts):
             pieces.append(f"{k}={v}")
     req["_cookies_out"].append("; ".join(pieces))
 
+
+@app.function
 def signals(req):
     """Parse Datastar signals from a request.
     GET: JSON-encoded `datastar` query parameter.
@@ -220,6 +306,8 @@ def signals(req):
     data = json.loads(req["body"])
     return data.get("datastar", data) if isinstance(data, dict) else data
 
+
+@app.function
 # ─── Section 3: routing ───────────────────────────────────────────────
 #
 # Routes are a plain list of (method, regex_pattern, handler) tuples,
@@ -240,6 +328,8 @@ def compile_routes(routes):
             compiled.append((method.upper(), re.compile("^" + re.escape(path) + "$"), handler))
     return compiled
 
+
+@app.function
 def match_route(routes, method, path):
     "Find the first route matching (method, path). Returns (handler, params) or None."
     for route_method, pattern, handler in routes:
@@ -250,10 +340,23 @@ def match_route(routes, method, path):
             return handler, m.groupdict()
     return None
 
+
+@app.cell
+def _():
+    # ─── Section 4: response helpers ──────────────────────────────────────
+    #
+    # These build a Response — a plain (status, headers, body) tuple — that
+    # the dispatcher (Section 5) writes to the socket. Handlers return these.
+    return
+
+
+@app.function
 def html(body, status=200):
     "Return a Response for an HTML page."
     return (status, [("content-type", "text/html; charset=utf-8")], body)
 
+
+@app.function
 def redirect(location, status=303):
     "Return a Response that redirects to `location`."
     # Don't allow header injection via crafted location values.
@@ -261,10 +364,14 @@ def redirect(location, status=303):
         raise ValueError("redirect target contains forbidden characters")
     return (status, [("location", location)], b"")
 
+
+@app.function
 def no_content():
     "Return a 204 No Content response."
     return (204, [], b"")
 
+
+@app.function
 def blob(data, content_type, filename=None):
     """Return a Response carrying raw bytes. If filename is given, sets
     Content-Disposition: attachment so the browser downloads it."""
@@ -278,10 +385,14 @@ def blob(data, content_type, filename=None):
         headers.append(("content-disposition", f'attachment; filename="{safe}"'))
     return (200, headers, data)
 
+
+@app.function
 def error(status, message=""):
     "Return an error Response with optional plain-text body."
     return (status, [("content-type", "text/plain; charset=utf-8")], message)
 
+
+@app.function
 # ─── Section 5: connection handling ───────────────────────────────────
 #
 # This is the per-thread entry point. It does:
@@ -391,6 +502,23 @@ def handle_connection(sock, addr, routes, before_hooks, access_log=True):
             logger.info("%s %s %s → %d %.1fms",
                         addr[0] if addr else "?", method, path, status, dt_ms)
 
+
+@app.class_definition
+# ─── Section 6: the listen loop ───────────────────────────────────────
+#
+# Bind, listen, accept. Each connection gets one OS thread, but we cap
+# the total via a semaphore — past that, new connections get an
+# immediate 503 and close, so a flood can't OOM the process.
+
+class internal_ShutdownFlag:
+    "A flag set by SIGINT/SIGTERM to stop the accept loop."
+    def __init__(self):
+        self._stop = False
+    def set(self): self._stop = True
+    def is_set(self): return self._stop
+
+
+@app.function
 def serve(routes, *, host="127.0.0.1", port=8000,
           before_hooks=(), max_connections=MAX_CONNECTIONS,
           access_log=True):
@@ -488,6 +616,8 @@ def serve(routes, *, host="127.0.0.1", port=8000,
                            live)
         logger.info("shutdown complete")
 
+
+@app.class_definition
 # ─── Section 7: SSE helpers ───────────────────────────────────────────
 #
 # A `Changes` object: subscribers wait on it; producers `notify_all()` to
@@ -514,14 +644,34 @@ class Changes:
             current = self._gen
             self._cond.wait_for(lambda: self._gen != current, timeout=timeout)
 
+
+@app.function
 def sse_data(text):
     "Format a string as an SSE data line."
     return "\n".join(f"data: {line}" for line in text.splitlines() or [""])
 
+
+@app.function
 def sse_event(event_name, data):
     "Format a named SSE event."
     return f"event: {event_name}\n{sse_data(data)}"
 
+
+@app.function
 def sse_keepalive():
     "An SSE comment line that keeps the connection alive without firing a real event."
     return ":"
+
+
+@app.cell
+def _():
+    return
+
+
+@app.cell
+def _():
+    return
+
+
+if __name__ == "__main__":
+    app.run()

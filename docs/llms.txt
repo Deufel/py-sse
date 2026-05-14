@@ -1,11 +1,7 @@
 # py-sse
 
-> opinionated application wrapper for granian
+> minimal python sse server
 
-- [app](/app): body, header_values, body_stream, signals, set_cookie, create_signer, static, create_app, serve
-- [sse](/sse): patch_elements, patch_signals, remove_signals, execute_script, redirect
-- [db](/db): create_db, migrate, query, write, Changes
-- [mserver](/mserver): ServerState, serve_background, stop_background, dev_alive
-- [ngrok](/ngrok): TunnelState, load_env, start_tunnel, stop_tunnel
+- [nano](/nano): read_until_double_crlf, read_body, write_response, write_sse_headers, write_sse_frame, parse_request, parse_cookies, set_cookie, signals, compile_routes, match_route, html, redirect, no_content, blob, error, handle_connection, serve, Changes, sse_data, sse_event, sse_keepalive
 
 - [llms-full.txt](/llms-full.txt): Complete source code

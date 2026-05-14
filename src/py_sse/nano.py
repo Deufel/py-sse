@@ -1,10 +1,56 @@
-# py-sse
+import logging
+import re
+import signal
+import socket
+import threading
+import time
+from urllib.parse import parse_qs, unquote
 
-> minimal python sse server
+MAX_HEADER_BYTES = 64 * 1024
+MAX_BODY_BYTES = 16 * 1024 * 1024
+MAX_CONNECTIONS = 256
+HEADER_READ_TIMEOUT = 10
+BODY_READ_TIMEOUT = 60
+SSE_WRITE_TIMEOUT = 60
+SHUTDOWN_GRACE = 5
+_METHOD_RE = re.compile(b'^[A-Z]{1,16}$')
+_TARGET_RE = re.compile(b'^/[\\x21-\\x7e]{0,2047}$')
+_HEADER_NAME_RE = re.compile(b"^[!#$%&'*+\\-.0-9A-Z^_`a-z|~]{1,128}$")
+_COOKIE_FORBIDDEN = re.compile('[\\r\\n\\x00]')
+logger = logging.getLogger('nano_sse')
+PARAM_RE = re.compile('\\{(\\w+)\\}')
 
+"""nano_sse — a Wirth-style minimal SSE web framework.
 
-## nano
+    Pure Python. Pure stdlib. One OS thread per connection. No async/await.
 
+    Goal: see every byte from socket to handler. Each function does one
+    thing, named for it. Data structures are plain dicts. The flow is:
+
+        serve(routes)               accepts TCP, spawns threads
+            handle_connection(...)  parses request, finds route, calls handler
+                handler(req)        returns a Response or yields SSE frames
+
+    DEPLOYMENT MODEL:
+        nano_sse is meant to run BEHIND a reverse proxy (caddy, nginx).
+        The proxy terminates TLS, speaks HTTP/1.1 cleartext to us on
+        localhost, and handles all the things we deliberately don't:
+        TLS, HTTP/2, keepalive coalescing, response compression, IP
+        spoofing defense.
+
+        Wire protocol to nano_sse: HTTP/1.1 cleartext. One request per
+        connection — we close after responding. Simpler than keepalive
+        and fine because the proxy keeps its own pool to us.
+
+    HARDENING (relevant for any non-local exposure, even behind a proxy):
+      * Per-connection timeouts (slowloris defense)
+      * Bounded concurrent connections (thread/RAM cap)
+      * Strict request-line and header validation
+      * Cookie value sanitization (no response splitting)
+      * Generic 500 responses (no exception text leaked to clients)
+      * Graceful shutdown on SIGINT/SIGTERM
+      * Access logging
+    """
 
 # ─── Section 0: low-level I/O ─────────────────────────────────────────
 #
@@ -391,6 +437,19 @@ def handle_connection(sock, addr, routes, before_hooks, access_log=True):
             logger.info("%s %s %s → %d %.1fms",
                         addr[0] if addr else "?", method, path, status, dt_ms)
 
+# ─── Section 6: the listen loop ───────────────────────────────────────
+#
+# Bind, listen, accept. Each connection gets one OS thread, but we cap
+# the total via a semaphore — past that, new connections get an
+# immediate 503 and close, so a flood can't OOM the process.
+
+class _ShutdownFlag:
+    "A flag set by SIGINT/SIGTERM to stop the accept loop."
+    def __init__(self):
+        self._stop = False
+    def set(self): self._stop = True
+    def is_set(self): return self._stop
+
 def serve(routes, *, host="127.0.0.1", port=8000,
           before_hooks=(), max_connections=MAX_CONNECTIONS,
           access_log=True):
@@ -417,7 +476,7 @@ def serve(routes, *, host="127.0.0.1", port=8000,
 
     compiled = compile_routes(routes)
     semaphore = threading.BoundedSemaphore(max_connections)
-    stop = internal_ShutdownFlag()
+    stop = _ShutdownFlag()
 
     def _signal(_signum, _frame):
         logger.info("shutdown signal received")

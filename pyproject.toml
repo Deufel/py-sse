@@ -1,17 +1,13 @@
 [project]
 name = "py-sse"
-version = "0.2.3"
-description = "opinionated application wrapper for granian"
+version = "0.3.0"
+description = "minimal python sse server"
 readme = "README.md"
 authors = [
     { name = "Deufel", email = "MDeufel13@gmail.com" }
 ]
 requires-python = ">=3.12"
-dependencies = [
-    "apsw>=3.53.1.0",
-    "granian>=2.7.2",
-    "requests>=2.32.5",
-]
+dependencies = []
 
 [build-system]
 requires = ["uv_build>=0.11,<0.13"]
@@ -21,7 +17,6 @@ build-backend = "uv_build"
 dev = [
     "marimo-dev>=0.3.3",
     "marimo>=0.21.1",
-    "ngrok>=1.7.0",
 ]
 
 [tool.marimo-dev]
