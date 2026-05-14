@@ -443,6 +443,13 @@ def create_app(routes: dict | None = None, *, on_init=None, on_del=None):
 
             result = handler(req)
 
+            # async def handlers return a coroutine — await it first to see
+            # whether the actual result is an async generator (SSE) or value.
+            if inspect.iscoroutine(result):
+                result = await result
+                if req.get("_sent"):
+                    return
+
             if inspect.isasyncgen(result):
                 closed = asyncio.Event()
                 headers = [
@@ -474,9 +481,8 @@ def create_app(routes: dict | None = None, *, on_init=None, on_del=None):
                     disconnect.cancel()
                     await result.aclose()
             else:
-                result = await result
-                if req.get("_sent"):
-                    return
+                # `result` is the final value (str/dict/tuple/None) — coroutine
+                # was already awaited above if it was one.
                 _respond(proto, req, result)
 
         except Exception:

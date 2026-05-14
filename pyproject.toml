@@ -1,6 +1,6 @@
 [project]
 name = "py-sse"
-version = "0.2.1"
+version = "0.2.2"
 description = "opinionated application wrapper for granian"
 readme = "README.md"
 authors = [
