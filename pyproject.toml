@@ -1,6 +1,6 @@
 [project]
 name = "py-sse"
-version = "0.1.7"
+version = "0.1.10"
 description = "opinionated application wrapper for granian"
 readme = "README.md"
 authors = [
@@ -8,10 +8,7 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
-
     "granian>=2.7.2",
-    "html-tags>=0.0.18",
-
     "requests>=2.32.5",
 ]
 

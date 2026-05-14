@@ -1,7 +1,6 @@
 import asyncio, base64, hashlib, hmac, inspect, json
 import os, re, threading, time, traceback
 from fnmatch import fnmatch
-from html_tags import to_html, Tag
 from urllib.parse import parse_qs
 import mimetypes
 
@@ -290,7 +289,7 @@ def create_app(routes: dict | None = None, *, on_init=None, on_del=None):
         Can be sync or async — async hooks are run via loop.run_until_complete.
 
     Handler return protocol:
-        str | Tag   → 200 HTML response
+        str         → 200 HTML response
         dict        → 200 JSON response
         None        → 204 No Content
         (url, int)  → redirect (3xx) or text response (4xx/5xx)
@@ -366,9 +365,6 @@ def create_app(routes: dict | None = None, *, on_init=None, on_del=None):
                 headers.append(("content-type", "text/html; charset=utf-8"))
                 proto.response_str(status, headers, content)
             return
-
-        if hasattr(result, '__html__'):
-            result = result.__html__()
 
         if isinstance(result, bytes):                                          
             ct = req.get("_content_type", "application/octet-stream")          

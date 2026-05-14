@@ -1,6 +1,6 @@
 # py-sse
 
-> Minimal application wrapper for granian
+> opinionated application wrapper for granian
 
 
 ## app
@@ -249,7 +249,7 @@ def create_app(routes: dict | None = None, *, on_init=None, on_del=None):
         Can be sync or async — async hooks are run via loop.run_until_complete.
 
     Handler return protocol:
-        str | Tag   → 200 HTML response
+        str         → 200 HTML response
         dict        → 200 JSON response
         None        → 204 No Content
         (url, int)  → redirect (3xx) or text response (4xx/5xx)
@@ -325,9 +325,6 @@ def create_app(routes: dict | None = None, *, on_init=None, on_del=None):
                 headers.append(("content-type", "text/html; charset=utf-8"))
                 proto.response_str(status, headers, content)
             return
-
-        if isinstance(result, Tag):
-            result = to_html(result)
 
         if isinstance(result, bytes):                                          
             ct = req.get("_content_type", "application/octet-stream")          
@@ -499,7 +496,7 @@ def serve(app, *, host: str = "127.0.0.1", port: int = 8000, **kwargs):
 
 
 def patch_elements(
-    elements: Tag | str,
+    elements: str,
     *,
     selector: str | None = None,
     mode: str | None = None,
@@ -507,8 +504,9 @@ def patch_elements(
     use_view_transition: bool | None = None,
 ) -> str:
     """Format a datastar-patch-elements SSE event."""
-    if isinstance(elements, Tag):
-        elements = to_html(elements)
+    lines = []
+    if hasattr(elements, '__html__'):
+        elements = elements.__html__()
     lines = []
     if selector is not None:    lines.append(f"data: selector {selector}")
     if mode is not None:        lines.append(f"data: mode {mode}")

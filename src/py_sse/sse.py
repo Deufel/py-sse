@@ -1,8 +1,7 @@
 import json
-from html_tags import to_html
 
 def patch_elements(
-    elements: str,  # essentially the Tag()s from html_tags
+    elements: str,
     *,
     selector: str | None = None,
     mode: str | None = None,
@@ -10,6 +9,7 @@ def patch_elements(
     use_view_transition: bool | None = None,
 ) -> str:
     """Format a datastar-patch-elements SSE event."""
+    lines = []
     if hasattr(elements, '__html__'):
         elements = elements.__html__()
     lines = []

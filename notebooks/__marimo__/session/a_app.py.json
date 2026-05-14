@@ -1,0 +1,464 @@
+{
+  "version": "1",
+  "metadata": {
+    "marimo_version": "0.23.6",
+    "script_metadata_hash": null
+  },
+  "cells": [
+    {
+      "id": "setup",
+      "code_hash": "c98af983df9550770913c43b0d533b55",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "Hbol",
+      "code_hash": "1d0db38904205bec4d6f6f6a1f6cec3e",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "MJUe",
+      "code_hash": "e4c0a73afa188c81cf05bc7518b75058",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h1 id=\"package-py-sse\">Package: py-sse</h1>\n<h2 id=\"module-serve\">Module: .serve</h2>\n<blockquote>\n<span class=\"paragraph\">RSGI application, routing, request handling, SSE streaming.</span>\n</blockquote>\n<ul>\n<li>Built for Granian's RSGI interface \u2014 no ASGI abstraction layer.</li>\n<li>Run with: <code>granian --interface rsgi module:app</code></li>\n</ul></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "vblA",
+      "code_hash": "ffb78e1b2d5301fccfce57a849f50bfa",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h2 id=\"request\">Request</h2></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "bkHC",
+      "code_hash": "297ec00f34e9b2c48032e5df53e72ea7",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "lEQa",
+      "code_hash": "55690981953fbeb5f7e12c13d8dc9eab",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/html": "<div style='border-radius: 6px; overflow: hidden; background-color: var(--slate-1); display: inline-block; min-width: 0; max-width: 100%;'><div style='padding: 10px 12px 8px 12px; display: flex; align-items: center;'><span style='background-color: var(--green-3); color: var(--green-11);padding: 2px 8px; border-radius: 4px; font-family: monospace; font-size: 0.75rem; font-weight: 600; margin-right: 8px; display: inline-block;'>function</span><span style='font-family: monospace; font-size: 0.875rem; color: var(--slate-12);'>internal_parse_request</span></div><div style='height: 1px; background-color: var(--slate-3); margin: 0 12px 8px 12px;'></div><div style='color: var(--slate-11); margin: 0 12px 8px 12px; font-size: 0.75rem; font-family: monospace; padding: 0; white-space: pre-wrap;'>Build a request dict from an RSGI scope and protocol.</div><div style='font-family: monospace; font-size: 0.875rem; color: var(--slate-12); margin: 0 12px 8px 12px;'><span>def internal_parse_request(scope, proto) -&gt; dict:</span></div></div>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "PKri",
+      "code_hash": "74ba37f0e9a99a3f469d77f13fa1d446",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "Xref",
+      "code_hash": "841a2d689ad86bd1611447453c22c6fc",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/html": "<div style='border-radius: 6px; overflow: hidden; background-color: var(--slate-1); display: inline-block; min-width: 0; max-width: 100%;'><div style='padding: 10px 12px 8px 12px; display: flex; align-items: center;'><span style='background-color: var(--green-3); color: var(--green-11);padding: 2px 8px; border-radius: 4px; font-family: monospace; font-size: 0.75rem; font-weight: 600; margin-right: 8px; display: inline-block;'>function</span><span style='font-family: monospace; font-size: 0.875rem; color: var(--slate-12);'>body</span></div><div style='height: 1px; background-color: var(--slate-3); margin: 0 12px 8px 12px;'></div><div style='color: var(--slate-11); margin: 0 12px 8px 12px; font-size: 0.75rem; font-family: monospace; padding: 0; white-space: pre-wrap;'>Read the full request body (cached, with size limit).</div><div style='font-family: monospace; font-size: 0.875rem; color: var(--slate-12); margin: 0 12px 8px 12px;'><span>async def body(req: dict, *, max_size: int = 1048576) -&gt; bytes:</span></div></div>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "SFPL",
+      "code_hash": "b557362a1f6c0011032ea142572f0a55",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "BYtC",
+      "code_hash": "5d083f7b0fe96a4d248615e13c80dfc6",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/html": "<div style='border-radius: 6px; overflow: hidden; background-color: var(--slate-1); display: inline-block; min-width: 0; max-width: 100%;'><div style='padding: 10px 12px 8px 12px; display: flex; align-items: center;'><span style='background-color: var(--green-3); color: var(--green-11);padding: 2px 8px; border-radius: 4px; font-family: monospace; font-size: 0.75rem; font-weight: 600; margin-right: 8px; display: inline-block;'>function</span><span style='font-family: monospace; font-size: 0.875rem; color: var(--slate-12);'>header_values</span></div><div style='height: 1px; background-color: var(--slate-3); margin: 0 12px 8px 12px;'></div><div style='color: var(--slate-11); margin: 0 12px 8px 12px; font-size: 0.75rem; font-family: monospace; padding: 0; white-space: pre-wrap;'>Return all values for a header (multi-value safe).</div><div style='font-family: monospace; font-size: 0.875rem; color: var(--slate-12); margin: 0 12px 8px 12px;'><span>def header_values(req: dict, name: str) -&gt; list[str]:</span></div></div>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "RGSE",
+      "code_hash": "7eabef4804d2491a2894696c35951c94",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "Kclp",
+      "code_hash": "a0cb7dfc687ad5124286c869a5d9a3cf",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/html": "<div style='border-radius: 6px; overflow: hidden; background-color: var(--slate-1); display: inline-block; min-width: 0; max-width: 100%;'><div style='padding: 10px 12px 8px 12px; display: flex; align-items: center;'><span style='background-color: var(--green-3); color: var(--green-11);padding: 2px 8px; border-radius: 4px; font-family: monospace; font-size: 0.75rem; font-weight: 600; margin-right: 8px; display: inline-block;'>function</span><span style='font-family: monospace; font-size: 0.875rem; color: var(--slate-12);'>body_stream</span></div><div style='height: 1px; background-color: var(--slate-3); margin: 0 12px 8px 12px;'></div><div style='color: var(--slate-11); margin: 0 12px 8px 12px; font-size: 0.75rem; font-family: monospace; padding: 0; white-space: pre-wrap;'>Yield request body in chunks without buffering the full payload.</div><div style='font-family: monospace; font-size: 0.875rem; color: var(--slate-12); margin: 0 12px 8px 12px;'><span>def body_stream(req: dict, *, max_size: int = 1048576):</span></div></div>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "emfo",
+      "code_hash": "8b2bd3f5d5e848af40013c57603056a0",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "Hstk",
+      "code_hash": "a8420f8bebd6d9578b405b6bbaa813d9",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/html": "<div style='border-radius: 6px; overflow: hidden; background-color: var(--slate-1); display: inline-block; min-width: 0; max-width: 100%;'><div style='padding: 10px 12px 8px 12px; display: flex; align-items: center;'><span style='background-color: var(--green-3); color: var(--green-11);padding: 2px 8px; border-radius: 4px; font-family: monospace; font-size: 0.75rem; font-weight: 600; margin-right: 8px; display: inline-block;'>function</span><span style='font-family: monospace; font-size: 0.875rem; color: var(--slate-12);'>signals</span></div><div style='height: 1px; background-color: var(--slate-3); margin: 0 12px 8px 12px;'></div><div style='color: var(--slate-11); margin: 0 12px 8px 12px; font-size: 0.75rem; font-family: monospace; padding: 0; white-space: pre-wrap;'>Read Datastar signals from a request.</div><div style='font-family: monospace; font-size: 0.875rem; color: var(--slate-12); margin: 0 12px 8px 12px;'><span>async def signals(req: dict) -&gt; dict:</span></div></div>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "nWHF",
+      "code_hash": "c5df199a389da1c0ef94deeb7386c9e6",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h2 id=\"cookies\">Cookies</h2></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "iLit",
+      "code_hash": "0311516cb773c7bfbd937b94a26bd338",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "ZHCJ",
+      "code_hash": "63073e99b74e1a59a64941ad669a0b98",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/html": "<div style='border-radius: 6px; overflow: hidden; background-color: var(--slate-1); display: inline-block; min-width: 0; max-width: 100%;'><div style='padding: 10px 12px 8px 12px; display: flex; align-items: center;'><span style='background-color: var(--green-3); color: var(--green-11);padding: 2px 8px; border-radius: 4px; font-family: monospace; font-size: 0.75rem; font-weight: 600; margin-right: 8px; display: inline-block;'>function</span><span style='font-family: monospace; font-size: 0.875rem; color: var(--slate-12);'>set_cookie</span></div><div style='height: 1px; background-color: var(--slate-3); margin: 0 12px 8px 12px;'></div><div style='color: var(--slate-11); margin: 0 12px 8px 12px; font-size: 0.75rem; font-family: monospace; padding: 0; white-space: pre-wrap;'>Queue a Set-Cookie header on the request.</div><div style='font-family: monospace; font-size: 0.875rem; color: var(--slate-12); margin: 0 12px 8px 12px;'><span>def set_cookie(req: dict, name: str, value: str, **opts) -&gt; None:</span></div></div>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "ROlb",
+      "code_hash": "edd48b51000b447238bc56b7636c9148",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "qnkX",
+      "code_hash": "062abb4ec724d68aacc614d416718ecb",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "TqIu",
+      "code_hash": "e9d5168fce8562de147d417b5d4fd26f",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h2 id=\"relay\">Relay</h2></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "Vxnm",
+      "code_hash": "dfceb5e12f4a4b631aa13a15ee6e5830",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "DnEU",
+      "code_hash": "943a9f6a765bd964931d9d23340fe1bd",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/html": "<div style='border-radius: 6px; overflow: hidden; background-color: var(--slate-1); display: inline-block; min-width: 0; max-width: 100%;'><div style='padding: 10px 12px 8px 12px; display: flex; align-items: center;'><span style='background-color: var(--green-3); color: var(--green-11);padding: 2px 8px; border-radius: 4px; font-family: monospace; font-size: 0.75rem; font-weight: 600; margin-right: 8px; display: inline-block;'>function</span><span style='font-family: monospace; font-size: 0.875rem; color: var(--slate-12);'>create_relay</span></div><div style='height: 1px; background-color: var(--slate-3); margin: 0 12px 8px 12px;'></div><div style='color: var(--slate-11); margin: 0 12px 8px 12px; font-size: 0.75rem; font-family: monospace; padding: 0; white-space: pre-wrap;'>Create a pub/sub relay for broadcasting events.</div><div style='font-family: monospace; font-size: 0.875rem; color: var(--slate-12); margin: 0 12px 8px 12px;'><span>def create_relay():</span></div></div>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "ulZA",
+      "code_hash": "b2f3149d47056102296c4b0033e49838",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h2 id=\"signer\">Signer</h2></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "ecfG",
+      "code_hash": "e0e77ed6743d03ac52a0a126a1623cc5",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "Pvdt",
+      "code_hash": "c266ac8e1704c449e8d5305aedaca14e",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/html": "<div style='border-radius: 6px; overflow: hidden; background-color: var(--slate-1); display: inline-block; min-width: 0; max-width: 100%;'><div style='padding: 10px 12px 8px 12px; display: flex; align-items: center;'><span style='background-color: var(--green-3); color: var(--green-11);padding: 2px 8px; border-radius: 4px; font-family: monospace; font-size: 0.75rem; font-weight: 600; margin-right: 8px; display: inline-block;'>function</span><span style='font-family: monospace; font-size: 0.875rem; color: var(--slate-12);'>create_signer</span></div><div style='height: 1px; background-color: var(--slate-3); margin: 0 12px 8px 12px;'></div><div style='color: var(--slate-11); margin: 0 12px 8px 12px; font-size: 0.75rem; font-family: monospace; padding: 0; white-space: pre-wrap;'>Create an HMAC-SHA256 cookie signer.</div><div style='font-family: monospace; font-size: 0.875rem; color: var(--slate-12); margin: 0 12px 8px 12px;'><span>def create_signer(secret: str | bytes | None = None):</span></div></div>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "ZBYS",
+      "code_hash": "221e6ade2b896d1988b9aa2e65922b09",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h2 id=\"static\">Static</h2></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "aLJB",
+      "code_hash": "270b869f5fe67c3e66f269ca7deee0bd",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "nHfw",
+      "code_hash": "a81259cef8e959c624df1d456e5d3297",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/html": "<div style='border-radius: 6px; overflow: hidden; background-color: var(--slate-1); display: inline-block; min-width: 0; max-width: 100%;'><div style='padding: 10px 12px 8px 12px; display: flex; align-items: center;'><span style='background-color: var(--green-3); color: var(--green-11);padding: 2px 8px; border-radius: 4px; font-family: monospace; font-size: 0.75rem; font-weight: 600; margin-right: 8px; display: inline-block;'>function</span><span style='font-family: monospace; font-size: 0.875rem; color: var(--slate-12);'>static</span></div><div style='height: 1px; background-color: var(--slate-3); margin: 0 12px 8px 12px;'></div><div style='color: var(--slate-11); margin: 0 12px 8px 12px; font-size: 0.75rem; font-family: monospace; padding: 0; white-space: pre-wrap;'>Mount a directory or single file for static serving.</div><div style='font-family: monospace; font-size: 0.875rem; color: var(--slate-12); margin: 0 12px 8px 12px;'><span>def static(app, url_prefix: str, directory: str):</span></div></div>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "xXTn",
+      "code_hash": "aa24307eee6c435e5fc4e59cd432f79b",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h2 id=\"application\">Application</h2></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "AjVT",
+      "code_hash": "0cb8499b07ccbca28a2a0ba4f49bc133",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "pHFh",
+      "code_hash": "6958a25de05d00d1d9e231e1f123a1a3",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/html": "<div style='border-radius: 6px; overflow: hidden; background-color: var(--slate-1); display: inline-block; min-width: 0; max-width: 100%;'><div style='padding: 10px 12px 8px 12px; display: flex; align-items: center;'><span style='background-color: var(--green-3); color: var(--green-11);padding: 2px 8px; border-radius: 4px; font-family: monospace; font-size: 0.75rem; font-weight: 600; margin-right: 8px; display: inline-block;'>function</span><span style='font-family: monospace; font-size: 0.875rem; color: var(--slate-12);'>create_app</span></div><div style='height: 1px; background-color: var(--slate-3); margin: 0 12px 8px 12px;'></div><div style='color: var(--slate-11); margin: 0 12px 8px 12px; font-size: 0.75rem; font-family: monospace; padding: 0; white-space: pre-wrap;'>Create a Datastar RSGI application.</div><div style='font-family: monospace; font-size: 0.875rem; color: var(--slate-12); margin: 0 12px 8px 12px;'><span>def create_app(routes: dict | None = None, *, on_init=None, on_del=None):</span></div></div>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "NCOB",
+      "code_hash": "24e00490b4b3fe6bb493769b4017d9f7",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h2 id=\"embeded-server\">Embeded Server</h2></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "aqbW",
+      "code_hash": "edc84b8d339dc6f3fe330c0a7b8b0f52",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "TRpd",
+      "code_hash": "20cc39187933346eee8108ec76a2f796",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/html": "<div style='border-radius: 6px; overflow: hidden; background-color: var(--slate-1); display: inline-block; min-width: 0; max-width: 100%;'><div style='padding: 10px 12px 8px 12px; display: flex; align-items: center;'><span style='background-color: var(--green-3); color: var(--green-11);padding: 2px 8px; border-radius: 4px; font-family: monospace; font-size: 0.75rem; font-weight: 600; margin-right: 8px; display: inline-block;'>function</span><span style='font-family: monospace; font-size: 0.875rem; color: var(--slate-12);'>serve</span></div><div style='height: 1px; background-color: var(--slate-3); margin: 0 12px 8px 12px;'></div><div style='color: var(--slate-11); margin: 0 12px 8px 12px; font-size: 0.75rem; font-family: monospace; padding: 0; white-space: pre-wrap;'>Run an app with Granian&#x27;s embedded RSGI server.</div><div style='font-family: monospace; font-size: 0.875rem; color: var(--slate-12); margin: 0 12px 8px 12px;'><span>def serve(app, *, host: str = &#x27;127.0.0.1&#x27;, port: int = 8000, **kwargs):</span></div></div>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "TXez",
+      "code_hash": null,
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    }
+  ]
+}
