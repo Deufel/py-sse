@@ -1,7 +1,7 @@
 """opinionated application wrapper for granian"""
-__version__ = '0.2.2'
+__version__ = '0.2.3'
 __author__ = 'Deufel'
-from .app import body, header_values, body_stream, signals, set_cookie, create_signer, static, request_logger, create_app, serve
+from .app import body, header_values, body_stream, signals, set_cookie, create_signer, static, create_app, serve
 from .sse import patch_elements, patch_signals, remove_signals, execute_script, redirect
 from .db import create_db, migrate, query, write, Changes
 from .mserver import ServerState, serve_background, stop_background, dev_alive
@@ -25,7 +25,6 @@ __all__ = [
     "query",
     "redirect",
     "remove_signals",
-    "request_logger",
     "serve",
     "serve_background",
     "set_cookie",

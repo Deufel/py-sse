@@ -8,27 +8,13 @@
     {
       "id": "setup",
       "code_hash": "def56551fc0e212feb876965d3d674df",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
+      "outputs": [],
       "console": []
     },
     {
       "id": "Hbol",
       "code_hash": "1d0db38904205bec4d6f6f6a1f6cec3e",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
+      "outputs": [],
       "console": []
     },
     {
@@ -45,172 +31,89 @@
       "console": []
     },
     {
-      "id": "kyYk",
-      "code_hash": "22c30c33554a2fb67bbcdb8e5c254047",
+      "id": "xQWD",
+      "code_hash": "86d452ea2cd93bfda456ee357045a499",
       "outputs": [
         {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
+          "type": "error",
+          "ename": "exception",
+          "evalue": "attempted relative import with no known parent package",
+          "traceback": null
         }
       ],
+      "console": [
+        {
+          "type": "stream",
+          "name": "stderr",
+          "text": "<span class=\"codehilite\"><div class=\"highlight\"><pre><span></span><span class=\"gt\">Traceback (most recent call last):</span>\n  File <span class=\"nb\">&quot;/tmp/marimo_175525/__marimo__cell_xQWD_.py&quot;</span>, line <span class=\"m\">17</span>, in <span class=\"n\">&lt;module&gt;</span>\n<span class=\"w\">    </span><span class=\"kn\">from</span><span class=\"w\"> </span><span class=\"nn\">.sse</span><span class=\"w\"> </span><span class=\"kn\">import</span> <span class=\"n\">patch_elements</span>\n<span class=\"gr\">ImportError</span>: <span class=\"n\">attempted relative import with no known parent package</span>\n</pre></div>\n</span>",
+          "mimetype": "application/vnd.marimo+traceback"
+        }
+      ]
+    },
+    {
+      "id": "AgVj",
+      "code_hash": null,
+      "outputs": [],
       "console": []
     },
     {
-      "id": "zcBT",
-      "code_hash": "a95f474ece422c42226515cb2f4f1df4",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
+      "id": "qeyi",
+      "code_hash": null,
+      "outputs": [],
       "console": []
     },
     {
-      "id": "xDWu",
-      "code_hash": "9fc5f89f58e4bce973a964875cb88bcd",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
+      "id": "evMm",
+      "code_hash": null,
+      "outputs": [],
       "console": []
     },
     {
-      "id": "HZyI",
-      "code_hash": "f168372cefa7b66cf738196d80237922",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
+      "id": "OnBR",
+      "code_hash": null,
+      "outputs": [],
       "console": []
     },
     {
-      "id": "WskX",
-      "code_hash": "ddd17d5ae60c4e53ec3d68ebd7ee93d7",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
+      "id": "JXUD",
+      "code_hash": null,
+      "outputs": [],
       "console": []
     },
     {
-      "id": "qLbB",
-      "code_hash": "850ee09b1d7b4774a7814395e4a64632",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
+      "id": "kIVB",
+      "code_hash": null,
+      "outputs": [],
       "console": []
     },
     {
-      "id": "kFAv",
-      "code_hash": "f7da3fed6756f3cd330f9f8b57f0a019",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
+      "id": "XcUp",
+      "code_hash": null,
+      "outputs": [],
       "console": []
     },
     {
-      "id": "itWT",
-      "code_hash": "be7f5b4fa22727febe3b00d7bce7aea7",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
+      "id": "bdsw",
+      "code_hash": null,
+      "outputs": [],
       "console": []
     },
     {
-      "id": "CHlj",
-      "code_hash": "5d67003cbe2ae34eebe7eec08a2aa1a1",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
+      "id": "qsBF",
+      "code_hash": null,
+      "outputs": [],
       "console": []
     },
     {
-      "id": "CWoW",
-      "code_hash": "105e353d0febba1d0782827705f9f934",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
+      "id": "TpBg",
+      "code_hash": null,
+      "outputs": [],
       "console": []
     },
     {
-      "id": "xSMe",
-      "code_hash": "a0357e522f3fd282e70a5e76a11a3556",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
-      "console": []
-    },
-    {
-      "id": "xiaG",
-      "code_hash": "a5fe6ee334962f16cb9252b10a8e6ff7",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
-      "console": []
-    },
-    {
-      "id": "Ksmr",
-      "code_hash": "ac270b356a4d1935a28db8383f0fb71a",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
+      "id": "VpqO",
+      "code_hash": null,
+      "outputs": [],
       "console": []
     }
   ]

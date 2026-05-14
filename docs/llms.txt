@@ -2,7 +2,7 @@
 
 > opinionated application wrapper for granian
 
-- [app](/app): body, header_values, body_stream, signals, set_cookie, create_signer, static, request_logger, create_app, serve
+- [app](/app): body, header_values, body_stream, signals, set_cookie, create_signer, static, create_app, serve
 - [sse](/sse): patch_elements, patch_signals, remove_signals, execute_script, redirect
 - [db](/db): create_db, migrate, query, write, Changes
 - [mserver](/mserver): ServerState, serve_background, stop_background, dev_alive

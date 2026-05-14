@@ -14,15 +14,16 @@ with app.setup:
     beforeware, and RSGI lifecycle hooks.
     """
     import asyncio, base64, hashlib, hmac, inspect, json
-    import os, re, threading, time, traceback
+    import os, re, time, traceback
     from urllib.parse import parse_qs
     import mimetypes
 
-    from b_sse import patch_elements
-
     from granian._granian import RSGIProtocolClosed
 
+    from b_sse import patch_elements
+
     PARAM_RE = re.compile(r'\{(\w+)\}')
+
 
 
 @app.cell
@@ -265,20 +266,6 @@ def static(app, url_prefix: str, directory: str):
 
 
 @app.function
-def request_logger(topic_fn):
-    """Beforeware that calls topic_fn(req) with each incoming request.
-
-    topic_fn is anything callable — print, a log function, a custom callback.
-    Decoupled from any specific pub/sub implementation.
-
-        app.before(request_logger(lambda req: print(f"{req['method']} {req['path']}")))
-    """
-    def hook(req):
-        topic_fn(req)
-    return hook
-
-
-@app.function
 def create_app(routes: dict | None = None, *, on_init=None, on_del=None):
     """Create a Datastar RSGI application.
 
@@ -499,6 +486,17 @@ def create_app(routes: dict | None = None, *, on_init=None, on_del=None):
                     return
 
             if inspect.isasyncgen(result):
+                # Drive the generator one step before building headers, so any
+                # set_cookie() calls before the first yield make it into the
+                # response. If the generator returns without yielding, fall
+                # through to a regular response (cookies still captured).
+                try:
+                    first = await result.__anext__()
+                except StopAsyncIteration:
+                    await result.aclose()
+                    _respond(proto, req, None)        # 204 + queued cookies
+                    return
+
                 closed = asyncio.Event()
                 headers = [
                     ("content-type",      "text/event-stream"),
@@ -515,8 +513,16 @@ def create_app(routes: dict | None = None, *, on_init=None, on_del=None):
                 disconnect.add_done_callback(_on_disconnect)
 
                 try:
-                    async for event in result:
-                        if closed.is_set():
+                    # Send the first event we already pulled.
+                    try:
+                        await transport.send_str(first)
+                    except RSGIProtocolClosed:
+                        closed.set()
+                    # Then drain the rest.
+                    while not closed.is_set():
+                        try:
+                            event = await result.__anext__()
+                        except StopAsyncIteration:
                             break
                         try:
                             await transport.send_str(event)
