@@ -4,31 +4,14 @@ __generated_with = "0.23.6"
 app = marimo.App(width="medium")
 
 with app.setup:
-    """Opinionated RSGI app for Datastar.
 
-    Two route types:
-      @app.get / @app.post / ...    short request/response (HTML, JSON, redirect)
-      @app.stream(path, on=...)     long-lived SSE; re-renders on each tick
-
-    Everything else is plumbing: routing, signals, cookies, static serving,
-    beforeware, and RSGI lifecycle hooks.
-    """
     import asyncio, base64, hashlib, hmac, inspect, json
     import os, re, threading, time, traceback
+    from fnmatch import fnmatch
     from urllib.parse import parse_qs
     import mimetypes
 
-    from b_sse import patch_elements
-
-    try:
-        from _granian import RSGIProtocolClosed
-    except ImportError:
-        class RSGIProtocolClosed(Exception): pass
-
-    PARAM_RE = re.compile(r'\{(\w+)\}')
-
-
-
+    PARAM_RE = re.compile(r"\{(\w+)\}")
 
 
 @app.cell
@@ -41,16 +24,29 @@ def _():
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    # App
+    # Package: py-sse
+    ## Module: .serve
+    >RSGI application, routing, request handling, SSE streaming.
 
-    > Opinonated granin implementation of rsgi for sse datastar applications
+    - Built for Granian's RSGI interface — no ASGI abstraction layer.
+    - Run with: `granian --interface rsgi module:app`
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Request
     """)
     return
 
 
 @app.function
+#| internal
+
 def internal_parse_request(scope, proto) -> dict:
-    "Build a request dict from an RSGI scope and protocol."
+    """Build a request dict from an RSGI scope and protocol."""
     raw_cookies = scope.headers.get("cookie", "")
     return {
         "path":         scope.path,
@@ -65,17 +61,26 @@ def internal_parse_request(scope, proto) -> dict:
         ),
         "scheme":       scope.scheme,
         "client":       scope.client,
-        "http_version": scope.http_version,
-        "server":       scope.server,
-        "authority":    getattr(scope, "authority", None),
+        "http_version": scope.http_version,                  # "1", "1.1", or "2"
+        "server":       scope.server,                        # "host:port"
+        "authority":    getattr(scope, "authority", None),   # HTTP/2 pseudo-header
         "_proto":       proto,
         "_cookies":     [],
     }
 
 
+@app.cell
+def _():
+    internal_parse_request
+    return
+
+
 @app.function
 async def body(req: dict, *, max_size: int = 1_048_576) -> bytes:
-    "Read the full request body, cached, with a size limit."
+    """Read the full request body (cached, with size limit).
+
+    Raises ValueError if the body exceeds max_size.
+    """
     if "_body" in req:
         return req["_body"]
     raw = await req["_proto"]()
@@ -85,18 +90,45 @@ async def body(req: dict, *, max_size: int = 1_048_576) -> bytes:
     return raw
 
 
+@app.cell
+def _():
+    body
+    return
+
+
 @app.function
 def header_values(req: dict, name: str) -> list[str]:
-    "Return all values for a header (multi-value safe). Uses RSGI's native get_all()."
+    """Return all values for a header (multi-value safe).
+
+    Uses RSGI's native get_all() for correct handling of
+    repeated headers like X-Forwarded-For, Via, Set-Cookie.
+
+    Usage:
+        ips = header_values(req, "x-forwarded-for")
+    """
     return req["headers"].get_all(name)
+
+
+@app.cell
+def _():
+    header_values
+    return
 
 
 @app.function
 async def body_stream(req: dict, *, max_size: int = 1_048_576):
     """Yield request body in chunks without buffering the full payload.
 
-    Mutually exclusive with body() — use one or the other per request.
-    Suitable for file uploads.
+    Uses RSGI's __aiter__ for streaming reads from Rust.
+    Mutually exclusive with body() — use one or the other.
+
+    Usage:
+        @app.post("/upload")
+        async def upload(req):
+            chunks = []
+            async for chunk in body_stream(req):
+                chunks.append(chunk)
+            data = b"".join(chunks)
     """
     proto = req["_proto"]
     total = 0
@@ -107,12 +139,18 @@ async def body_stream(req: dict, *, max_size: int = 1_048_576):
         yield chunk
 
 
+@app.cell
+def _():
+    body_stream
+    return
+
+
 @app.function
 async def signals(req: dict) -> dict:
     """Read Datastar signals from a request.
 
-    GET: JSON-encoded `datastar` query parameter.
-    Other methods: JSON body, optionally wrapped in `{datastar: ...}`.
+    GET: JSON-encoded ``datastar`` query parameter.
+    Other: JSON body, optionally wrapped in ``{datastar: ...}``.
     """
     if req["method"] == "GET":
         raw = req["query"].get("datastar", "{}")
@@ -121,10 +159,30 @@ async def signals(req: dict) -> dict:
     return data.get("datastar", data) if isinstance(data, dict) else data
 
 
+@app.cell
+def _():
+    signals
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Cookies
+    """)
+    return
+
+
 @app.function
 def set_cookie(req: dict, name: str, value: str, **opts) -> None:
-    "Queue a Set-Cookie header on the request."
+    """Queue a Set-Cookie header on the request."""
     req["_cookies"].append((name, value, opts))
+
+
+@app.cell
+def _():
+    set_cookie
+    return
 
 
 @app.function
@@ -139,15 +197,80 @@ def internal_serialize_cookie(name: str, value: str, opts: dict) -> str:
 
 
 @app.function
+#| internal
+
 def internal_cookie_headers(req: dict) -> list[tuple[str, str]]:
     return [("set-cookie", internal_serialize_cookie(n, v, o))
             for n, v, o in req["_cookies"]]
 
 
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Relay
+    """)
+    return
+
+
+@app.function
+def create_relay():
+    """Create a pub/sub relay for broadcasting events.
+
+    Usage:
+        relay = create_relay()
+        relay.publish("chat.new", item)          # sync, thread-safe
+
+        async for topic, data in relay.subscribe("chat.*"):
+            yield patch_elements(render(data))   # async generator
+    """
+    subs: list[tuple[str, asyncio.Queue]] = []
+    lock = threading.Lock()
+
+    def publish(topic: str, data):
+        with lock:
+            targets = [(p, q) for p, q in subs if fnmatch(topic, p)]
+        for _, queue in targets:
+            try:    queue.put_nowait((topic, data))
+            except: pass  # noqa: E722 — never block the publisher
+
+    async def subscribe(pattern: str):
+        queue = asyncio.Queue()
+        with lock: subs.append((pattern, queue))
+        try:
+            while True: yield await queue.get()
+        except (asyncio.CancelledError, GeneratorExit):
+            pass
+        finally:
+            with lock:
+                try:    subs.remove((pattern, queue))
+                except: pass  # noqa: E722
+
+    class _Relay:
+        __slots__ = ("publish", "subscribe")
+    r = _Relay()
+    r.publish, r.subscribe = publish, subscribe
+    return r
+
+
+@app.cell
+def _():
+    create_relay
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Signer
+    """)
+    return
+
+
 @app.function
 def create_signer(secret: str | bytes | None = None):
-    """HMAC-SHA256 cookie signer.
+    """Create an HMAC-SHA256 cookie signer.
 
+    Usage:
         signer = create_signer("my-secret")
         set_cookie(req, "session", signer.sign("user42"))
         user = signer.unsign(req["cookies"].get("session", ""))
@@ -155,8 +278,8 @@ def create_signer(secret: str | bytes | None = None):
     if secret is None:          secret = os.urandom(32)
     if isinstance(secret, str): secret = secret.encode()
 
-    def _b64e(d: bytes) -> str:
-        return base64.urlsafe_b64encode(d).rstrip(b"=").decode()
+    def _b64e(data: bytes) -> str:
+        return base64.urlsafe_b64encode(data).rstrip(b"=").decode()
     def _b64d(s: str) -> bytes:
         return base64.urlsafe_b64decode((s + "=" * (-len(s) % 4)).encode())
     def _mac(payload: str) -> str:
@@ -176,10 +299,10 @@ def create_signer(secret: str | bytes | None = None):
         if not hmac.compare_digest(sig, _mac(payload)): return None
         if max_age is not None:
             try:    ts = int(ts_hex, 16)
-            except Exception: return None
+            except: return None  # noqa: E722
             if time.time() - ts > max_age: return None
         try:    return _b64d(enc_value).decode()
-        except Exception: return None
+        except: return None  # noqa: E722
 
     class _Signer:
         __slots__ = ("sign", "unsign")
@@ -188,13 +311,29 @@ def create_signer(secret: str | bytes | None = None):
     return s
 
 
+@app.cell
+def _():
+    create_signer
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Static
+    """)
+    return
+
+
 @app.function
 def static(app, url_prefix: str, directory: str):
     """Mount a directory or single file for static serving.
 
-    Uses RSGI response_file / response_file_range for zero-copy file I/O.
-    Supports HTTP Range requests for resumable downloads and media seeking.
+    Uses RSGI response_file and response_file_range for zero-copy
+    file I/O from Rust. Supports HTTP Range requests for resumable
+    downloads and media seeking.
 
+    Usage:
         static(app, "/static", "static/")
         static(app, "/favicon.svg", "favicon.svg")
     """
@@ -205,6 +344,7 @@ def static(app, url_prefix: str, directory: str):
         return ct or "application/octet-stream"
 
     def _parse_range(header, file_size):
+        """Parse Range header → (start, end_exclusive) or None."""
         if not header or not header.startswith("bytes="):
             return None
         spec = header[6:].strip()
@@ -212,10 +352,14 @@ def static(app, url_prefix: str, directory: str):
             return None
         left, _, right = spec.partition("-")
         try:
-            if left and right:    start, end = int(left), int(right) + 1
-            elif left:            start, end = int(left), file_size
-            elif right:           start, end = max(0, file_size - int(right)), file_size
-            else:                 return None
+            if left and right:
+                start, end = int(left), int(right) + 1
+            elif left:
+                start, end = int(left), file_size
+            elif right:
+                start, end = max(0, file_size - int(right)), file_size
+            else:
+                return None
         except ValueError:
             return None
         if start < 0 or start >= file_size or end > file_size or start >= end:
@@ -251,12 +395,15 @@ def static(app, url_prefix: str, directory: str):
             ], full_path)
         req["_sent"] = True
 
+    # ── Single file mount ────────────────────────────────────
     if os.path.isfile(directory):
         async def serve_single(req):
             _serve_file(req, directory)
+
         app.get(url_prefix)(serve_single)
         return
 
+    # ── Directory mount ──────────────────────────────────────
     async def serve_dir(req):
         rel = req["params"].get("path", "")
         if not rel:
@@ -270,48 +417,49 @@ def static(app, url_prefix: str, directory: str):
     app.mount(url_prefix.rstrip("/"), serve_dir)
 
 
-@app.function
-def request_logger(topic_fn):
-    """Beforeware that calls topic_fn(req) with each incoming request.
+@app.cell
+def _():
+    static
+    return
 
-    topic_fn is anything callable — print, a log function, a custom callback.
-    Decoupled from any specific pub/sub implementation.
 
-        app.before(request_logger(lambda req: print(f"{req['method']} {req['path']}")))
-    """
-    def hook(req):
-        topic_fn(req)
-    return hook
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Application
+    """)
+    return
 
 
 @app.function
 def create_app(routes: dict | None = None, *, on_init=None, on_del=None):
     """Create a Datastar RSGI application.
 
-    Lifecycle:
-        on_init(loop)  → called at server startup. Loop not yet running.
-                         Use to wire shared state (DB connections, Changes,
-                         relays) onto the correct loop.
-        on_del(loop)   → called at server shutdown. Loop not yet running.
-                         Use to close DB connections, detach hooks.
+    Lifecycle hooks:
+        on_init(loop)  → called at server startup (loop not yet running)
+        on_del(loop)   → called at server shutdown (loop not yet running)
 
-        Both can be sync or async; async ones run via loop.run_until_complete.
+        Can be sync or async — async hooks are run via loop.run_until_complete.
 
     Handler return protocol:
-        str          → 200 HTML response
-        dict         → 200 JSON response
-        None         → 204 No Content
-        (url, int)   → redirect (3xx) or text (4xx/5xx)
-        async gen    → SSE stream (raw; use @app.stream for the common case)
+        str         → 200 HTML response
+        dict        → 200 JSON response
+        None        → 204 No Content
+        (url, int)  → redirect (3xx) or text response (4xx/5xx)
+        async gen   → SSE stream
 
+    Usage:
         async def startup(loop):
-            global changes
-            changes = Changes(db, loop)
+            app.db = await create_pool()
 
         def shutdown(loop):
-            changes.close()
+            print("goodbye")
 
         app = create_app(on_init=startup, on_del=shutdown)
+
+        @app.get("/")
+        async def index(req):
+            return "<h1>Hello</h1>"
     """
     if routes is None:
         routes = {}
@@ -344,58 +492,6 @@ def create_app(routes: dict | None = None, *, on_init=None, on_del=None):
     def patch(path):  return route("PATCH", path)
     def delete(path): return route("DELETE", path)
 
-    # ── @app.stream — the opinionated SSE route ──────────────
-
-    def stream(path: str, *, on):
-        """Register an SSE endpoint that re-renders on each tick from `on`.
-
-        The decorated function is sync (or async), takes `req`, and returns
-        either an html_tags tree or a pre-rendered HTML string. The framework
-        handles SSE framing, initial render, re-render on change, disconnect
-        cleanup, and prompt subscriber teardown.
-
-        `on` is either:
-          • a Changes-like object with `async def wait(self)`, or
-          • a zero-arg callable returning one (resolved per-request, useful
-            when the Changes is created in `on_init` after route registration).
-
-            @app.stream('/feed', on=lambda: changes)
-            def feed(req):
-                rows = query(db, "SELECT txt FROM msgs ORDER BY id DESC LIMIT 50")
-                return h.div(*[h.p(r[0]) for r in rows], id='msgs')
-        """
-        from html_tags import render as _h_render
-
-        def _resolve_on():
-            # `on` may be the Changes instance directly, or a zero-arg callable
-            # returning it (for cases where `on_init` creates it later).
-            if hasattr(on, 'wait'):
-                return on
-            return on()
-
-        def decorator(fn):
-            is_coro = inspect.iscoroutinefunction(fn)
-
-            async def _render(req):
-                result = fn(req)
-                if is_coro:
-                    result = await result
-                if hasattr(result, '__html__'):
-                    result = result.__html__()
-                elif not isinstance(result, str):
-                    result = _h_render(result)
-                return patch_elements(result)
-
-            async def handler(req):
-                source = _resolve_on()
-                yield await _render(req)
-                async for _ in source.wait():
-                    yield await _render(req)
-
-            route("GET", path)(handler)
-            return fn
-        return decorator
-
     # ── Beforeware ───────────────────────────────────────────
 
     def before(fn=None, *, methods=None):
@@ -423,10 +519,10 @@ def create_app(routes: dict | None = None, *, on_init=None, on_del=None):
                 proto.response_str(status, headers, content)
             return
 
-        if isinstance(result, bytes):
-            ct = req.get("_content_type", "application/octet-stream")
-            headers.append(("content-type", ct))
-            proto.response_bytes(200, headers, result)
+        if isinstance(result, bytes):                                          
+            ct = req.get("_content_type", "application/octet-stream")          
+            headers.append(("content-type", ct))                               
+            proto.response_bytes(200, headers, result)                         
         elif isinstance(result, str):
             headers.append(("content-type", "text/html; charset=utf-8"))
             proto.response_str(200, headers, result)
@@ -446,14 +542,9 @@ def create_app(routes: dict | None = None, *, on_init=None, on_del=None):
         try:
             while not closed.is_set():
                 await asyncio.sleep(interval)
-                if closed.is_set():
-                    break
-                try:
+                if not closed.is_set():
                     await transport.send_str(":\n\n")
-                except RSGIProtocolClosed:
-                    closed.set()
-                    break
-        except asyncio.CancelledError:
+        except (asyncio.CancelledError, Exception):
             pass
 
     # ── RSGI entrypoint ──────────────────────────────────────
@@ -515,18 +606,12 @@ def create_app(routes: dict | None = None, *, on_init=None, on_del=None):
 
                 try:
                     async for event in result:
-                        if closed.is_set():
-                            break
-                        try:
-                            await transport.send_str(event)
-                        except RSGIProtocolClosed:
-                            closed.set()
-                            break
+                        if closed.is_set(): break
+                        await transport.send_str(event.render())
+
                 finally:
-                    closed.set()
                     keepalive.cancel()
                     disconnect.cancel()
-                    await result.aclose()
             else:
                 result = await result
                 if req.get("_sent"):
@@ -539,7 +624,7 @@ def create_app(routes: dict | None = None, *, on_init=None, on_del=None):
                 proto.response_str(500,
                     [("content-type", "text/plain")],
                     "Internal Server Error")
-            except Exception: pass
+            except: pass  # noqa: E722
 
     # ── RSGI lifecycle hooks ─────────────────────────────────
 
@@ -558,7 +643,7 @@ def create_app(routes: dict | None = None, *, on_init=None, on_del=None):
     handle.__rsgi_init__ = _rsgi_init
     handle.__rsgi_del__  = _rsgi_del
 
-    # ── Attach decorators to the app handle ──────────────────
+    # ── Attach decorators ────────────────────────────────────
 
     handle.route  = route
     handle.get    = get
@@ -568,18 +653,39 @@ def create_app(routes: dict | None = None, *, on_init=None, on_del=None):
     handle.delete = delete
     handle.mount  = mount
     handle.before = before
-    handle.stream = stream
     return handle
+
+
+@app.cell
+def _():
+    create_app
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Embeded Server
+    """)
+    return
 
 
 @app.function
 def serve(app, *, host: str = "127.0.0.1", port: int = 8000, **kwargs):
     """Run an app with Granian's embedded RSGI server.
 
+    Turns a py-sse app into a self-contained script:
+
+        app = create_app()
+
+        @app.get("/")
+        async def index(req):
+            return "<h1>Hello</h1>"
+
         if __name__ == "__main__":
             serve(app)
 
-    Extra kwargs forward to granian.server.embed.Server
+    Any extra keyword arguments are forwarded to granian.server.embed.Server
     (e.g. log_access=True, websockets=False, ssl_cert=...).
     """
     from granian.server.embed import Server
@@ -594,6 +700,17 @@ def serve(app, *, host: str = "127.0.0.1", port: int = 8000, **kwargs):
         asyncio.run(_run())
     except KeyboardInterrupt:
         pass
+
+
+@app.cell
+def _():
+    serve
+    return
+
+
+@app.cell
+def _():
+    return
 
 
 if __name__ == "__main__":

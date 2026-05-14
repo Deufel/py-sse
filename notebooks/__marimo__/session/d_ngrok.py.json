@@ -7,7 +7,7 @@
   "cells": [
     {
       "id": "setup",
-      "code_hash": "6aef8b0e45dab102deaf9026d9621cc7",
+      "code_hash": "5324f1253559009ec01dd43001c6ae96",
       "outputs": [
         {
           "type": "data",
@@ -19,7 +19,7 @@
       "console": []
     },
     {
-      "id": "Hbol",
+      "id": "PKri",
       "code_hash": "1d0db38904205bec4d6f6f6a1f6cec3e",
       "outputs": [
         {
@@ -32,34 +32,21 @@
       "console": []
     },
     {
-      "id": "MJUe",
-      "code_hash": "e4741291000d73b9f1c9fcf2ce842ac1",
+      "id": "Hbol",
+      "code_hash": "22a03a62dc5f72a2b1096b3413bf9e1a",
       "outputs": [
         {
           "type": "data",
           "data": {
-            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h1 id=\"package-py-sse\">Package: py-sse</h1>\n<h2 id=\"module-sse\">Module: .sse</h2>\n<blockquote>\n<span class=\"paragraph\">Datastar SSE event formatting.</span>\n</blockquote>\n<ul>\n<li>Pure functions \u2014 no I/O, no framework dependency.</li>\n<li>Each returns a ready-to-send SSE event string.</li>\n</ul></span>"
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h1 id=\"package-py-sse\">Package: py-sse</h1>\n<h2 id=\"module-ngrok\">Module: .ngrok</h2>\n<blockquote>\n<span class=\"paragraph\">ngrok for live testing</span>\n</blockquote></span>"
           }
         }
       ],
       "console": []
     },
     {
-      "id": "JnVS",
-      "code_hash": "e8a419bc63893aacd1980cb4b51c3a66",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
-      "console": []
-    },
-    {
-      "id": "OGrH",
-      "code_hash": "3fa687bae28f46fef3666ea34d8c9e29",
+      "id": "siWc",
+      "code_hash": "ab1dafd4b8056ba58f2e9c6091560bb8",
       "outputs": [
         {
           "type": "data",
@@ -71,8 +58,8 @@
       "console": []
     },
     {
-      "id": "foWs",
-      "code_hash": "cf319ffccd632382e20d7f08812b91a5",
+      "id": "neAQ",
+      "code_hash": "025accc17da11cd7a53fe5c7a47e0935",
       "outputs": [
         {
           "type": "data",
@@ -84,8 +71,8 @@
       "console": []
     },
     {
-      "id": "PrbO",
-      "code_hash": "27fd1a6ef71ec996e0f0b26d311a464a",
+      "id": "aLHM",
+      "code_hash": "70e448fed3dbe647a4a13b1df3c10de4",
       "outputs": [
         {
           "type": "data",
@@ -97,8 +84,8 @@
       "console": []
     },
     {
-      "id": "LTss",
-      "code_hash": "7d38154643a90f123a4769a35854ea6e",
+      "id": "VVuW",
+      "code_hash": "b6f92a5b39d0db081e630485191eb483",
       "outputs": [
         {
           "type": "data",

@@ -7,7 +7,7 @@
   "cells": [
     {
       "id": "setup",
-      "code_hash": "dad091a5d6d02616d662e3a4f0301555",
+      "code_hash": "f842afbc8a1d6d3d56ff9645ef015e6f",
       "outputs": [
         {
           "type": "data",
@@ -19,7 +19,7 @@
       "console": []
     },
     {
-      "id": "Hbol",
+      "id": "vblA",
       "code_hash": "1d0db38904205bec4d6f6f6a1f6cec3e",
       "outputs": [
         {
@@ -32,21 +32,125 @@
       "console": []
     },
     {
-      "id": "MJUe",
-      "code_hash": "c72568d31506a4b5f4ce01e78d9148f5",
+      "id": "lsvD",
+      "code_hash": "6401756d0717b4c3cced4c13b744d76c",
       "outputs": [
         {
           "type": "data",
           "data": {
-            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h1 id=\"app\">App</h1>\n<blockquote>\n<span class=\"paragraph\">Opinonated granin implementation of rsgi for sse datastar applications</span>\n</blockquote></span>"
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h1 id=\"db-as-cache-test\">DB as Cache Test</h1></span>"
           }
         }
       ],
       "console": []
     },
     {
-      "id": "vblA",
-      "code_hash": "9ee0c4a25ebddba243221383d315771e",
+      "id": "pwja",
+      "code_hash": "bf43c3b8b913e4eccab855c652169366",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h2 id=\"dataclass\">Dataclass</h2></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "Hbol",
+      "code_hash": "172001675f55fc229e383e7848f687de",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "MJUe",
+      "code_hash": "31f5dbb1827d4939154e45ffa2e7ee95",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "dIpD",
+      "code_hash": "0abef2e19df7891741c19a8be25ed78a",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "vzRC",
+      "code_hash": "8c381617ba82cd23d5879f2e516cf3ac",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "wsTL",
+      "code_hash": "01e2e5a65a38df8d4c891527eccd1e6c",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h2 id=\"apsw-database-cache-other-pubsub\">APSW Database Cache + other.../ pubsub</h2></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "SFPL",
+      "code_hash": "c4bdbcfb2d9420947dbc81bbf807451a",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "pwYN",
+      "code_hash": "99a8be23e21137402247be86a7a6a254",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h1 id=\"cache-20\">Cache 2.0</h1></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "axwS",
+      "code_hash": "9ada0188ade49182255960dfbda05983",
       "outputs": [
         {
           "type": "data",
@@ -59,12 +163,12 @@
     },
     {
       "id": "bkHC",
-      "code_hash": "eb19c125f8afd90f913f4db3506ab55d",
+      "code_hash": "c69cbe27b2f5b7a635fbab547d1d0256",
       "outputs": [
         {
           "type": "data",
           "data": {
-            "text/plain": ""
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h1 id=\"test-application\">Test application</h1></span>"
           }
         }
       ],
@@ -72,7 +176,7 @@
     },
     {
       "id": "lEQa",
-      "code_hash": "c4222e04b3f015fd7b0d176739269273",
+      "code_hash": "68b329da9893e34099c7d8ad5cb9c940",
       "outputs": [
         {
           "type": "data",
@@ -85,7 +189,7 @@
     },
     {
       "id": "PKri",
-      "code_hash": "8e91e324cc280c21e0bbaf7c8362cdf5",
+      "code_hash": null,
       "outputs": [
         {
           "type": "data",
@@ -98,7 +202,7 @@
     },
     {
       "id": "Xref",
-      "code_hash": "c434ecceb25027d35c6d6f29dfcdbb50",
+      "code_hash": "c4dfd71b70a4b9d3e960a51b4e84feef",
       "outputs": [
         {
           "type": "data",
@@ -107,24 +211,18 @@
           }
         }
       ],
-      "console": []
-    },
-    {
-      "id": "SFPL",
-      "code_hash": "5f18f0a52ba9c3b8f73027786820a42a",
-      "outputs": [
+      "console": [
         {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
+          "type": "stream",
+          "name": "stdout",
+          "text": "[WARNING] Embedded server is experimental!\n[INFO] Starting granian (embedded)\n[INFO] Listening at: http://127.0.0.1:8000\n[INFO] Spawning worker-1 with id: 281472629056960\n",
+          "mimetype": "text/plain"
         }
-      ],
-      "console": []
+      ]
     },
     {
       "id": "BYtC",
-      "code_hash": "edd48b51000b447238bc56b7636c9148",
+      "code_hash": "a50e4f0a6ada6b4952f7873e1f3c206d",
       "outputs": [
         {
           "type": "data",
@@ -133,84 +231,19 @@
           }
         }
       ],
-      "console": []
+      "console": [
+        {
+          "type": "stream",
+          "name": "stdout",
+          "text": "[INFO] Shutting down granian\n[INFO] Stopping worker-1\n[INFO] Stopping worker-1\n",
+          "mimetype": "text/plain"
+        }
+      ]
     },
     {
-      "id": "RGSE",
-      "code_hash": "8abbd00e7727a5c3b79fea6cb256a127",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
-      "console": []
-    },
-    {
-      "id": "Kclp",
-      "code_hash": "f0a5d927c76c33e940dbe8c5b7f23262",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
-      "console": []
-    },
-    {
-      "id": "emfo",
-      "code_hash": "7744a47f1e2f53897e5050a7b3a79047",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
-      "console": []
-    },
-    {
-      "id": "Hstk",
-      "code_hash": "1179072ddb88e291a8dd068fd853e5cb",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
-      "console": []
-    },
-    {
-      "id": "nWHF",
-      "code_hash": "6bc362637c4607b9708958951c670343",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
-      "console": []
-    },
-    {
-      "id": "iLit",
-      "code_hash": "ac270b356a4d1935a28db8383f0fb71a",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
+      "id": "NvpR",
+      "code_hash": null,
+      "outputs": [],
       "console": []
     }
   ]

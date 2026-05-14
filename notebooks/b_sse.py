@@ -4,6 +4,11 @@ __generated_with = "0.23.6"
 app = marimo.App(app_title="")
 
 with app.setup:
+    """Datastar SSE event formatters.
+
+    Each function returns a string in `text/event-stream` framing, ready for
+    `transport.send_str(...)` or as a yielded event from an `@app.stream` handler.
+    """
     import json
 
 
@@ -36,8 +41,7 @@ def patch_elements(
     namespace: str | None = None,
     use_view_transition: bool | None = None,
 ) -> str:
-    """Format a datastar-patch-elements SSE event."""
-    lines = []
+    "Format a datastar-patch-elements SSE event."
     if hasattr(elements, '__html__'):
         elements = elements.__html__()
     lines = []
@@ -53,7 +57,7 @@ def patch_elements(
 
 @app.function
 def patch_signals(signals: dict | str, *, only_if_missing: bool | None = None) -> str:
-    """Format a datastar-patch-signals SSE event."""
+    "Format a datastar-patch-signals SSE event."
     if isinstance(signals, dict):
         signals = json.dumps(signals)
     lines = []
@@ -65,19 +69,29 @@ def patch_signals(signals: dict | str, *, only_if_missing: bool | None = None) -
 
 @app.function
 def remove_signals(*names: str) -> str:
-    """Remove signals by patching them to null."""
+    "Remove signals by patching them to null."
     return patch_signals({n: None for n in names})
 
 
 @app.function
 def execute_script(script: str, *, auto_remove: bool = True, attributes: dict | None = None) -> str:
-    """Format a datastar-execute-script SSE event."""
+    "Format a datastar-execute-script SSE event."
     lines = []
     if not auto_remove:         lines.append("data: autoRemove false")
     if attributes is not None:  lines.append(f"data: attributes {json.dumps(attributes)}")
     for line in script.split("\n"):
         lines.append(f"data: script {line}")
     return "event: datastar-execute-script\n" + "\n".join(lines) + "\n\n"
+
+
+@app.function
+def redirect(url: str) -> str:
+    """Redirect the browser to `url` via a patched script.
+
+    Wraps `window.location =` in setTimeout to work around a Firefox bug
+    where direct assignment replaces the history entry instead of pushing.
+    """
+    return execute_script(f"setTimeout(() => window.location = {json.dumps(url)}, 0)")
 
 
 if __name__ == "__main__":

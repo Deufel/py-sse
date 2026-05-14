@@ -597,7 +597,6 @@ dev = [
     { name = "marimo" },
     { name = "marimo-dev" },
     { name = "ngrok" },
-    { name = "uvicorn" },
 ]
 
 [package.metadata]
@@ -612,7 +611,6 @@ dev = [
     { name = "marimo", specifier = ">=0.21.1" },
     { name = "marimo-dev", specifier = ">=0.3.3" },
     { name = "ngrok", specifier = ">=1.7.0" },
-    { name = "uvicorn", specifier = ">=0.42.0" },
 ]
 
 [[package]]

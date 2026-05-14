@@ -1,6 +1,6 @@
 [project]
 name = "py-sse"
-version = "0.1.10"
+version = "0.2.0"
 description = "opinionated application wrapper for granian"
 readme = "README.md"
 authors = [
@@ -22,7 +22,6 @@ dev = [
     "marimo-dev>=0.3.3",
     "marimo>=0.21.1",
     "ngrok>=1.7.0",
-    "uvicorn>=0.42.0",
 ]
 
 [tool.marimo-dev]

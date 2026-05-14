@@ -1,15 +1,42 @@
-import asyncio
-import socket
-import threading
-from dataclasses import dataclass
+import marimo
 
-"""Background server bootstrap for dev/notebook use.
+__generated_with = "0.23.6"
+app = marimo.App()
+
+with app.setup:
+    """Background server bootstrap for dev/notebook use.
 
     `serve` (in app.py) is the production path. This module gives you a
     background-thread server with explicit start/stop, suitable for marimo
     notebooks and other "run while a cell is parked" workflows.
     """
+    import asyncio
+    import socket
+    import threading
+    from dataclasses import dataclass
 
+
+
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # Package: py-sse
+    ## Module: .mserver
+    > run a thread safe server (useful in a repl or notebook enviorment)
+    """)
+    return
+
+
+@app.cell
+def _():
+    import marimo as mo
+
+    return (mo,)
+
+
+@app.class_definition
 @dataclass
 class ServerState:
     "Handle returned by serve_background; pass to stop_background."
@@ -19,6 +46,8 @@ class ServerState:
     host:   str    = "127.0.0.1"
     port:   int    = 8000
 
+
+@app.function
 def serve_background(app, host: str = "127.0.0.1", port: int = 8000, **kwargs) -> ServerState:
     """Run a py-sse app in a background thread.
 
@@ -43,6 +72,8 @@ def serve_background(app, host: str = "127.0.0.1", port: int = 8000, **kwargs) -
     thread.start()
     return ServerState(server=server, loop=loop, thread=thread, host=host, port=port)
 
+
+@app.function
 def stop_background(state: ServerState) -> None:
     """Stop a background server via Granian's clean shutdown path.
 
@@ -57,8 +88,19 @@ def stop_background(state: ServerState) -> None:
         if state.thread.is_alive():
             print(f"WARNING: server thread on port {state.port} did not stop within 3s")
 
+
+@app.function
 def dev_alive(port_or_state) -> bool:
     "Check whether a port (or ServerState's port) is accepting connections."
     port = port_or_state.port if isinstance(port_or_state, ServerState) else port_or_state
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         return s.connect_ex(("localhost", port)) == 0
+
+
+@app.cell
+def _():
+    return
+
+
+if __name__ == "__main__":
+    app.run()

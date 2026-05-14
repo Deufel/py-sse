@@ -7,10 +7,7 @@
 
 
 async def body(req: dict, *, max_size: int = 1_048_576) -> bytes:
-    """Read the full request body (cached, with size limit).
-
-    Raises ValueError if the body exceeds max_size.
-    """
+    "Read the full request body, cached, with a size limit."
     if "_body" in req:
         return req["_body"]
     raw = await req["_proto"]()
@@ -20,29 +17,14 @@ async def body(req: dict, *, max_size: int = 1_048_576) -> bytes:
     return raw
 
 def header_values(req: dict, name: str) -> list[str]:
-    """Return all values for a header (multi-value safe).
-
-    Uses RSGI's native get_all() for correct handling of
-    repeated headers like X-Forwarded-For, Via, Set-Cookie.
-
-    Usage:
-        ips = header_values(req, "x-forwarded-for")
-    """
+    "Return all values for a header (multi-value safe). Uses RSGI's native get_all()."
     return req["headers"].get_all(name)
 
 async def body_stream(req: dict, *, max_size: int = 1_048_576):
     """Yield request body in chunks without buffering the full payload.
 
-    Uses RSGI's __aiter__ for streaming reads from Rust.
-    Mutually exclusive with body() — use one or the other.
-
-    Usage:
-        @app.post("/upload")
-        async def upload(req):
-            chunks = []
-            async for chunk in body_stream(req):
-                chunks.append(chunk)
-            data = b"".join(chunks)
+    Mutually exclusive with body() — use one or the other per request.
+    Suitable for file uploads.
     """
     proto = req["_proto"]
     total = 0
@@ -55,8 +37,8 @@ async def body_stream(req: dict, *, max_size: int = 1_048_576):
 async def signals(req: dict) -> dict:
     """Read Datastar signals from a request.
 
-    GET: JSON-encoded ``datastar`` query parameter.
-    Other: JSON body, optionally wrapped in ``{datastar: ...}``.
+    GET: JSON-encoded `datastar` query parameter.
+    Other methods: JSON body, optionally wrapped in `{datastar: ...}`.
     """
     if req["method"] == "GET":
         raw = req["query"].get("datastar", "{}")
@@ -65,51 +47,12 @@ async def signals(req: dict) -> dict:
     return data.get("datastar", data) if isinstance(data, dict) else data
 
 def set_cookie(req: dict, name: str, value: str, **opts) -> None:
-    """Queue a Set-Cookie header on the request."""
+    "Queue a Set-Cookie header on the request."
     req["_cookies"].append((name, value, opts))
 
-def create_relay():
-    """Create a pub/sub relay for broadcasting events.
-
-    Usage:
-        relay = create_relay()
-        relay.publish("chat.new", item)          # sync, thread-safe
-
-        async for topic, data in relay.subscribe("chat.*"):
-            yield patch_elements(render(data))   # async generator
-    """
-    subs: list[tuple[str, asyncio.Queue]] = []
-    lock = threading.Lock()
-
-    def publish(topic: str, data):
-        with lock:
-            targets = [(p, q) for p, q in subs if fnmatch(topic, p)]
-        for _, queue in targets:
-            try:    queue.put_nowait((topic, data))
-            except: pass  # noqa: E722 — never block the publisher
-
-    async def subscribe(pattern: str):
-        queue = asyncio.Queue()
-        with lock: subs.append((pattern, queue))
-        try:
-            while True: yield await queue.get()
-        except (asyncio.CancelledError, GeneratorExit):
-            pass
-        finally:
-            with lock:
-                try:    subs.remove((pattern, queue))
-                except: pass  # noqa: E722
-
-    class _Relay:
-        __slots__ = ("publish", "subscribe")
-    r = _Relay()
-    r.publish, r.subscribe = publish, subscribe
-    return r
-
 def create_signer(secret: str | bytes | None = None):
-    """Create an HMAC-SHA256 cookie signer.
+    """HMAC-SHA256 cookie signer.
 
-    Usage:
         signer = create_signer("my-secret")
         set_cookie(req, "session", signer.sign("user42"))
         user = signer.unsign(req["cookies"].get("session", ""))
@@ -117,8 +60,8 @@ def create_signer(secret: str | bytes | None = None):
     if secret is None:          secret = os.urandom(32)
     if isinstance(secret, str): secret = secret.encode()
 
-    def _b64e(data: bytes) -> str:
-        return base64.urlsafe_b64encode(data).rstrip(b"=").decode()
+    def _b64e(d: bytes) -> str:
+        return base64.urlsafe_b64encode(d).rstrip(b"=").decode()
     def _b64d(s: str) -> bytes:
         return base64.urlsafe_b64decode((s + "=" * (-len(s) % 4)).encode())
     def _mac(payload: str) -> str:
@@ -138,10 +81,10 @@ def create_signer(secret: str | bytes | None = None):
         if not hmac.compare_digest(sig, _mac(payload)): return None
         if max_age is not None:
             try:    ts = int(ts_hex, 16)
-            except: return None  # noqa: E722
+            except Exception: return None
             if time.time() - ts > max_age: return None
         try:    return _b64d(enc_value).decode()
-        except: return None  # noqa: E722
+        except Exception: return None
 
     class _Signer:
         __slots__ = ("sign", "unsign")
@@ -152,11 +95,9 @@ def create_signer(secret: str | bytes | None = None):
 def static(app, url_prefix: str, directory: str):
     """Mount a directory or single file for static serving.
 
-    Uses RSGI response_file and response_file_range for zero-copy
-    file I/O from Rust. Supports HTTP Range requests for resumable
-    downloads and media seeking.
+    Uses RSGI response_file / response_file_range for zero-copy file I/O.
+    Supports HTTP Range requests for resumable downloads and media seeking.
 
-    Usage:
         static(app, "/static", "static/")
         static(app, "/favicon.svg", "favicon.svg")
     """
@@ -167,7 +108,6 @@ def static(app, url_prefix: str, directory: str):
         return ct or "application/octet-stream"
 
     def _parse_range(header, file_size):
-        """Parse Range header → (start, end_exclusive) or None."""
         if not header or not header.startswith("bytes="):
             return None
         spec = header[6:].strip()
@@ -175,14 +115,10 @@ def static(app, url_prefix: str, directory: str):
             return None
         left, _, right = spec.partition("-")
         try:
-            if left and right:
-                start, end = int(left), int(right) + 1
-            elif left:
-                start, end = int(left), file_size
-            elif right:
-                start, end = max(0, file_size - int(right)), file_size
-            else:
-                return None
+            if left and right:    start, end = int(left), int(right) + 1
+            elif left:            start, end = int(left), file_size
+            elif right:           start, end = max(0, file_size - int(right)), file_size
+            else:                 return None
         except ValueError:
             return None
         if start < 0 or start >= file_size or end > file_size or start >= end:
@@ -218,15 +154,12 @@ def static(app, url_prefix: str, directory: str):
             ], full_path)
         req["_sent"] = True
 
-    # ── Single file mount ────────────────────────────────────
     if os.path.isfile(directory):
         async def serve_single(req):
             _serve_file(req, directory)
-
         app.get(url_prefix)(serve_single)
         return
 
-    # ── Directory mount ──────────────────────────────────────
     async def serve_dir(req):
         rel = req["params"].get("path", "")
         if not rel:
@@ -239,34 +172,45 @@ def static(app, url_prefix: str, directory: str):
 
     app.mount(url_prefix.rstrip("/"), serve_dir)
 
+def request_logger(topic_fn):
+    """Beforeware that calls topic_fn(req) with each incoming request.
+
+    topic_fn is anything callable — print, a log function, a custom callback.
+    Decoupled from any specific pub/sub implementation.
+
+        app.before(request_logger(lambda req: print(f"{req['method']} {req['path']}")))
+    """
+    def hook(req):
+        topic_fn(req)
+    return hook
+
 def create_app(routes: dict | None = None, *, on_init=None, on_del=None):
     """Create a Datastar RSGI application.
 
-    Lifecycle hooks:
-        on_init(loop)  → called at server startup (loop not yet running)
-        on_del(loop)   → called at server shutdown (loop not yet running)
+    Lifecycle:
+        on_init(loop)  → called at server startup. Loop not yet running.
+                         Use to wire shared state (DB connections, Changes,
+                         relays) onto the correct loop.
+        on_del(loop)   → called at server shutdown. Loop not yet running.
+                         Use to close DB connections, detach hooks.
 
-        Can be sync or async — async hooks are run via loop.run_until_complete.
+        Both can be sync or async; async ones run via loop.run_until_complete.
 
     Handler return protocol:
-        str         → 200 HTML response
-        dict        → 200 JSON response
-        None        → 204 No Content
-        (url, int)  → redirect (3xx) or text response (4xx/5xx)
-        async gen   → SSE stream
+        str          → 200 HTML response
+        dict         → 200 JSON response
+        None         → 204 No Content
+        (url, int)   → redirect (3xx) or text (4xx/5xx)
+        async gen    → SSE stream (raw; use @app.stream for the common case)
 
-    Usage:
         async def startup(loop):
-            app.db = await create_pool()
+            global changes
+            changes = Changes(db, loop)
 
         def shutdown(loop):
-            print("goodbye")
+            changes.close()
 
         app = create_app(on_init=startup, on_del=shutdown)
-
-        @app.get("/")
-        async def index(req):
-            return "<h1>Hello</h1>"
     """
     if routes is None:
         routes = {}
@@ -299,6 +243,58 @@ def create_app(routes: dict | None = None, *, on_init=None, on_del=None):
     def patch(path):  return route("PATCH", path)
     def delete(path): return route("DELETE", path)
 
+    # ── @app.stream — the opinionated SSE route ──────────────
+
+    def stream(path: str, *, on):
+        """Register an SSE endpoint that re-renders on each tick from `on`.
+
+        The decorated function is sync (or async), takes `req`, and returns
+        either an html_tags tree or a pre-rendered HTML string. The framework
+        handles SSE framing, initial render, re-render on change, disconnect
+        cleanup, and prompt subscriber teardown.
+
+        `on` is either:
+          • a Changes-like object with `async def wait(self)`, or
+          • a zero-arg callable returning one (resolved per-request, useful
+            when the Changes is created in `on_init` after route registration).
+
+            @app.stream('/feed', on=lambda: changes)
+            def feed(req):
+                rows = query(db, "SELECT txt FROM msgs ORDER BY id DESC LIMIT 50")
+                return h.div(*[h.p(r[0]) for r in rows], id='msgs')
+        """
+        from html_tags import render as _h_render
+
+        def _resolve_on():
+            # `on` may be the Changes instance directly, or a zero-arg callable
+            # returning it (for cases where `on_init` creates it later).
+            if hasattr(on, 'wait'):
+                return on
+            return on()
+
+        def decorator(fn):
+            is_coro = inspect.iscoroutinefunction(fn)
+
+            async def _render(req):
+                result = fn(req)
+                if is_coro:
+                    result = await result
+                if hasattr(result, '__html__'):
+                    result = result.__html__()
+                elif not isinstance(result, str):
+                    result = _h_render(result)
+                return patch_elements(result)
+
+            async def handler(req):
+                source = _resolve_on()
+                yield await _render(req)
+                async for _ in source.wait():
+                    yield await _render(req)
+
+            route("GET", path)(handler)
+            return fn
+        return decorator
+
     # ── Beforeware ───────────────────────────────────────────
 
     def before(fn=None, *, methods=None):
@@ -326,10 +322,10 @@ def create_app(routes: dict | None = None, *, on_init=None, on_del=None):
                 proto.response_str(status, headers, content)
             return
 
-        if isinstance(result, bytes):                                          
-            ct = req.get("_content_type", "application/octet-stream")          
-            headers.append(("content-type", ct))                               
-            proto.response_bytes(200, headers, result)                         
+        if isinstance(result, bytes):
+            ct = req.get("_content_type", "application/octet-stream")
+            headers.append(("content-type", ct))
+            proto.response_bytes(200, headers, result)
         elif isinstance(result, str):
             headers.append(("content-type", "text/html; charset=utf-8"))
             proto.response_str(200, headers, result)
@@ -349,9 +345,14 @@ def create_app(routes: dict | None = None, *, on_init=None, on_del=None):
         try:
             while not closed.is_set():
                 await asyncio.sleep(interval)
-                if not closed.is_set():
+                if closed.is_set():
+                    break
+                try:
                     await transport.send_str(":\n\n")
-        except (asyncio.CancelledError, Exception):
+                except RSGIProtocolClosed:
+                    closed.set()
+                    break
+        except asyncio.CancelledError:
             pass
 
     # ── RSGI entrypoint ──────────────────────────────────────
@@ -415,10 +416,16 @@ def create_app(routes: dict | None = None, *, on_init=None, on_del=None):
                     async for event in result:
                         if closed.is_set():
                             break
-                        await transport.send_str(event)
+                        try:
+                            await transport.send_str(event)
+                        except RSGIProtocolClosed:
+                            closed.set()
+                            break
                 finally:
+                    closed.set()
                     keepalive.cancel()
                     disconnect.cancel()
+                    await result.aclose()
             else:
                 result = await result
                 if req.get("_sent"):
@@ -431,7 +438,7 @@ def create_app(routes: dict | None = None, *, on_init=None, on_del=None):
                 proto.response_str(500,
                     [("content-type", "text/plain")],
                     "Internal Server Error")
-            except: pass  # noqa: E722
+            except Exception: pass
 
     # ── RSGI lifecycle hooks ─────────────────────────────────
 
@@ -450,7 +457,7 @@ def create_app(routes: dict | None = None, *, on_init=None, on_del=None):
     handle.__rsgi_init__ = _rsgi_init
     handle.__rsgi_del__  = _rsgi_del
 
-    # ── Attach decorators ────────────────────────────────────
+    # ── Attach decorators to the app handle ──────────────────
 
     handle.route  = route
     handle.get    = get
@@ -460,23 +467,16 @@ def create_app(routes: dict | None = None, *, on_init=None, on_del=None):
     handle.delete = delete
     handle.mount  = mount
     handle.before = before
+    handle.stream = stream
     return handle
 
 def serve(app, *, host: str = "127.0.0.1", port: int = 8000, **kwargs):
     """Run an app with Granian's embedded RSGI server.
 
-    Turns a py-sse app into a self-contained script:
-
-        app = create_app()
-
-        @app.get("/")
-        async def index(req):
-            return "<h1>Hello</h1>"
-
         if __name__ == "__main__":
             serve(app)
 
-    Any extra keyword arguments are forwarded to granian.server.embed.Server
+    Extra kwargs forward to granian.server.embed.Server
     (e.g. log_access=True, websockets=False, ssl_cert=...).
     """
     from granian.server.embed import Server
@@ -503,8 +503,7 @@ def patch_elements(
     namespace: str | None = None,
     use_view_transition: bool | None = None,
 ) -> str:
-    """Format a datastar-patch-elements SSE event."""
-    lines = []
+    "Format a datastar-patch-elements SSE event."
     if hasattr(elements, '__html__'):
         elements = elements.__html__()
     lines = []
@@ -518,7 +517,7 @@ def patch_elements(
     return "event: datastar-patch-elements\n" + "\n".join(lines) + "\n\n"
 
 def patch_signals(signals: dict | str, *, only_if_missing: bool | None = None) -> str:
-    """Format a datastar-patch-signals SSE event."""
+    "Format a datastar-patch-signals SSE event."
     if isinstance(signals, dict):
         signals = json.dumps(signals)
     lines = []
@@ -528,11 +527,11 @@ def patch_signals(signals: dict | str, *, only_if_missing: bool | None = None) -
     return "event: datastar-patch-signals\n" + "\n".join(lines) + "\n\n"
 
 def remove_signals(*names: str) -> str:
-    """Remove signals by patching them to null."""
+    "Remove signals by patching them to null."
     return patch_signals({n: None for n in names})
 
 def execute_script(script: str, *, auto_remove: bool = True, attributes: dict | None = None) -> str:
-    """Format a datastar-execute-script SSE event."""
+    "Format a datastar-execute-script SSE event."
     lines = []
     if not auto_remove:         lines.append("data: autoRemove false")
     if attributes is not None:  lines.append(f"data: attributes {json.dumps(attributes)}")
@@ -540,106 +539,195 @@ def execute_script(script: str, *, auto_remove: bool = True, attributes: dict | 
         lines.append(f"data: script {line}")
     return "event: datastar-execute-script\n" + "\n".join(lines) + "\n\n"
 
+def redirect(url: str) -> str:
+    """Redirect the browser to `url` via a patched script.
+
+    Wraps `window.location =` in setTimeout to work around a Firefox bug
+    where direct assignment replaces the history entry instead of pushing.
+    """
+    return execute_script(f"setTimeout(() => window.location = {json.dumps(url)}, 0)")
+
+## db
+
+
+def create_db(path: str) -> apsw.Connection:
+    "Open a SQLite connection with WAL + apsw best practices."
+    conn = apsw.Connection(path)
+    conn.pragma("journal_mode", "wal")
+    return conn
+
+def migrate(conn: apsw.Connection, schema_sql: str) -> None:
+    "Apply schema idempotently in one transaction."
+    with conn: conn.execute(schema_sql)
+
+def query(conn: apsw.Connection, sql: str, bindings: tuple = (), *, limit: int = 1000) -> list:
+    "Run a SELECT and return up to `limit` rows as tuples."
+    rows = []
+    for row in conn.execute(sql, bindings):
+        rows.append(row)
+        if len(rows) >= limit: break
+    return rows
+
+def write(conn: apsw.Connection, fn, *args):
+    "Run fn(conn, *args) in a transaction; returns fn's result."
+    with conn: return fn(conn, *args)
+
+class Changes:
+    """Bridges SQLite update_hook to asyncio waiters.
+
+    Each DB write wakes all current waiters once. Multiple writes within the
+    same event-loop tick coalesce into a single wake (cheap; avoids thundering
+    herd during transactions).
+
+    Must be constructed inside or with a reference to the loop that will own
+    the waiters (typically inside `on_init(loop)` of the RSGI app).
+    """
+    def __init__(self, db: apsw.Connection, loop: asyncio.AbstractEventLoop):
+        self._db = db
+        self._loop = loop
+        self._event = None       # bound lazily on first wait()
+        self._pending = False
+        db.set_update_hook(self._on_write)
+
+    # ── SQLite-side, called from apsw's thread ─────────────
+    def _on_write(self, *_):
+        self._loop.call_soon_threadsafe(self._schedule)
+
+    # ── loop-side, called via call_soon_threadsafe ─────────
+    def _schedule(self):
+        if self._pending: return
+        self._pending = True
+        self._loop.call_soon(self._swap)
+
+    def _swap(self):
+        self._pending = False
+        if self._event is None: return        # nobody waiting yet
+        old, self._event = self._event, asyncio.Event()
+        old.set()
+
+    async def wait(self):
+        """Async iterator: yields once per coalesced DB change.
+
+        Usage in a stream handler:
+
+            async for _ in changes.wait():
+                yield patch_elements(render_view())
+        """
+        if self._event is None:
+            self._event = asyncio.Event()
+        try:
+            while True:
+                ev = self._event
+                await ev.wait()
+                yield
+        except (asyncio.CancelledError, GeneratorExit):
+            pass
+
+    def close(self):
+        "Detach the update_hook. Safe to call multiple times."
+        try: self._db.set_update_hook(None)
+        except Exception: pass
+
 ## mserver
 
 
 @dataclass
 class ServerState:
-    """Handle returned by serve_background, passed to stop_background."""
+    "Handle returned by serve_background; pass to stop_background."
     server: object = None
     loop:   object = None
     thread: object = None
+    host:   str    = "127.0.0.1"
+    port:   int    = 8000
 
-def serve_background(app, host="127.0.0.1", port=8000, **kwargs) -> ServerState:
+def serve_background(app, host: str = "127.0.0.1", port: int = 8000, **kwargs) -> ServerState:
     """Run a py-sse app in a background thread.
- 
-    Returns a ServerState handle for stop_background.
- 
+
         state = serve_background(app)
-        # later ...
+        # ... later ...
         stop_background(state)
     """
     from granian.server.embed import Server
     from granian.constants import Interfaces
- 
+
     server = Server(app, address=host, port=port, interface=Interfaces.RSGI, **kwargs)
     loop = asyncio.new_event_loop()
- 
+
     async def run():
         await server.serve()
- 
+
     def thread_target():
         asyncio.set_event_loop(loop)
         loop.run_until_complete(run())
- 
+
     thread = threading.Thread(target=thread_target, daemon=True)
     thread.start()
-    return ServerState(server=server, loop=loop, thread=thread)
+    return ServerState(server=server, loop=loop, thread=thread, host=host, port=port)
 
 def stop_background(state: ServerState) -> None:
-    """Stop a background server via Granian's clean shutdown path."""
+    """Stop a background server via Granian's clean shutdown path.
+
+    Joins the worker thread with a 3-second timeout. If the thread is still
+    alive after that, prints a warning — a zombie thread will prevent the
+    next serve_background on the same port from binding.
+    """
     if state.server and state.loop and state.loop.is_running():
         state.loop.call_soon_threadsafe(state.server.stop)
     if state.thread:
         state.thread.join(timeout=3)
+        if state.thread.is_alive():
+            print(f"WARNING: server thread on port {state.port} did not stop within 3s")
 
-def dev_alive(port=8000):
+def dev_alive(port_or_state) -> bool:
+    "Check whether a port (or ServerState's port) is accepting connections."
+    port = port_or_state.port if isinstance(port_or_state, ServerState) else port_or_state
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         return s.connect_ex(("localhost", port)) == 0
-
-def request_logger(relay, topic="dev.request"):
-    """Create a beforeware that publishes requests to a relay.
- 
-        relay = create_relay()
-        app.before(request_logger(relay))
-    """
-    def hook(req):
-        relay.publish(topic, f"{req['method']} {req['path']}")
-    return hook
 
 ## ngrok
 
 
 @dataclass
 class TunnelState:
-    """Handle returned by start_tunnel, passed to stop_tunnel."""
+    "Handle returned by start_tunnel; pass to stop_tunnel."
     listener: object = None
     url:      str    = ""
 
-def load_env(path=".env"):
+def load_env(path: str = ".env"):
+    "Minimal .env loader: KEY=VALUE per line, # for comments."
+    import os
     for line in open(path):
         if "=" in (line := line.strip()) and not line.startswith("#"):
             k, v = line.split("=", 1)
-            __import__("os").environ.setdefault(k.strip(), v.strip())
+            os.environ.setdefault(k.strip(), v.strip())
 
-def start_tunnel(port=8000, **kwargs) -> TunnelState:
+def start_tunnel(port: int = 8000, **kwargs) -> TunnelState:
     """Open an ngrok tunnel to localhost:port.
- 
-    Requires the ``ngrok`` package and NGROK_AUTHTOKEN env var.
-    Extra kwargs are forwarded to ngrok.forward().
- 
+
+    Requires the `ngrok` package and NGROK_AUTHTOKEN env var.
+    Extra kwargs forward to ngrok.forward().
+
         tunnel = start_tunnel(8000)
         print(tunnel.url)
-        # later ...
         stop_tunnel(tunnel)
     """
     import threading
     import ngrok
- 
+
     result = [None]
- 
+
     def _connect():
         result[0] = ngrok.forward(port, authtoken_from_env=True, **kwargs)
- 
+
     t = threading.Thread(target=_connect)
     t.start()
     t.join()
- 
+
     listener = result[0]
     return TunnelState(listener=listener, url=listener.url())
 
 def stop_tunnel(tunnel: TunnelState) -> None:
-    """Close an ngrok tunnel."""
+    "Close an ngrok tunnel."
     if tunnel.listener:
         import ngrok
         ngrok.disconnect(tunnel.url)

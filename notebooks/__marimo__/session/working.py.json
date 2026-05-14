@@ -6,8 +6,8 @@
   },
   "cells": [
     {
-      "id": "setup",
-      "code_hash": "faf7f13514bda828eda023c4063d8ad5",
+      "id": "PKri",
+      "code_hash": "8bc76e82d3153b688ff1d709aa578103",
       "outputs": [
         {
           "type": "data",
@@ -32,34 +32,21 @@
       "console": []
     },
     {
-      "id": "lsvD",
-      "code_hash": "6401756d0717b4c3cced4c13b744d76c",
+      "id": "pwYN",
+      "code_hash": "283475169857e1dfc9a9a718d2a211d3",
       "outputs": [
         {
           "type": "data",
           "data": {
-            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h1 id=\"db-as-cache-test\">DB as Cache Test</h1></span>"
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h1 id=\"db-as-cache-chat-demo\">DB-as-cache chat demo</h1>\n<span class=\"paragraph\">One SQLite table, one <code>Changes</code> primitive, two routes.\nRe-renders the feed on every write. No <code>Broadcaster</code>, no <code>Raw</code>,\nno wrapper dataclasses \u2014 <code>@app.stream</code> handles SSE framing.</span></span>"
           }
         }
       ],
       "console": []
     },
     {
-      "id": "pwja",
-      "code_hash": "bf43c3b8b913e4eccab855c652169366",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h2 id=\"dataclass\">Dataclass</h2></span>"
-          }
-        }
-      ],
-      "console": []
-    },
-    {
-      "id": "Hbol",
-      "code_hash": "172001675f55fc229e383e7848f687de",
+      "id": "NvpR",
+      "code_hash": "bc3de5055f5a3c60ae886eff7459f5ba",
       "outputs": [
         {
           "type": "data",
@@ -68,106 +55,30 @@
           }
         }
       ],
-      "console": []
-    },
-    {
-      "id": "MJUe",
-      "code_hash": "31f5dbb1827d4939154e45ffa2e7ee95",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
-      "console": []
-    },
-    {
-      "id": "dIpD",
-      "code_hash": "0abef2e19df7891741c19a8be25ed78a",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
-      "console": []
-    },
-    {
-      "id": "vzRC",
-      "code_hash": "8c381617ba82cd23d5879f2e516cf3ac",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
-      "console": []
-    },
-    {
-      "id": "wsTL",
-      "code_hash": "01e2e5a65a38df8d4c891527eccd1e6c",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h2 id=\"apsw-database-cache-other-pubsub\">APSW Database Cache + other.../ pubsub</h2></span>"
-          }
-        }
-      ],
-      "console": []
-    },
-    {
-      "id": "SFPL",
-      "code_hash": "dac4e33c1a4b0f72d6169bece12d7f07",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
-      "console": []
-    },
-    {
-      "id": "bkHC",
-      "code_hash": "c69cbe27b2f5b7a635fbab547d1d0256",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h1 id=\"test-application\">Test application</h1></span>"
-          }
-        }
-      ],
-      "console": []
-    },
-    {
-      "id": "lEQa",
-      "code_hash": null,
-      "outputs": [],
-      "console": []
-    },
-    {
-      "id": "PKri",
-      "code_hash": "9f7ee1071b402101783a2ced86d0784f",
-      "outputs": [],
-      "console": []
-    },
-    {
-      "id": "Xref",
-      "code_hash": "ffd165c140c045b42551e45600b5d7d5",
-      "outputs": [],
       "console": []
     },
     {
       "id": "BYtC",
+      "code_hash": "a5f5476c973f8e0ffaa9be6d6d16674e",
+      "outputs": [
+        {
+          "type": "error",
+          "ename": "exception",
+          "evalue": "'function' object has no attribute 'stream'",
+          "traceback": null
+        }
+      ],
+      "console": [
+        {
+          "type": "stream",
+          "name": "stderr",
+          "text": "<span class=\"codehilite\"><div class=\"highlight\"><pre><span></span><span class=\"gt\">Traceback (most recent call last):</span>\n  File <span class=\"nb\">&quot;/tmp/marimo_153359/__marimo__cell_BYtC_.py&quot;</span>, line <span class=\"m\">35</span>, in <span class=\"n\">&lt;module&gt;</span>\n<span class=\"w\">    </span><span class=\"nd\">@chat_app</span><span class=\"o\">.</span><span class=\"n\">stream</span><span class=\"p\">(</span><span class=\"s1\">&#39;/feed&#39;</span><span class=\"p\">,</span> <span class=\"n\">on</span><span class=\"o\">=</span><span class=\"k\">lambda</span><span class=\"p\">:</span> <span class=\"n\">changes</span><span class=\"p\">)</span>\n<span class=\"w\">     </span><span class=\"pm\">^^^^^^^^^^^^^^^</span>\n<span class=\"gr\">AttributeError</span>: <span class=\"n\">&#39;function&#39; object has no attribute &#39;stream&#39;</span>\n</pre></div>\n</span>",
+          "mimetype": "application/vnd.marimo+traceback"
+        }
+      ]
+    },
+    {
+      "id": "SkKx",
       "code_hash": null,
       "outputs": [],
       "console": []
