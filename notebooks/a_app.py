@@ -606,9 +606,9 @@ def create_app(routes: dict | None = None, *, on_init=None, on_del=None):
 
                 try:
                     async for event in result:
-                        if closed.is_set():
-                            break
-                        await transport.send_str(event)
+                        if closed.is_set(): break
+                        await transport.send_str(event.render())
+
                 finally:
                     keepalive.cancel()
                     disconnect.cancel()
