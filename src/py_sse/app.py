@@ -3,6 +3,7 @@ import os, re, threading, time, traceback
 from urllib.parse import parse_qs
 import mimetypes
 from .sse import patch_elements
+from granian._granian import RSGIProtocolClosed
 
 PARAM_RE = re.compile('\\{(\\w+)\\}')
 
@@ -15,10 +16,6 @@ PARAM_RE = re.compile('\\{(\\w+)\\}')
     Everything else is plumbing: routing, signals, cookies, static serving,
     beforeware, and RSGI lifecycle hooks.
     """
-try:
-        from _granian import RSGIProtocolClosed
-    except ImportError:
-        class RSGIProtocolClosed(Exception): pass
 
 def _parse_request(scope, proto) -> dict:
     "Build a request dict from an RSGI scope and protocol."

@@ -20,15 +20,9 @@ with app.setup:
 
     from b_sse import patch_elements
 
-    try:
-        from _granian import RSGIProtocolClosed
-    except ImportError:
-        class RSGIProtocolClosed(Exception): pass
+    from granian._granian import RSGIProtocolClosed
 
     PARAM_RE = re.compile(r'\{(\w+)\}')
-
-
-
 
 
 @app.cell
