@@ -142,7 +142,8 @@ def write_sse_headers(sock, extra_headers=()):
         "content-type: text/event-stream",
         "cache-control: no-cache",
         "x-accel-buffering: no",   # disable proxy buffering
-        "connection: close",
+        "connection: keep-alive",
+        "proxy-buffering: off", 
     ]
     for k, v in extra_headers:
         lines.append(f"{k}: {v}")
@@ -618,31 +619,41 @@ def serve(routes, *, host="127.0.0.1", port=8000,
 
 
 @app.class_definition
-# ─── Section 7: SSE helpers ───────────────────────────────────────────
-#
-# A `Changes` object: subscribers wait on it; producers `notify_all()` to
-# wake them. Built on threading.Condition — no asyncio bridge needed
-# because everything is threaded.
-
 class Changes:
-    """Thread-safe change notifier. One per app, shared across requests.
-    Producers call .notify() after a write. Consumers call .wait() in
-    their SSE generator to block until the next change."""
+    """A single shared bit: 'something changed'. Subscribers are implicit —
+    they are the threads currently parked in wait(). No registry, no list.
+ 
+    A writer flips the bit; every waiter wakes; each waiter re-renders from
+    the DB on its own. When a connection dies, its generator dies, its
+    thread dies, and the subscription disappears by construction.
+ 
+    Usage:
+        changes = Changes()
+        # in SSE generator:
+        changes.wait(timeout=15)   # block until set, or timeout
+        # in writer (or from the DB update hook):
+        changes.notify()           # wake everyone
+    """
     def __init__(self):
-        self._cond = threading.Condition()
-        self._gen = 0
-
+        self._event = threading.Event()
+ 
     def notify(self):
-        with self._cond:
-            self._gen += 1
-            self._cond.notify_all()
-
+        """Wake every thread parked in wait(). Safe to call from any
+        thread, including from inside an APSW update_hook callback."""
+        self._event.set()
+        self._event.clear()
+ 
     def wait(self, timeout=15):
         """Block until the next notify(), or until `timeout` seconds pass.
-        Returns when there's something new OR on timeout (for keepalive)."""
-        with self._cond:
-            current = self._gen
-            self._cond.wait_for(lambda: self._gen != current, timeout=timeout)
+        Returns when there's something new OR on timeout (for keepalive).
+ 
+        Note the race: if notify() runs between two wait() calls, the
+        set/clear pair completes before this wait() sees it, and we'll
+        block until the next event or timeout. For chat-scale traffic
+        with a 15s keepalive ceiling that's fine — the next render is
+        at most 15s late, and only if no further writes happen.
+        """
+        self._event.wait(timeout=timeout)
 
 
 @app.function

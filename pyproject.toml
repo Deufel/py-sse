@@ -1,13 +1,15 @@
 [project]
 name = "py-sse"
-version = "0.3.0"
+version = "0.3.3"
 description = "minimal python sse server"
 readme = "README.md"
 authors = [
     { name = "Deufel", email = "MDeufel13@gmail.com" }
 ]
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "apsw>=3.53.1.0",
+]
 
 [build-system]
 requires = ["uv_build>=0.11,<0.13"]

@@ -3,7 +3,7 @@
 > minimal python sse server
 
 
-## nano
+## server
 
 
 # ─── Section 0: low-level I/O ─────────────────────────────────────────
@@ -66,7 +66,8 @@ def write_sse_headers(sock, extra_headers=()):
         "content-type: text/event-stream",
         "cache-control: no-cache",
         "x-accel-buffering: no",   # disable proxy buffering
-        "connection: close",
+        "connection: keep-alive",
+        "proxy-buffering: off", 
     ]
     for k, v in extra_headers:
         lines.append(f"{k}: {v}")
@@ -488,31 +489,41 @@ def serve(routes, *, host="127.0.0.1", port=8000,
                            live)
         logger.info("shutdown complete")
 
-# ─── Section 7: SSE helpers ───────────────────────────────────────────
-#
-# A `Changes` object: subscribers wait on it; producers `notify_all()` to
-# wake them. Built on threading.Condition — no asyncio bridge needed
-# because everything is threaded.
-
 class Changes:
-    """Thread-safe change notifier. One per app, shared across requests.
-    Producers call .notify() after a write. Consumers call .wait() in
-    their SSE generator to block until the next change."""
+    """A single shared bit: 'something changed'. Subscribers are implicit —
+    they are the threads currently parked in wait(). No registry, no list.
+ 
+    A writer flips the bit; every waiter wakes; each waiter re-renders from
+    the DB on its own. When a connection dies, its generator dies, its
+    thread dies, and the subscription disappears by construction.
+ 
+    Usage:
+        changes = Changes()
+        # in SSE generator:
+        changes.wait(timeout=15)   # block until set, or timeout
+        # in writer (or from the DB update hook):
+        changes.notify()           # wake everyone
+    """
     def __init__(self):
-        self._cond = threading.Condition()
-        self._gen = 0
-
+        self._event = threading.Event()
+ 
     def notify(self):
-        with self._cond:
-            self._gen += 1
-            self._cond.notify_all()
-
+        """Wake every thread parked in wait(). Safe to call from any
+        thread, including from inside an APSW update_hook callback."""
+        self._event.set()
+        self._event.clear()
+ 
     def wait(self, timeout=15):
         """Block until the next notify(), or until `timeout` seconds pass.
-        Returns when there's something new OR on timeout (for keepalive)."""
-        with self._cond:
-            current = self._gen
-            self._cond.wait_for(lambda: self._gen != current, timeout=timeout)
+        Returns when there's something new OR on timeout (for keepalive).
+ 
+        Note the race: if notify() runs between two wait() calls, the
+        set/clear pair completes before this wait() sees it, and we'll
+        block until the next event or timeout. For chat-scale traffic
+        with a 15s keepalive ceiling that's fine — the next render is
+        at most 15s late, and only if no further writes happen.
+        """
+        self._event.wait(timeout=timeout)
 
 def sse_data(text):
     "Format a string as an SSE data line."
@@ -525,3 +536,103 @@ def sse_event(event_name, data):
 def sse_keepalive():
     "An SSE comment line that keeps the connection alive without firing a real event."
     return ":"
+
+## db
+
+
+class Database:
+    """SQLite (APSW) wrapper. Per-thread connections. Every connection
+    gets an update_hook installed at open time, and the hook does exactly
+    one thing: call `changes.notify()`.
+
+    The result: any thread that writes to this DB wakes every thread
+    currently parked in `changes.wait()`. No table-topic mapping, no
+    subscriber registry, no writer thread, no queue. The set of
+    subscribers is implicit — it's whichever threads happen to be
+    parked at the moment.
+
+    Handler code stays trivial:
+        db.execute("INSERT INTO msgs ...", (...))   # writes
+        changes.wait(timeout=15)                    # readers park
+    """
+
+    def __init__(self, path, schema="", changes=None,
+                 dev_mode=False, remove_on_exit=False, busy_timeout=5000):
+        self.path = path
+        self.schema = schema or ""
+        self.changes = changes or Changes()
+        self.dev_mode = dev_mode
+        self.remove_on_exit = remove_on_exit or dev_mode
+        self.busy_timeout = busy_timeout
+        self._tls = threading.local()
+        # Apply schema once at startup on a throwaway connection so a
+        # cold DB is ready before the first request lands.
+        if self.schema:
+            self._init_schema()
+        if self.remove_on_exit:
+            atexit.register(self.cleanup)
+
+    def _conn(self):
+        conn = getattr(self._tls, "conn", None)
+        if conn is None:
+            conn = apsw.Connection(self.path)
+            conn.execute("PRAGMA journal_mode=WAL")
+            conn.execute(f"PRAGMA busy_timeout={int(self.busy_timeout)}")
+            # The one line that makes everything work: when this
+            # connection commits a write, ring the bell. APSW fires the
+            # update_hook on the connection that performed the write,
+            # which is always this one for this thread, so installing
+            # the hook here covers every write this thread will ever do.
+            conn.set_update_hook(self._on_change)
+            self._tls.conn = conn
+        return conn
+
+    def _on_change(self, *_):
+        # APSW passes (op, dbname, table, rowid); we don't care which.
+        # Any change is a change. Notify everyone parked on changes.wait().
+        self.changes.notify()
+
+    def _init_schema(self):
+        conn = apsw.Connection(self.path)
+        try:
+            conn.execute("PRAGMA journal_mode=WAL")
+            for sql in self.schema.strip().split(";"):
+                sql = sql.strip()
+                if sql:
+                    conn.execute(sql)
+        finally:
+            conn.close()
+
+    def conn(self):
+        return self._conn()
+
+    def execute(self, sql, params=()):
+        return self._conn().execute(sql, params)
+
+    def one(self, sql, params=()):
+        return self.execute(sql, params).fetchone()
+
+    def all(self, sql, params=()):
+        return self.execute(sql, params).fetchall()
+
+    def transaction(self):
+        return self._conn().transaction()
+
+    def cleanup(self):
+        try:
+            conn = getattr(self._tls, "conn", None)
+            if conn is not None:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+                self._tls.conn = None
+        finally:
+            if self.remove_on_exit and self.path:
+                for suf in ("", "-wal", "-shm"):
+                    p = self.path + suf
+                    try:
+                        if os.path.exists(p):
+                            os.remove(p)
+                    except Exception:
+                        pass
