@@ -6,11 +6,6 @@
 ## server
 
 
-# ─── Section 0: low-level I/O ─────────────────────────────────────────
-#
-# Read until we see the end of headers (`\r\n\r\n`). Write status/headers/
-# body. Nothing higher-level here — just bytes on a socket.
-
 def read_until_double_crlf(sock):
     "Read socket bytes until we see \\r\\n\\r\\n. Returns (head_bytes, leftover)."
     buf = b""
@@ -59,29 +54,57 @@ def write_response(sock, status, headers, body=b""):
     except OSError:
         pass
 
-def write_sse_headers(sock, extra_headers=()):
-    "Write the response head for a streaming SSE response. No content-length."
+def write_sse_headers(sock, extra_headers=(), encoding="identity"):
+    """Write the response head for a streaming SSE response. No
+    content-length. If `encoding` is 'br' or 'gzip', advertises the
+    Content-Encoding so the client knows to decode the bytes that
+    follow."""
     lines = [
         "HTTP/1.1 200 OK",
         "content-type: text/event-stream",
         "cache-control: no-cache",
-        "x-accel-buffering: no",   # disable proxy buffering
+        "x-accel-buffering: no",       # nginx: don't buffer
+        "proxy-buffering: off",        # generic: don't buffer
         "connection: keep-alive",
-        "proxy-buffering: off", 
     ]
+    if encoding and encoding != "identity":
+        lines.append(f"content-encoding: {encoding}")
+        # Vary is good citizenship — proxies that cache (none should for
+        # event-stream, but defensively) know the response varies with
+        # the client's Accept-Encoding.
+        lines.append("vary: accept-encoding")
     for k, v in extra_headers:
         lines.append(f"{k}: {v}")
     sock.sendall("\r\n".join(lines).encode("ascii") + b"\r\n\r\n")
 
-def write_sse_frame(sock, payload):
-    """Write one SSE frame. `payload` is the data line(s) verbatim — caller
-    decides whether to send 'data: …', 'event: …\\ndata: …', etc."""
-    sock.sendall(payload.encode("utf-8") + b"\n\n")
+def write_sse_frame(sock, payload, encoder=None):
+    """Write one SSE frame. `payload` is the data line(s) verbatim —
+    caller decides whether to send 'data: …', 'event: …\\ndata: …', etc.
+    If an `_SseEncoder` is given, the frame is compressed and flushed
+    through it so the client sees the event immediately."""
+    raw = payload.encode("utf-8") + b"\n\n"
+    if encoder is None or encoder.name == "identity":
+        sock.sendall(raw)
+        return
+    chunk = encoder.encode(raw) + encoder.flush()
+    if chunk:
+        sock.sendall(chunk)
 
-# ─── Section 2: parsing ───────────────────────────────────────────────
-#
-# An HTTP request becomes a plain dict. Cookies are parsed once. Path
-# parameters are filled in by the route matcher (Section 3).
+def pick_encoding(req, prefer=("br", "gzip")):
+    """Pick the best encoding the client supports from a preference
+    list. Returns 'br', 'gzip', or 'identity'. Parses Accept-Encoding
+    leniently — q-values are not honoured; SSE is real-time and nobody
+    legitimately assigns q=0 to br just for fun."""
+    raw = req["headers"].get("accept-encoding", "").lower()
+    if not raw:
+        return "identity"
+    offered = {part.split(";", 1)[0].strip() for part in raw.split(",")}
+    for enc in prefer:
+        if enc == "br" and "br" in offered:
+            return "br"
+        if enc == "gzip" and "gzip" in offered:
+            return "gzip"
+    return "identity"
 
 def parse_request(sock):
     """Read one request off the socket, return a request dict.
@@ -221,14 +244,6 @@ def signals(req):
     data = json.loads(req["body"])
     return data.get("datastar", data) if isinstance(data, dict) else data
 
-# ─── Section 3: routing ───────────────────────────────────────────────
-#
-# Routes are a plain list of (method, regex_pattern, handler) tuples,
-# built once by compile_routes(). Matching is a linear scan; for a chat
-# app with ~10 routes that's negligible.
-
-
-
 def compile_routes(routes):
     """Take a list of (method, path, handler) tuples and compile path
     patterns to regex. Returns a list ready for match_route()."""
@@ -282,17 +297,6 @@ def blob(data, content_type, filename=None):
 def error(status, message=""):
     "Return an error Response with optional plain-text body."
     return (status, [("content-type", "text/plain; charset=utf-8")], message)
-
-# ─── Section 5: connection handling ───────────────────────────────────
-#
-# This is the per-thread entry point. It does:
-#   1. Parse the request from the socket (with timeouts)
-#   2. Find a matching route
-#   3. Call the handler
-#   4. Write the response — short, redirect, or SSE stream
-#
-# Errors are caught, logged, and turned into generic responses. The
-# socket is closed in a single `finally` regardless of code path.
 
 def handle_connection(sock, addr, routes, before_hooks, access_log=True):
     """Run one request to completion, then close the socket.
@@ -370,17 +374,29 @@ def handle_connection(sock, addr, routes, before_hooks, access_log=True):
         status = 200
         sock.settimeout(SSE_WRITE_TIMEOUT)
         extra = [("set-cookie", c) for c in req["_cookies_out"]]
+        encoding = pick_encoding(req)
+        encoder = internal_SseEncoder(encoding)
         try:
-            write_sse_headers(sock, extra)
+            write_sse_headers(sock, extra, encoding=encoding)
             for frame in result:
                 if frame is None:
                     continue
-                write_sse_frame(sock, frame)
+                write_sse_frame(sock, frame, encoder=encoder)
         except (OSError, ConnectionError, socket.timeout):
             pass  # client disconnected or stalled; normal for SSE
         except Exception:
             logger.exception("SSE generator raised for %s %s", method, path)
         finally:
+            # Close the encoder cleanly before the socket closes.
+            # finish() may emit final bytes (gzip CRC + length, or
+            # brotli's last block). Best-effort: if the socket is dead
+            # we don't care.
+            try:
+                tail = encoder.finish()
+                if tail:
+                    sock.sendall(tail)
+            except Exception:
+                pass
             try: result.close()
             except Exception: pass
 
@@ -490,40 +506,24 @@ def serve(routes, *, host="127.0.0.1", port=8000,
         logger.info("shutdown complete")
 
 class Changes:
-    """A single shared bit: 'something changed'. Subscribers are implicit —
-    they are the threads currently parked in wait(). No registry, no list.
- 
-    A writer flips the bit; every waiter wakes; each waiter re-renders from
-    the DB on its own. When a connection dies, its generator dies, its
-    thread dies, and the subscription disappears by construction.
- 
-    Usage:
-        changes = Changes()
-        # in SSE generator:
-        changes.wait(timeout=15)   # block until set, or timeout
-        # in writer (or from the DB update hook):
-        changes.notify()           # wake everyone
-    """
+    """Thread-safe change notifier. One per app, shared across requests.
+    Producers call .notify() after a write. Consumers call .wait() in
+    their SSE generator to block until the next change."""
     def __init__(self):
-        self._event = threading.Event()
- 
+        self._cond = threading.Condition()
+        self._gen = 0
+
     def notify(self):
-        """Wake every thread parked in wait(). Safe to call from any
-        thread, including from inside an APSW update_hook callback."""
-        self._event.set()
-        self._event.clear()
- 
+        with self._cond:
+            self._gen += 1
+            self._cond.notify_all()
+
     def wait(self, timeout=15):
         """Block until the next notify(), or until `timeout` seconds pass.
-        Returns when there's something new OR on timeout (for keepalive).
- 
-        Note the race: if notify() runs between two wait() calls, the
-        set/clear pair completes before this wait() sees it, and we'll
-        block until the next event or timeout. For chat-scale traffic
-        with a 15s keepalive ceiling that's fine — the next render is
-        at most 15s late, and only if no further writes happen.
-        """
-        self._event.wait(timeout=timeout)
+        Returns when there's something new OR on timeout (for keepalive)."""
+        with self._cond:
+            current = self._gen
+            self._cond.wait_for(lambda: self._gen != current, timeout=timeout)
 
 def sse_data(text):
     "Format a string as an SSE data line."

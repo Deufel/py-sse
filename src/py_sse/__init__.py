@@ -1,7 +1,7 @@
 """minimal python sse server"""
-__version__ = '0.3.4'
+__version__ = '0.3.5'
 __author__ = 'Deufel'
-from .server import read_until_double_crlf, read_body, write_response, write_sse_headers, write_sse_frame, parse_request, parse_cookies, set_cookie, signals, compile_routes, match_route, html, redirect, no_content, blob, error, handle_connection, serve, Changes, sse_data, sse_event, sse_keepalive
+from .server import read_until_double_crlf, read_body, write_response, write_sse_headers, write_sse_frame, pick_encoding, parse_request, parse_cookies, set_cookie, signals, compile_routes, match_route, html, redirect, no_content, blob, error, handle_connection, serve, Changes, sse_data, sse_event, sse_keepalive
 from .db import Database
 __all__ = [
     "Changes",
@@ -15,6 +15,7 @@ __all__ = [
     "no_content",
     "parse_cookies",
     "parse_request",
+    "pick_encoding",
     "read_body",
     "read_until_double_crlf",
     "redirect",

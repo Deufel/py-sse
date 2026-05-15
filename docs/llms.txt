@@ -2,7 +2,7 @@
 
 > minimal python sse server
 
-- [server](/server): read_until_double_crlf, read_body, write_response, write_sse_headers, write_sse_frame, parse_request, parse_cookies, set_cookie, signals, compile_routes, match_route, html, redirect, no_content, blob, error, handle_connection, serve, Changes, sse_data, sse_event, sse_keepalive
+- [server](/server): read_until_double_crlf, read_body, write_response, write_sse_headers, write_sse_frame, pick_encoding, parse_request, parse_cookies, set_cookie, signals, compile_routes, match_route, html, redirect, no_content, blob, error, handle_connection, serve, Changes, sse_data, sse_event, sse_keepalive
 - [db](/db): Database
 
 - [llms-full.txt](/llms-full.txt): Complete source code
