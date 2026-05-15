@@ -3,19 +3,24 @@ import apsw
 from .server import Changes
 
 class Database:
-    """SQLite (APSW) wrapper. Per-thread connections. Every connection
-    gets an update_hook installed at open time, and the hook does exactly
-    one thing: call `changes.notify()`.
+    """SQLite (APSW) wrapper. Per-thread connections. Notification of
+    changes is fired by `execute()` itself, after SQLite has committed,
+    by calling `changes.notify()`.
 
-    The result: any thread that writes to this DB wakes every thread
-    currently parked in `changes.wait()`. No table-topic mapping, no
-    subscriber registry, no writer thread, no queue. The set of
-    subscribers is implicit — it's whichever threads happen to be
-    parked at the moment.
+    The set of subscribers is implicit: it's the set of threads currently
+    parked in `changes.wait()`. A dropped connection ends its handler
+    thread, which ends the subscription. No registry, no list.
 
-    Handler code stays trivial:
-        db.execute("INSERT INTO msgs ...", (...))   # writes
-        changes.wait(timeout=15)                    # readers park
+    Why notify from execute() and not from an APSW update_hook:
+        update_hook fires *during* the write, before commit. A reader
+        woken by the hook will see the pre-commit snapshot and render
+        the stale state — that's the "one transaction behind" symptom.
+        Notifying after execute() returns guarantees the commit has
+        landed before any reader wakes.
+
+    Handler code:
+        db.execute("INSERT INTO msgs ...", (...))   # writes (auto-notify)
+        db.changes.wait(timeout=15)                  # readers park
     """
 
     def __init__(self, path, schema="", changes=None,
@@ -40,19 +45,8 @@ class Database:
             conn = apsw.Connection(self.path)
             conn.execute("PRAGMA journal_mode=WAL")
             conn.execute(f"PRAGMA busy_timeout={int(self.busy_timeout)}")
-            # The one line that makes everything work: when this
-            # connection commits a write, ring the bell. APSW fires the
-            # update_hook on the connection that performed the write,
-            # which is always this one for this thread, so installing
-            # the hook here covers every write this thread will ever do.
-            conn.set_update_hook(self._on_change)
             self._tls.conn = conn
         return conn
-
-    def _on_change(self, *_):
-        # APSW passes (op, dbname, table, rowid); we don't care which.
-        # Any change is a change. Notify everyone parked on changes.wait().
-        self.changes.notify()
 
     def _init_schema(self):
         conn = apsw.Connection(self.path)
@@ -69,7 +63,13 @@ class Database:
         return self._conn()
 
     def execute(self, sql, params=()):
-        return self._conn().execute(sql, params)
+        cur = self._conn().execute(sql, params)
+        # Notify after execute returns: SQLite has committed by now, so
+        # any reader we wake will see the new state. Reads also notify,
+        # which is wasteful but harmless — waiters wake, re-render the
+        # same thing, sleep again. For chat-scale traffic, invisible.
+        self.changes.notify()
+        return cur
 
     def one(self, sql, params=()):
         return self.execute(sql, params).fetchone()
