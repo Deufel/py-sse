@@ -1,7 +1,7 @@
 import marimo
 
 __generated_with = "0.23.6"
-app = marimo.App(width="full")
+app = marimo.App()
 
 with app.setup:
     import logging
@@ -36,9 +36,9 @@ with app.setup:
     logger = logging.getLogger('nano_sse')
     PARAM_RE = re.compile('\\{(\\w+)\\}')
 
-    """py_sse — a  minimal SSE web framework.
+    """nano_sse — a Wirth-style minimal SSE web framework.
 
-        Pure Python. almost Pure stdlib. One OS thread per connection. No async/await.
+        Pure Python. Pure stdlib. One OS thread per connection. No async/await.
 
         Goal: see every byte from socket to handler. Each function does one
         thing, named for it. Data structures are plain dicts. The flow is:
@@ -48,7 +48,7 @@ with app.setup:
                     handler(req)        returns a Response or yields SSE frames
 
         DEPLOYMENT MODEL:
-            py_sse is meant to run BEHIND a reverse proxy (caddy, nginx).
+            nano_sse is meant to run BEHIND a reverse proxy (caddy, nginx).
             The proxy terminates TLS, speaks HTTP/1.1 cleartext to us on
             localhost, and handles all the things we deliberately don't:
             TLS, HTTP/2, keepalive coalescing, response compression, IP
@@ -69,7 +69,6 @@ with app.setup:
         """
 
 
-
 @app.cell
 def _():
     import marimo as mo
@@ -77,18 +76,12 @@ def _():
     return (mo,)
 
 
-@app.cell(hide_code=True)
-def _(mo):
-    mo.md(r"""
-    # Section 0: low-level I/O
-
-    - Read until we see the end of headers (`\r\n\r\n`). Write status/headers/
-    - body. Nothing higher-level here — just bytes on a socket.
-    """)
-    return
-
-
 @app.function
+# ─── Section 0: low-level I/O ─────────────────────────────────────────
+#
+# Read until we see the end of headers (`\r\n\r\n`). Write status/headers/
+# body. Nothing higher-level here — just bytes on a socket.
+
 def read_until_double_crlf(sock):
     "Read socket bytes until we see \\r\\n\\r\\n. Returns (head_bytes, leftover)."
     buf = b""
@@ -260,14 +253,13 @@ def pick_encoding(req, prefer=("br", "gzip")):
     return "identity"
 
 
-@app.cell(hide_code=True)
-def _(mo):
-    mo.md(r"""
-    # Section 2: parsing
+@app.cell
+def _():
+    # ─── Section 2: parsing ───────────────────────────────────────────────
+    #
+    # An HTTP request becomes a plain dict. Cookies are parsed once. Path
+    # parameters are filled in by the route matcher (Section 3).
 
-    - An HTTP request becomes a plain dict. Cookies are parsed once. Path
-    - Parameters are filled in by the route matcher (Section 3).
-    """)
     return
 
 
@@ -421,10 +413,7 @@ def signals(req):
 def _(mo):
     mo.md(r"""
     # Section 3: routing
-
-    - Routes are a plain list of (method, regex_pattern, handler) tuples,
-    - built once by compile_routes(). Matching is a linear scan; for a chat
-    - app with ~10 routes that's negligible.
+    > Routes are a plain list of (method, regex_pattern, handler) tuples, built once by compile_routes(). Matching is a linear scan; for a chat app with ~10 routes that's negligible.
     """)
     return
 
@@ -497,24 +486,18 @@ def error(status, message=""):
     return (status, [("content-type", "text/plain; charset=utf-8")], message)
 
 
-@app.cell(hide_code=True)
-def _(mo):
-    mo.md(r"""
-    # Section 5: connection handling
-
-     This is the per-thread entry point. It does:
-       1. Parse the request from the socket (with timeouts)
-       2. Find a matching route
-       3. Call the handler
-       4. Write the response — short, redirect, or SSE stream
-
-     Errors are caught, logged, and turned into generic responses. The
-     socket is closed in a single `finally` regardless of code path.
-    """)
-    return
-
-
 @app.function
+# ─── Section 5: connection handling ───────────────────────────────────
+#
+# This is the per-thread entry point. It does:
+#   1. Parse the request from the socket (with timeouts)
+#   2. Find a matching route
+#   3. Call the handler
+#   4. Write the response — short, redirect, or SSE stream
+#
+# Errors are caught, logged, and turned into generic responses. The
+# socket is closed in a single `finally` regardless of code path.
+
 def handle_connection(sock, addr, routes, before_hooks, access_log=True):
     """Run one request to completion, then close the socket.
     Called in its own OS thread. Never raises out of this function."""
@@ -626,17 +609,13 @@ def handle_connection(sock, addr, routes, before_hooks, access_log=True):
                         addr[0] if addr else "?", method, path, status, dt_ms)
 
 
-@app.cell(hide_code=True)
-def _(mo):
-    mo.md(r"""
-    # Section 6: the listen loop
-
-     Bind, listen, accept. Each connection gets one OS thread, but we cap the total via a semaphore — past that, new connections get an immediate 503 and close, so a flood can't OOM the process.
-    """)
-    return
-
-
 @app.class_definition
+# ─── Section 6: the listen loop ───────────────────────────────────────
+#
+# Bind, listen, accept. Each connection gets one OS thread, but we cap
+# the total via a semaphore — past that, new connections get an
+# immediate 503 and close, so a flood can't OOM the process.
+
 class internal_ShutdownFlag:
     "A flag set by SIGINT/SIGTERM to stop the accept loop."
     def __init__(self):
@@ -744,36 +723,38 @@ def serve(routes, *, host="127.0.0.1", port=8000,
         logger.info("shutdown complete")
 
 
-@app.cell(hide_code=True)
-def _(mo):
-    mo.md(r"""
-    # Section 7: SSE helpers
+@app.cell
+def _():
+    # ─── Section 7: SSE helpers ───────────────────────────────────────────
+    #
+    # A `Changes` object: subscribers wait on it; producers `notify_all()` to
+    # wake them. Built on threading.Condition — no asyncio bridge needed
+    # because everything is threaded.
 
-     A `Changes` object: subscribers wait on it; producers `notify_all()` to wake them. Built on threading.Condition — no asyncio bridge needed because everything is threaded.
-    """)
     return
 
 
 @app.class_definition
 class Changes:
-    """Thread-safe change notifier. One per app, shared across requests.
-    Producers call .notify() after a write. Consumers call .wait() in
-    their SSE generator to block until the next change."""
+    """A single shared bit: 'something changed'. Subscribers are implicit —
+    they are the threads currently parked in wait(). No registry, no list.
+
+    A writer flips the bit; every waiter wakes; each waiter re-renders from
+    the DB on its own. When a connection dies, its generator dies, its
+    thread dies, and the subscription disappears by construction.
+    """
     def __init__(self):
-        self._cond = threading.Condition()
-        self._gen = 0
+        self._event = threading.Event()
 
     def notify(self):
-        with self._cond:
-            self._gen += 1
-            self._cond.notify_all()
+        """Wake every thread parked in wait(). Safe to call from any thread."""
+        self._event.set()
+        self._event.clear()
 
     def wait(self, timeout=15):
         """Block until the next notify(), or until `timeout` seconds pass.
         Returns when there's something new OR on timeout (for keepalive)."""
-        with self._cond:
-            current = self._gen
-            self._cond.wait_for(lambda: self._gen != current, timeout=timeout)
+        self._event.wait(timeout=timeout)
 
 
 @app.function
@@ -792,6 +773,11 @@ def sse_event(event_name, data):
 def sse_keepalive():
     "An SSE comment line that keeps the connection alive without firing a real event."
     return ":"
+
+
+@app.cell
+def _():
+    return
 
 
 if __name__ == "__main__":

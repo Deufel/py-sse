@@ -7,12 +7,12 @@
   "cells": [
     {
       "id": "setup",
-      "code_hash": "f7b8fdde447bf393624cf864d30707fd",
+      "code_hash": "83fd5b7d3a833da207583623f4faa02e",
       "outputs": [
         {
           "type": "data",
           "data": {
-            "text/html": "<pre class='text-xs'>&quot;py_sse \u2014 a  minimal SSE web framework.\\n\\n    Pure Python. almost Pure stdlib. One OS thread per connection. No async/await.\\n\\n    Goal: see every byte from socket to handler. Each function does one\\n    thing, named for it. Data structures are plain dicts. The flow is:\\n\\n        serve(routes)               accepts TCP, spawns threads\\n            handle_connection(...)  parses request, finds route, calls handler\\n                handler(req)        returns a Response or yields SSE frames\\n\\n    DEPLOYMENT MODEL:\\n        py_sse is meant to run BEHIND a reverse proxy (caddy, nginx).\\n        The proxy terminates TLS, speaks HTTP/1.1 cleartext to us on\\n        localhost, and handles all the things we deliberately don&#x27;t:\\n        TLS, HTTP/2, keepalive coalescing, response compression, IP\\n        spoofing defense.\\n\\n        Wire protocol to nano_sse: HTTP/1.1 cleartext. One request per\\n        connection \u2014 we close after responding. Simpler than keepalive\\n        and fine because the proxy keeps its own pool to us.\\n\\n    HARDENING (relevant for any non-local exposure, even behind a proxy):\\n      * Per-connection timeouts (slowloris defense)\\n      * Bounded concurrent connections (thread/RAM cap)\\n      * Strict request-line and header validation\\n      * Cookie value sanitization (no response splitting)\\n      * Generic 500 responses (no exception text leaked to clients)\\n      * Graceful shutdown on SIGINT/SIGTERM\\n      * Access logging\\n    &quot;</pre>"
+            "text/html": "<pre class='text-xs'>&quot;nano_sse \u2014 a Wirth-style minimal SSE web framework.\\n\\n    Pure Python. Pure stdlib. One OS thread per connection. No async/await.\\n\\n    Goal: see every byte from socket to handler. Each function does one\\n    thing, named for it. Data structures are plain dicts. The flow is:\\n\\n        serve(routes)               accepts TCP, spawns threads\\n            handle_connection(...)  parses request, finds route, calls handler\\n                handler(req)        returns a Response or yields SSE frames\\n\\n    DEPLOYMENT MODEL:\\n        nano_sse is meant to run BEHIND a reverse proxy (caddy, nginx).\\n        The proxy terminates TLS, speaks HTTP/1.1 cleartext to us on\\n        localhost, and handles all the things we deliberately don&#x27;t:\\n        TLS, HTTP/2, keepalive coalescing, response compression, IP\\n        spoofing defense.\\n\\n        Wire protocol to nano_sse: HTTP/1.1 cleartext. One request per\\n        connection \u2014 we close after responding. Simpler than keepalive\\n        and fine because the proxy keeps its own pool to us.\\n\\n    HARDENING (relevant for any non-local exposure, even behind a proxy):\\n      * Per-connection timeouts (slowloris defense)\\n      * Bounded concurrent connections (thread/RAM cap)\\n      * Strict request-line and header validation\\n      * Cookie value sanitization (no response splitting)\\n      * Generic 500 responses (no exception text leaked to clients)\\n      * Graceful shutdown on SIGINT/SIGTERM\\n      * Access logging\\n    &quot;</pre>"
           }
         }
       ],
@@ -32,21 +32,8 @@
       "console": []
     },
     {
-      "id": "QLzz",
-      "code_hash": "7d3277b3dcf535f37d82b692c173bf20",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h1 id=\"section-0-low-level-io\">Section 0: low-level I/O</h1>\n<ul>\n<li>Read until we see the end of headers (<code>\\r\\n\\r\\n</code>). Write status/headers/</li>\n<li>body. Nothing higher-level here \u2014 just bytes on a socket.</li>\n</ul></span>"
-          }
-        }
-      ],
-      "console": []
-    },
-    {
-      "id": "LFam",
-      "code_hash": "7ef2b20d0c25f2c65e1a8f39b82f0786",
+      "id": "MJUe",
+      "code_hash": "8a63d19d09fd6efa3ccee43c21094567",
       "outputs": [
         {
           "type": "data",
@@ -58,8 +45,8 @@
       "console": []
     },
     {
-      "id": "Smji",
-      "code_hash": "f861ec3ecff3f2d7ef1b4a050f34cedd",
+      "id": "vblA",
+      "code_hash": "53964937b077a200bab9c5b9b75a99f4",
       "outputs": [
         {
           "type": "data",
@@ -71,8 +58,8 @@
       "console": []
     },
     {
-      "id": "IBQw",
-      "code_hash": "308b00cf773c6983697466596fdfb24a",
+      "id": "bkHC",
+      "code_hash": "672821b2484460098d186c9db0ed602a",
       "outputs": [
         {
           "type": "data",
@@ -84,8 +71,8 @@
       "console": []
     },
     {
-      "id": "nnhp",
-      "code_hash": "90a169b9268cd6e6d84333fa687c1b91",
+      "id": "lEQa",
+      "code_hash": "b7edd67167cd914d51bc6697587edcff",
       "outputs": [
         {
           "type": "data",
@@ -97,8 +84,8 @@
       "console": []
     },
     {
-      "id": "tOEY",
-      "code_hash": "66bdf20a9b2f32cc0c06cfa8c6eea466",
+      "id": "PKri",
+      "code_hash": "d60fa4b0fe75bb79c508b847d1cef50f",
       "outputs": [
         {
           "type": "data",
@@ -110,8 +97,8 @@
       "console": []
     },
     {
-      "id": "Pbql",
-      "code_hash": "2b133a98851ec571a827940fe7443583",
+      "id": "Xref",
+      "code_hash": "ef7fb3da5713f70dee624816c4b4fad2",
       "outputs": [
         {
           "type": "data",
@@ -123,8 +110,8 @@
       "console": []
     },
     {
-      "id": "wXcm",
-      "code_hash": "7632c670abf9dca6aaea915f11315f28",
+      "id": "SFPL",
+      "code_hash": "6ac6976bcf83718650803c0c8a39f320",
       "outputs": [
         {
           "type": "data",
@@ -136,21 +123,8 @@
       "console": []
     },
     {
-      "id": "NMIn",
-      "code_hash": "7d43aa71e7833faf5ad6d18fa8e86643",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h1 id=\"section-2-parsing\">Section 2: parsing</h1>\n<ul>\n<li>An HTTP request becomes a plain dict. Cookies are parsed once. Path</li>\n<li>Parameters are filled in by the route matcher (Section 3).</li>\n</ul></span>"
-          }
-        }
-      ],
-      "console": []
-    },
-    {
-      "id": "kDKa",
-      "code_hash": "77f967e88d750eb8440e5b90dd4bed30",
+      "id": "BYtC",
+      "code_hash": "c4ee861b14b68837c31dd86b6d729589",
       "outputs": [
         {
           "type": "data",
@@ -162,8 +136,8 @@
       "console": []
     },
     {
-      "id": "gCSR",
-      "code_hash": "ffe557e8f6a115a41b3fbd33c985e96b",
+      "id": "RGSE",
+      "code_hash": "9373dc86ec2944f143932f7fed5d6b33",
       "outputs": [
         {
           "type": "data",
@@ -175,8 +149,8 @@
       "console": []
     },
     {
-      "id": "Vxxl",
-      "code_hash": "1d4f7221aa3fe521f91562d0df28398a",
+      "id": "Kclp",
+      "code_hash": "5797aa2e649f8edc5e23bd471f463f63",
       "outputs": [
         {
           "type": "data",
@@ -188,8 +162,8 @@
       "console": []
     },
     {
-      "id": "Stxn",
-      "code_hash": "a7bcf528257ddac4e09a9b5dfd09fe7c",
+      "id": "emfo",
+      "code_hash": "9686ab5cb23f836a6306c7e9d4f61445",
       "outputs": [
         {
           "type": "data",
@@ -201,21 +175,8 @@
       "console": []
     },
     {
-      "id": "icjg",
-      "code_hash": "60e3d970a1bb49946ceb72e0c15cf4ed",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h1 id=\"section-3-routing\">Section 3: routing</h1>\n<ul>\n<li>Routes are a plain list of (method, regex_pattern, handler) tuples,</li>\n<li>built once by compile_routes(). Matching is a linear scan; for a chat</li>\n<li>app with ~10 routes that's negligible.</li>\n</ul></span>"
-          }
-        }
-      ],
-      "console": []
-    },
-    {
-      "id": "LFMg",
-      "code_hash": "1ddcb6cb4543fbcea909796c1eab38c3",
+      "id": "Hstk",
+      "code_hash": "25bde88cac9486857324cc4afc9adc4a",
       "outputs": [
         {
           "type": "data",
@@ -227,8 +188,21 @@
       "console": []
     },
     {
-      "id": "GeNV",
-      "code_hash": "3da527083fb935c52d51c1d6fb6cdf51",
+      "id": "nWHF",
+      "code_hash": "cadd44a44c19259dd836ed3011f7b418",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h1 id=\"section-3-routing\">Section 3: routing</h1>\n<blockquote>\n<span class=\"paragraph\">Routes are a plain list of (method, regex_pattern, handler) tuples, built once by compile_routes(). Matching is a linear scan; for a chat app with ~10 routes that's negligible.</span>\n</blockquote></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "iLit",
+      "code_hash": "2d20a4236d31eae1cf75dd105d4a35e7",
       "outputs": [
         {
           "type": "data",
@@ -240,8 +214,8 @@
       "console": []
     },
     {
-      "id": "wkBu",
-      "code_hash": "96c10edf97313a894491fcb2628d4040",
+      "id": "ZHCJ",
+      "code_hash": "332e4fd668bd048c96bbec008495707e",
       "outputs": [
         {
           "type": "data",
@@ -253,8 +227,8 @@
       "console": []
     },
     {
-      "id": "AFFD",
-      "code_hash": "2f3a7073fb76d4ab33f4329afe9b2eb8",
+      "id": "ROlb",
+      "code_hash": "a9636e263babc52ceb43f511c10280a2",
       "outputs": [
         {
           "type": "data",
@@ -266,8 +240,8 @@
       "console": []
     },
     {
-      "id": "Czsv",
-      "code_hash": "02111514e925ff314d8fa0dc29424474",
+      "id": "qnkX",
+      "code_hash": "2ee9a2d1a4b2824d7e5d9939bf38064e",
       "outputs": [
         {
           "type": "data",
@@ -279,8 +253,8 @@
       "console": []
     },
     {
-      "id": "nMFD",
-      "code_hash": "422091e0c85a050c97aed3ab262a755d",
+      "id": "TqIu",
+      "code_hash": "ea54f253f0edf9650bbeac592525cf59",
       "outputs": [
         {
           "type": "data",
@@ -292,8 +266,8 @@
       "console": []
     },
     {
-      "id": "IWEk",
-      "code_hash": "c3f80d2adb5e048b5e398a64e468eb39",
+      "id": "Vxnm",
+      "code_hash": "a90c62853061f3dae336a935ef5073ff",
       "outputs": [
         {
           "type": "data",
@@ -305,21 +279,8 @@
       "console": []
     },
     {
-      "id": "FfUG",
-      "code_hash": "b9e3b5af21d53d3466bae91494ce64c7",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h1 id=\"section-5-connection-handling\">Section 5: connection handling</h1>\n<span class=\"paragraph\">This is the per-thread entry point. It does:</span>\n<div class=\"language-cbmbas highlight\"><pre><span></span><code><span class=\"mf\">1.</span><span class=\"w\"> </span><span class=\"n\">Parse</span><span class=\"w\"> </span><span class=\"n\">the</span><span class=\"w\"> </span><span class=\"n\">request</span><span class=\"w\"> </span><span class=\"n\">from</span><span class=\"w\"> </span><span class=\"n\">the</span><span class=\"w\"> </span><span class=\"n\">socket</span><span class=\"w\"> </span><span class=\"p\">(</span><span class=\"n\">with</span><span class=\"w\"> </span><span class=\"n\">timeouts</span><span class=\"p\">)</span>\n\n<span class=\"mf\">2.</span><span class=\"w\"> </span><span class=\"n\">Find</span><span class=\"w\"> </span><span class=\"n\">a</span><span class=\"w\"> </span><span class=\"n\">matching</span><span class=\"w\"> </span><span class=\"n\">route</span>\n\n<span class=\"mf\">3.</span><span class=\"w\"> </span><span class=\"n\">Call</span><span class=\"w\"> </span><span class=\"n\">the</span><span class=\"w\"> </span><span class=\"n\">handler</span>\n\n<span class=\"mf\">4.</span><span class=\"w\"> </span><span class=\"n\">Write</span><span class=\"w\"> </span><span class=\"n\">the</span><span class=\"w\"> </span><span class=\"n\">response</span><span class=\"w\"> </span><span class=\"err\">\u2014</span><span class=\"w\"> </span><span class=\"n\">short</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"n\">redirect</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"ow\">or</span><span class=\"w\"> </span><span class=\"n\">SSE</span><span class=\"w\"> </span><span class=\"n\">stream</span>\n</code></pre></div>\n<span class=\"paragraph\">Errors are caught, logged, and turned into generic responses. The\n socket is closed in a single <code>finally</code> regardless of code path.</span></span>"
-          }
-        }
-      ],
-      "console": []
-    },
-    {
-      "id": "OkZY",
-      "code_hash": "6de96405f045a2edebbab2cd1d553c74",
+      "id": "DnEU",
+      "code_hash": "0387012d9fe2b3dd5d58f8e7e80cdccb",
       "outputs": [
         {
           "type": "data",
@@ -331,21 +292,8 @@
       "console": []
     },
     {
-      "id": "EYTc",
-      "code_hash": "e057d54727999416cc260a095be1a9d3",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h1 id=\"section-6-the-listen-loop\">Section 6: the listen loop</h1>\n<span class=\"paragraph\">Bind, listen, accept. Each connection gets one OS thread, but we cap the total via a semaphore \u2014 past that, new connections get an immediate 503 and close, so a flood can't OOM the process.  </span></span>"
-          }
-        }
-      ],
-      "console": []
-    },
-    {
-      "id": "Hocu",
-      "code_hash": "38e9fb10176dd76de1fc040bd9747297",
+      "id": "ulZA",
+      "code_hash": "899554d315c0cef08eb8e59706255d41",
       "outputs": [
         {
           "type": "data",
@@ -357,8 +305,8 @@
       "console": []
     },
     {
-      "id": "DTCo",
-      "code_hash": "19828b5d288bab6168ddf2b23e2e85fe",
+      "id": "ecfG",
+      "code_hash": "2971df1066293a07d0182626b641ca4d",
       "outputs": [
         {
           "type": "data",
@@ -370,21 +318,8 @@
       "console": []
     },
     {
-      "id": "pnYx",
-      "code_hash": "f181f4c523194245f0e83c0c4936734b",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h1 id=\"section-7-sse-helpers\">Section 7: SSE helpers</h1>\n<span class=\"paragraph\">A <code>Changes</code> object: subscribers wait on it; producers <code>notify_all()</code> to wake them. Built on threading.Condition \u2014 no asyncio bridge needed because everything is threaded.</span></span>"
-          }
-        }
-      ],
-      "console": []
-    },
-    {
-      "id": "ZCDz",
-      "code_hash": "e7e7bfb3ea515e9fb4ac65fbe64b22de",
+      "id": "Pvdt",
+      "code_hash": "50cda1383a5d63b671355b403a1425d9",
       "outputs": [
         {
           "type": "data",
@@ -396,8 +331,8 @@
       "console": []
     },
     {
-      "id": "HifX",
-      "code_hash": "cea8722d57918e6c1255a5bac4770c56",
+      "id": "ZBYS",
+      "code_hash": "e62df84785db3c58693c7b2dcd6aeec4",
       "outputs": [
         {
           "type": "data",
@@ -409,8 +344,8 @@
       "console": []
     },
     {
-      "id": "OlUz",
-      "code_hash": "e9098b1390ec438bdbf4b9475abcb712",
+      "id": "aLJB",
+      "code_hash": "5b07ee11a35d47182260dfdaa0ce44e8",
       "outputs": [
         {
           "type": "data",
@@ -422,8 +357,47 @@
       "console": []
     },
     {
-      "id": "oHsG",
+      "id": "nHfw",
+      "code_hash": "e60a26f3a6df2dd148c0472618b37f6f",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "xXTn",
+      "code_hash": "b6909fe256c0e3ed93045c9012da782c",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "AjVT",
       "code_hash": "09a62f1f43dda409c3e55eb7d32b8f6d",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "pHFh",
+      "code_hash": null,
       "outputs": [
         {
           "type": "data",

@@ -6,6 +6,11 @@
 ## server
 
 
+# ─── Section 0: low-level I/O ─────────────────────────────────────────
+#
+# Read until we see the end of headers (`\r\n\r\n`). Write status/headers/
+# body. Nothing higher-level here — just bytes on a socket.
+
 def read_until_double_crlf(sock):
     "Read socket bytes until we see \\r\\n\\r\\n. Returns (head_bytes, leftover)."
     buf = b""
@@ -298,6 +303,17 @@ def error(status, message=""):
     "Return an error Response with optional plain-text body."
     return (status, [("content-type", "text/plain; charset=utf-8")], message)
 
+# ─── Section 5: connection handling ───────────────────────────────────
+#
+# This is the per-thread entry point. It does:
+#   1. Parse the request from the socket (with timeouts)
+#   2. Find a matching route
+#   3. Call the handler
+#   4. Write the response — short, redirect, or SSE stream
+#
+# Errors are caught, logged, and turned into generic responses. The
+# socket is closed in a single `finally` regardless of code path.
+
 def handle_connection(sock, addr, routes, before_hooks, access_log=True):
     """Run one request to completion, then close the socket.
     Called in its own OS thread. Never raises out of this function."""
@@ -506,24 +522,25 @@ def serve(routes, *, host="127.0.0.1", port=8000,
         logger.info("shutdown complete")
 
 class Changes:
-    """Thread-safe change notifier. One per app, shared across requests.
-    Producers call .notify() after a write. Consumers call .wait() in
-    their SSE generator to block until the next change."""
+    """A single shared bit: 'something changed'. Subscribers are implicit —
+    they are the threads currently parked in wait(). No registry, no list.
+
+    A writer flips the bit; every waiter wakes; each waiter re-renders from
+    the DB on its own. When a connection dies, its generator dies, its
+    thread dies, and the subscription disappears by construction.
+    """
     def __init__(self):
-        self._cond = threading.Condition()
-        self._gen = 0
+        self._event = threading.Event()
 
     def notify(self):
-        with self._cond:
-            self._gen += 1
-            self._cond.notify_all()
+        """Wake every thread parked in wait(). Safe to call from any thread."""
+        self._event.set()
+        self._event.clear()
 
     def wait(self, timeout=15):
         """Block until the next notify(), or until `timeout` seconds pass.
         Returns when there's something new OR on timeout (for keepalive)."""
-        with self._cond:
-            current = self._gen
-            self._cond.wait_for(lambda: self._gen != current, timeout=timeout)
+        self._event.wait(timeout=timeout)
 
 def sse_data(text):
     "Format a string as an SSE data line."
@@ -552,7 +569,7 @@ class Database:
     Why notify from execute() and not from an APSW update_hook:
         update_hook fires *during* the write, before commit. A reader
         woken by the hook will see the pre-commit snapshot and render
-        the stale state — that's the "one transaction behind" symptom.
+        the stale state — the "one transaction behind" symptom.
         Notifying after execute() returns guarantees the commit has
         landed before any reader wakes.
 
@@ -570,8 +587,6 @@ class Database:
         self.remove_on_exit = remove_on_exit or dev_mode
         self.busy_timeout = busy_timeout
         self._tls = threading.local()
-        # Apply schema once at startup on a throwaway connection so a
-        # cold DB is ready before the first request lands.
         if self.schema:
             self._init_schema()
         if self.remove_on_exit:
@@ -605,7 +620,7 @@ class Database:
         # Notify after execute returns: SQLite has committed by now, so
         # any reader we wake will see the new state. Reads also notify,
         # which is wasteful but harmless — waiters wake, re-render the
-        # same thing, sleep again. For chat-scale traffic, invisible.
+        # same thing, sleep again.
         self.changes.notify()
         return cur
 
@@ -636,3 +651,84 @@ class Database:
                             os.remove(p)
                     except Exception:
                         pass
+
+## live
+
+
+class LiveCounter:
+    """Tracks how many viewers are streaming each resource.
+
+    Parameters
+    ----------
+    soft_cap : int
+        Below this many concurrent streams per resource, new viewers
+        get live SSE. At or above, they get polling.
+    min_poll_ms : int
+        Polling interval at the soft cap. Polling-mode viewers poll
+        this often when only a few are degraded.
+    max_poll_ms : int
+        Polling interval ceiling. Reached when load is soft_cap +
+        ramp_users.
+    ramp_users : int
+        How many users above the cap before polling reaches its max
+        interval. Linear ramp.
+
+    Defaults (soft_cap=10, min_poll_ms=2000, max_poll_ms=30000,
+    ramp_users=50) suit a chat-style app where each resource (room,
+    document) has a small live audience and degrades gracefully if
+    one resource gets unusually busy.
+    """
+
+    def __init__(self, soft_cap=10, min_poll_ms=2_000, max_poll_ms=30_000,
+                 ramp_users=50):
+        self.soft_cap = soft_cap
+        self.min_poll_ms = min_poll_ms
+        self.max_poll_ms = max_poll_ms
+        self.ramp_users = ramp_users
+        self._counts = {}              # resource_id -> int
+        self._lock = threading.Lock()
+
+    def count(self, resource_id):
+        """Current number of live viewers for this resource."""
+        with self._lock:
+            return self._counts.get(resource_id, 0)
+
+    def should_be_live(self, resource_id):
+        """True if a new viewer should get a live stream; False if they
+        should poll."""
+        return self.count(resource_id) < self.soft_cap
+
+    def poll_interval_ms(self, resource_id):
+        """Recommended poll interval for this resource, in ms.
+        Linear ramp from min_poll_ms at soft_cap to max_poll_ms at
+        soft_cap + ramp_users."""
+        count = self.count(resource_id)
+        if count <= self.soft_cap:
+            return self.min_poll_ms
+        overage = count - self.soft_cap
+        frac = min(1.0, overage / self.ramp_users)
+        return int(self.min_poll_ms + frac * (self.max_poll_ms - self.min_poll_ms))
+
+    @contextmanager
+    def join(self, resource_id):
+        """Register a live viewer of this resource for the duration of
+        the with-block. Use this around an SSE generator's main loop.
+        Count goes up on entry, down on exit (cleanly or by disconnect).
+        """
+        with self._lock:
+            self._counts[resource_id] = self._counts.get(resource_id, 0) + 1
+        try:
+            yield
+        finally:
+            with self._lock:
+                new = self._counts.get(resource_id, 0) - 1
+                if new <= 0:
+                    self._counts.pop(resource_id, None)
+                else:
+                    self._counts[resource_id] = new
+
+    def snapshot(self):
+        """Return a copy of the current per-resource counts. Useful for
+        diagnostics, admin pages, or load metrics."""
+        with self._lock:
+            return dict(self._counts)

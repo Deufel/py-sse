@@ -4,17 +4,10 @@ __generated_with = "0.23.6"
 app = marimo.App()
 
 with app.setup:
+
     import atexit, os, threading
     import apsw
-
     from a_server import Changes
-
-
-@app.cell
-def _():
-    import marimo as mo
-
-    return
 
 
 @app.class_definition
@@ -30,7 +23,7 @@ class Database:
     Why notify from execute() and not from an APSW update_hook:
         update_hook fires *during* the write, before commit. A reader
         woken by the hook will see the pre-commit snapshot and render
-        the stale state — that's the "one transaction behind" symptom.
+        the stale state — the "one transaction behind" symptom.
         Notifying after execute() returns guarantees the commit has
         landed before any reader wakes.
 
@@ -48,8 +41,6 @@ class Database:
         self.remove_on_exit = remove_on_exit or dev_mode
         self.busy_timeout = busy_timeout
         self._tls = threading.local()
-        # Apply schema once at startup on a throwaway connection so a
-        # cold DB is ready before the first request lands.
         if self.schema:
             self._init_schema()
         if self.remove_on_exit:
@@ -83,7 +74,7 @@ class Database:
         # Notify after execute returns: SQLite has committed by now, so
         # any reader we wake will see the new state. Reads also notify,
         # which is wasteful but harmless — waiters wake, re-render the
-        # same thing, sleep again. For chat-scale traffic, invisible.
+        # same thing, sleep again.
         self.changes.notify()
         return cur
 
