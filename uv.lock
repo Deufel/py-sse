@@ -672,33 +672,33 @@ wheels = [
 
 [[package]]
 name = "py-sse"
-version = "0.6.0"
+version = "0.7.0"
 source = { editable = "." }
 dependencies = [
-    { name = "anthropic" },
     { name = "apsw" },
     { name = "brotli" },
-    { name = "pydantic-ai-slim" },
 ]
 
 [package.dev-dependencies]
 dev = [
+    { name = "anthropic" },
     { name = "marimo" },
     { name = "marimo-dev" },
+    { name = "pydantic-ai-slim" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "anthropic", specifier = ">=0.102.0" },
     { name = "apsw", specifier = ">=3.53.1.0" },
     { name = "brotli", specifier = ">=1.2.0" },
-    { name = "pydantic-ai-slim", specifier = ">=1.97.0" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "anthropic", specifier = ">=0.102.0" },
     { name = "marimo", specifier = ">=0.21.1" },
     { name = "marimo-dev", specifier = ">=0.3.3" },
+    { name = "pydantic-ai-slim", specifier = ">=1.97.0" },
 ]
 
 [[package]]

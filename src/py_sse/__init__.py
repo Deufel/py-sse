@@ -1,9 +1,9 @@
 """minimal python sse server"""
-__version__ = '0.6.1'
+__version__ = '0.7.0'
 __author__ = 'Deufel'
-from .server import Changes, read_until_double_crlf, read_body, write_response, write_sse_headers, write_sse_frame, pick_encoding, parse_request, parse_cookies, set_cookie, signals, compile_routes, match_route, html, redirect, no_content, blob, error, sse_data, sse_event, sse_keepalive, stream_handler, handle_connection, serve
+from .server import Changes, read_until_double_crlf, read_body, write_response, write_sse_headers, write_sse_frame, pick_encoding, parse_request, parse_cookies, set_cookie, signals, compile_routes, match_route, html, redirect, no_content, blob, error, sse_data, sse_event, sse_keepalive, live, handle_connection, serve
+from .counter import LiveCounter
 from .db import Database
-from .live import LiveCounter
 __all__ = [
     "Changes",
     "Database",
@@ -13,6 +13,7 @@ __all__ = [
     "error",
     "handle_connection",
     "html",
+    "live",
     "match_route",
     "no_content",
     "parse_cookies",
@@ -27,7 +28,6 @@ __all__ = [
     "sse_data",
     "sse_event",
     "sse_keepalive",
-    "stream_handler",
     "write_response",
     "write_sse_frame",
     "write_sse_headers",

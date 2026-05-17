@@ -1,6 +1,6 @@
 [project]
 name = "py-sse"
-version = "0.6.1"
+version = "0.7.0"
 description = "minimal python sse server"
 readme = "README.md"
 authors = [
@@ -8,10 +8,8 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
-    "anthropic>=0.102.0",
     "apsw>=3.53.1.0",
     "brotli>=1.2.0",
-    "pydantic-ai-slim>=1.97.0",
 ]
 
 [build-system]
@@ -20,8 +18,10 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
+    "anthropic>=0.102.0",
     "marimo-dev>=0.3.3",
     "marimo>=0.21.1",
+    "pydantic-ai-slim>=1.97.0",
 ]
 
 [tool.marimo-dev]

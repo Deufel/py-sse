@@ -1,24 +1,29 @@
 import marimo
 
 __generated_with = "0.23.6"
-app = marimo.App(width="medium")
+app = marimo.App(width="full")
 
 with app.setup:
-    """py_sse server — a Wirth-style minimal SSE web framework.
+    """py_sse server — Wirth-style minimal SSE web framework.
 
-    Pure Python. Pure stdlib + brotli + apsw. One OS thread per connection.
-    No async/await. Each function does one thing, named for it.
+    One OS thread per connection. Topic-scoped pub/sub. SSE with brotli
+    cross-frame compression. No async/await.
 
-    DEPLOYMENT MODEL:
-        py_sse runs BEHIND a reverse proxy (caddy, nginx) that terminates
-        TLS and speaks HTTP/1.1 cleartext to us on localhost. We handle:
-          * Per-connection timeouts (slowloris defense)
-          * Bounded concurrent connections (thread/RAM cap)
-          * Strict request-line and header validation
-          * Cookie value sanitization (no response splitting)
-          * Generic 500 responses (no exception text leaked)
-          * Graceful shutdown on SIGINT/SIGTERM
-          * Brotli SSE compression across frames (huge wins for fat morph)
+    A page is a function that returns html_tags elements. The framework
+    wraps them in a stable envelope (html/head/body) so idiomorph has
+    something to anchor to.
+
+    A "live" page is a page wrapped with live(handler, topic). It serves
+    three transport modes based on per-page viewer count:
+
+        0 to soft_cap         → live SSE       (data-init opens stream)
+        soft_cap to hard_cap  → polling        (data-on-interval refetches)
+        above hard_cap        → static         (no automatic updates)
+
+    One URL serves all three modes. The framework dispatches on the
+    incoming Accept header: text/event-stream means open a stream; anything
+    else means return a one-shot HTML page with the right transport
+    attribute baked into the wrapper.
     """
 
     import logging
@@ -28,7 +33,6 @@ with app.setup:
     import threading
     import time
     import zlib
-    from contextlib import contextmanager
     from functools import wraps
     from urllib.parse import parse_qs, unquote
 
@@ -55,6 +59,10 @@ with app.setup:
 
     logger = logging.getLogger('py_sse')
 
+    # The DOM id used for the live wrapper. Idiomorph anchors on this.
+    LIVE_ROOT_ID = "live-root"
+
+
 
 
 
@@ -62,36 +70,12 @@ with app.setup:
 def _():
     import marimo as mo
 
-    return (mo,)
-
-
-@app.cell(hide_code=True)
-def _(mo):
-    mo.md(r"""
-    # Py-sse.server
-    """)
-    return
-
-
-@app.cell(hide_code=True)
-def _(mo):
-    mo.md(r"""
-    ## Changes
-    """)
     return
 
 
 @app.cell
 def _():
     # ─── Section 1: Changes — topic-scoped pub/sub ────────────────────────
-    #
-    # Hierarchical subjects with dotted notation: "game.5.score".
-    # Patterns: exact ("game.5.score"), prefix wildcard ("game.5.*"), or
-    # bare wildcard ("*"). A notify on "a.b.c" wakes waiters on "a.b.c",
-    # "a.b.*", "a.*", and "*".
-    #
-    # Subscribers are implicit: they're the threads currently parked in
-    # wait(). A dropped connection ends its thread, ends the subscription.
 
     return
 
@@ -101,14 +85,16 @@ class Changes:
     """In-process pub/sub. Threads wait on dotted subject patterns;
     publishes match by walking the hierarchy.
 
-    Usage:
         # Writer
         changes.notify("game.5.score")
 
-        # Reader (in an SSE stream)
+        # Reader
         while True:
             changes.wait("game.5.*", timeout=15)
             yield render_frame()
+
+    Matching: notify("a.b.c") wakes waiters on "a.b.c", "a.b.*",
+    "a.*", and "*".
     """
 
     def __init__(self):
@@ -122,26 +108,16 @@ class Changes:
             return self._events[pattern]
 
     def notify(self, subject):
-        """Wake all subscribers whose pattern matches this subject.
-
-        Matching walks the hierarchy: notify("a.b.c") wakes waiters
-        registered on "a.b.c", "a.b.*", "a.*", and "*".
-        """
         parts = subject.split(".")
         patterns = [subject]
         for i in range(len(parts) - 1, -1, -1):
             patterns.append(".".join(parts[:i] + ["*"]))
-
         with self._lock:
             for p in patterns:
                 if p in self._events:
                     self._events[p].set()
 
     def wait(self, pattern, timeout=None):
-        """Wait for a notify whose subject matches this pattern.
-
-        Returns True if matched, False on timeout.
-        """
         evt = self._event_for(pattern)
         ok = evt.wait(timeout=timeout)
         if ok:
@@ -149,17 +125,15 @@ class Changes:
         return ok
 
 
-@app.cell(hide_code=True)
-def _(mo):
-    mo.md(r"""
-    ## low-level I/O
-    """)
+@app.cell
+def _():
+    # ─── Section 2: low-level I/O ─────────────────────────────────────────
+
     return
 
 
 @app.function
 def read_until_double_crlf(sock):
-    "Read socket bytes until \\r\\n\\r\\n. Returns (head_bytes, leftover)."
     buf = b""
     while b"\r\n\r\n" not in buf:
         chunk = sock.recv(4096)
@@ -174,7 +148,6 @@ def read_until_double_crlf(sock):
 
 @app.function
 def read_body(sock, content_length, already_have, limit=MAX_BODY_BYTES):
-    "Read exactly content_length bytes."
     if content_length < 0:
         raise ValueError("negative content-length")
     if content_length > limit:
@@ -190,7 +163,6 @@ def read_body(sock, content_length, already_have, limit=MAX_BODY_BYTES):
 
 @app.function
 def write_response(sock, status, headers, body=b""):
-    "Write a complete HTTP/1.1 response."
     if isinstance(body, str):
         body = body.encode("utf-8")
     reason = {200: "OK", 204: "No Content", 303: "See Other",
@@ -214,7 +186,6 @@ def write_response(sock, status, headers, body=b""):
 
 @app.function
 def write_sse_headers(sock, extra_headers=(), encoding="identity"):
-    "Write the response head for a streaming SSE response."
     lines = [
         "HTTP/1.1 200 OK",
         "content-type: text/event-stream",
@@ -233,7 +204,6 @@ def write_sse_headers(sock, extra_headers=(), encoding="identity"):
 
 @app.function
 def write_sse_frame(sock, payload, encoder=None):
-    "Write one SSE frame, optionally compressed."
     raw = payload.encode("utf-8") + b"\n\n"
     if encoder is None or encoder.name == "identity":
         sock.sendall(raw)
@@ -243,23 +213,18 @@ def write_sse_frame(sock, payload, encoder=None):
         sock.sendall(chunk)
 
 
-@app.cell(hide_code=True)
-def _(mo):
-    mo.md(r"""
-    ## SSE encoder
-    """)
+@app.cell
+def _():
+    # ─── Section 3: SSE encoder ───────────────────────────────────────────
+
     return
 
 
 @app.class_definition
 class internal_SseEncoder:
-    """Per-connection streaming encoder.
-
-    Brotli's cross-frame state is the whole game: frame N+1 mostly
-    equals frame N, so the encoder emits "copy from N KB ago" for
-    almost everything. Each per-frame flush() emits a syncable point
-    without ending the stream.
-    """
+    """Per-connection streaming encoder. Brotli's cross-frame state
+    is the whole game: frame N+1 mostly equals frame N, so the encoder
+    emits 'copy from N KB ago' for almost everything."""
     __slots__ = ("name", "_c")
 
     def __init__(self, encoding):
@@ -298,7 +263,6 @@ class internal_SseEncoder:
 
 @app.function
 def pick_encoding(req, prefer=("br", "gzip")):
-    "Pick the best encoding the client supports."
     raw = req["headers"].get("accept-encoding", "").lower()
     if not raw:
         return "identity"
@@ -311,28 +275,20 @@ def pick_encoding(req, prefer=("br", "gzip")):
     return "identity"
 
 
-@app.cell(hide_code=True)
-def _(mo):
-    mo.md(r"""
-    ## Request parsing
-    """)
+@app.cell
+def _():
+    # ─── Section 4: request parsing ───────────────────────────────────────
+
     return
 
 
 @app.function
 def parse_request(sock):
-    """Read one request off the socket, return a request dict.
-
-    Validates request line and header names strictly. Raises ValueError
-    for malformed input, ConnectionError for truncated reads.
-    """
     sock.settimeout(HEADER_READ_TIMEOUT)
     head, leftover = read_until_double_crlf(sock)
-
     raw_lines = head.split(b"\r\n")
     if not raw_lines or not raw_lines[0]:
         raise ValueError("empty request")
-
     rl = raw_lines[0]
     if len(rl) > 8192:
         raise ValueError("request line too long")
@@ -348,12 +304,10 @@ def parse_request(sock):
         raise ValueError("unsupported HTTP version")
     method = method_b.decode("ascii")
     target = target_b.decode("ascii")
-
     raw_path, _, raw_query = target.partition("?")
     path = unquote(raw_path)
     query = {k: v[0] if len(v) == 1 else v
              for k, v in parse_qs(raw_query).items()}
-
     headers = {}
     for raw in raw_lines[1:]:
         if not raw:
@@ -366,9 +320,7 @@ def parse_request(sock):
         if any(b in value_b for b in (b"\r", b"\n", b"\x00")):
             raise ValueError("invalid byte in header value")
         headers[name_b.decode("ascii").lower()] = value_b.decode("iso-8859-1").strip()
-
     cookies = parse_cookies(headers.get("cookie", ""))
-
     content_length = 0
     if "content-length" in headers:
         try:
@@ -380,7 +332,6 @@ def parse_request(sock):
         body = read_body(sock, content_length, leftover)
     else:
         body = b""
-
     return {
         "method":  method,
         "path":    path,
@@ -396,7 +347,6 @@ def parse_request(sock):
 
 @app.function
 def parse_cookies(cookie_header):
-    "Parse a Cookie: header value into a {name: value} dict."
     out = {}
     for pair in cookie_header.split(";"):
         if "=" in pair:
@@ -409,9 +359,6 @@ def parse_cookies(cookie_header):
 
 @app.function
 def set_cookie(req, name, value, **opts):
-    """Queue a Set-Cookie on the response.
-    Options: max_age (int), path (str), httponly (bool), samesite ('Lax'|...).
-    """
     if _COOKIE_FORBIDDEN.search(name) or _COOKIE_FORBIDDEN.search(str(value)):
         raise ValueError("cookie name/value contains forbidden control characters")
     pieces = [f"{name}={value}"]
@@ -429,11 +376,7 @@ def set_cookie(req, name, value, **opts):
 
 @app.function
 def signals(req):
-    """Parse Datastar signals from a request.
-
-    GET: JSON-encoded 'datastar' query parameter.
-    POST/PUT/PATCH/DELETE: JSON body.
-    """
+    """Parse Datastar signals from a request."""
     import json
     if req["method"] == "GET":
         raw = req["query"].get("datastar", "{}")
@@ -444,17 +387,15 @@ def signals(req):
     return data.get("datastar", data) if isinstance(data, dict) else data
 
 
-@app.cell(hide_code=True)
-def _(mo):
-    mo.md(r"""
-    ## Routing
-    """)
+@app.cell
+def _():
+    # ─── Section 5: routing ───────────────────────────────────────────────
+
     return
 
 
 @app.function
 def compile_routes(routes):
-    "Compile path patterns to regex."
     compiled = []
     for method, path, handler in routes:
         if "{" in path:
@@ -465,14 +406,8 @@ def compile_routes(routes):
     return compiled
 
 
-@app.cell
-def _():
-    return
-
-
 @app.function
 def match_route(routes, method, path):
-    "Find the first matching route. Returns (handler, params) or None."
     for route_method, pattern, handler in routes:
         if route_method != method:
             continue
@@ -480,14 +415,6 @@ def match_route(routes, method, path):
         if m:
             return handler, m.groupdict()
     return None
-
-
-@app.cell(hide_code=True)
-def _(mo):
-    mo.md(r"""
-    ## Response helpers
-    """)
-    return
 
 
 @app.cell
@@ -499,13 +426,11 @@ def _():
 
 @app.function
 def html(body, status=200):
-    "Return an HTML page response."
     return (status, [("content-type", "text/html; charset=utf-8")], body)
 
 
 @app.function
 def redirect(location, status=303):
-    "Return a redirect response."
     if "\r" in location or "\n" in location:
         raise ValueError("redirect target contains forbidden characters")
     return (status, [("location", location)], b"")
@@ -513,13 +438,11 @@ def redirect(location, status=303):
 
 @app.function
 def no_content():
-    "Return a 204 No Content response."
     return (204, [], b"")
 
 
 @app.function
 def blob(data, content_type, filename=None):
-    "Return a Response carrying raw bytes."
     headers = [
         ("content-type", content_type),
         ("x-content-type-options", "nosniff"),
@@ -533,16 +456,7 @@ def blob(data, content_type, filename=None):
 
 @app.function
 def error(status, message=""):
-    "Return an error response."
     return (status, [("content-type", "text/plain; charset=utf-8")], message)
-
-
-@app.cell(hide_code=True)
-def _(mo):
-    mo.md(r"""
-    ## SSE primitives
-    """)
-    return
 
 
 @app.cell
@@ -554,153 +468,257 @@ def _():
 
 @app.function
 def sse_data(text):
-    "Format a string as an SSE data line."
     return "\n".join(f"data: {line}" for line in (text.splitlines() or [""]))
 
 
 @app.function
 def sse_event(event_name, data):
-    "Format a named SSE event."
     return f"event: {event_name}\n{sse_data(data)}"
 
 
 @app.function
 def sse_keepalive():
-    "An SSE comment line. Keeps the connection alive without firing an event."
     return ":"
-
-
-@app.cell(hide_code=True)
-def _(mo):
-    mo.md(r"""
-    ## Stream Handler Decorator
-    """)
-    return
 
 
 @app.cell
 def _():
-    # ─── Section 8: stream_handler decorator ──────────────────────────────
+    # ─── Section 8: html_tags rendering helpers ───────────────────────────
     #
-    # Wraps a plain page handler with SSE streaming. The handler stays pure
-    # — fetch data, render HTML, return it. The decorator adds:
-    #   * Live vs polling degradation based on viewer count
-    #   * Subscribe to a Changes pattern; re-render on notify
-    #   * Keepalive on timeout
-    #   * Disconnect handling
+    # The framework calls h_render() on whatever the handler returns. Users
+    # can return:
+    #   - A single html_tags element
+    #   - A list of html_tags elements
+    #   - A string (already rendered)
     #
-    # The decorator reads `live` and `changes` from the request dict
-    # (req["_live"], req["_changes"]) so it has no hidden module state.
-    # `serve()` attaches them to every request. Apps that wire up requests
-    # themselves must do the same.
+    # This is what makes "handlers just return HTML" honest — the framework
+    # normalizes the representation.
 
     return
 
 
 @app.function
-def stream_handler(resource_id_fn, subscribe_to):
-    """Decorator. Wraps a handler with SSE/polling degradation.
+def internal_render_content(value):
+    """Turn a handler's return value into an HTML string."""
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, bytes):
+        return value.decode("utf-8")
+    # Import inside the function so html_tags isn't a hard dependency.
+    try:
+        from html_tags import render as h_render
+    except ImportError:
+        raise RuntimeError(
+            "Handler returned html_tags elements but html_tags is not "
+            "installed. Install it or have your handler return a string.")
+    if isinstance(value, (list, tuple)):
+        return "".join(h_render(v) for v in value)
+    return h_render(value)
+
+
+@app.function
+def internal_envelope(head_fragments, body_inner, ui_theme="dark"):
+    """Wrap body content in a stable html/head/body envelope.
+
+    The envelope is byte-identical for every render of every page —
+    same <head>, same outer attributes. Idiomorph leaves it alone.
+    """
+    from html_tags import h, render as h_render
+    page = h.html(
+        {"id": "page", "data-ui-theme": ui_theme},
+        h.head(
+            h.meta(charset="utf-8"),
+            h.meta(name="viewport", content="width=device-width, initial-scale=1"),
+            *head_fragments,
+        ),
+        h.body({"class": "page stage"}, h.raw(body_inner) if hasattr(h, "raw") else body_inner),
+    )
+    return h_render(page)
+
+
+@app.function
+def internal_envelope_safe(head_fragments, body_inner_html, ui_theme="dark"):
+    """Like _envelope but inserts pre-rendered HTML into the body
+    via string interpolation (since html_tags may not have a 'raw' tag)."""
+    from html_tags import h, render as h_render
+
+    head_html = h_render(h.head(
+        h.meta(charset="utf-8"),
+        h.meta(name="viewport", content="width=device-width, initial-scale=1"),
+        *head_fragments,
+    ))
+    return (f'<!doctype html><html id="page" data-ui-theme="{ui_theme}">'
+            f'{head_html}'
+            f'<body class="page stage">{body_inner_html}</body>'
+            f'</html>')
+
+
+@app.cell
+def _():
+    # ─── Section 9: live() — the heart of the new API ─────────────────────
+    #
+    # live(handler, topic) wraps a page handler with SSE/polling/static
+    # degradation. The same URL serves all three modes; the framework
+    # dispatches on the request's Accept header.
+    #
+    # The handler returns html_tags elements (a list or a single element).
+    # The framework:
+    #
+    #   1. Renders the elements to a string.
+    #   2. Wraps them in <div id="live-root" data-...> based on transport.
+    #   3. For SSE requests: streams the wrapped content as patch-elements
+    #      events, re-rendering on changes.notify(topic).
+    #   4. For non-SSE requests: returns the full HTML page (envelope +
+    #      wrapped content) with the appropriate transport attribute.
+
+    return
+
+
+@app.function
+def live(handler=None, *, topic=None, hard_cap=None):
+    """Wrap a handler for SSE/polling/static degradation.
+
+    Usable as a function or a decorator:
+
+        # As a function (Wirth-style explicit composition)
+        routes = [("GET", "/", live(home, topic="todo"))]
+
+        # As a decorator
+        @live(topic="todo")
+        def home(req): ...
+        routes = [("GET", "/", home)]
 
     Args:
-        resource_id_fn: callable(req) -> str. Identifier used by
-            LiveCounter to decide live vs polling for this resource.
-            E.g. lambda req: f"game-{req['params']['id']}"
-        subscribe_to: callable(req) -> str. The Changes pattern this
-            stream subscribes to for re-render triggers.
-            E.g. lambda req: f"game.{req['params']['id']}.*"
-
-    The wrapped handler is called once initially to render the page,
-    then again on each matching notify. The handler returns the same
-    shape as any other handler: (status, headers, body).
-
-    Requires req["_live"] and req["_changes"] to be set. serve()
-    handles this automatically.
-
-    Usage:
-        @stream_handler(
-            resource_id_fn=lambda req: f"game-{req['params']['id']}",
-            subscribe_to=lambda req: f"game.{req['params']['id']}.*"
-        )
-        def get_scorecard(req):
-            game = get_game(...)
-            return html(h_render(full_page(...)))
+        handler:  the page handler. Returns html_tags element(s) or a
+                  string. If None (decorator form), returns a decorator
+                  that takes the handler.
+        topic:    string or callable(req) -> string. Identifies the page
+                  for LiveCounter capacity decisions and as the Changes
+                  subscription pattern. Required.
+        hard_cap: optional override of the LiveCounter's hard_cap for
+                  just this route.
     """
-    def decorator(handler):
-        @wraps(handler)
-        def wrapper(req):
-            live = req.get("_live")
-            changes = req.get("_changes")
-            if live is None or changes is None:
-                raise RuntimeError(
-                    "stream_handler requires req['_live'] and "
-                    "req['_changes'] to be set. serve() does this "
-                    "automatically; apps wiring requests manually "
-                    "must do the same.")
+    # Decorator form: live(topic="foo") or live(topic="foo", hard_cap=X)
+    if handler is None:
+        def decorator(h):
+            return live(h, topic=topic, hard_cap=hard_cap)
+        return decorator
 
-            resource = resource_id_fn(req)
-            pattern = subscribe_to(req)
+    if topic is None:
+        raise ValueError("live() requires a topic")
 
-            def render_html():
-                response = handler(req)
-                if isinstance(response, tuple):
-                    _, _, body = response
-                else:
-                    body = response
-                return body.decode("utf-8") if isinstance(body, bytes) else body
+    def _topic_for(req):
+        return topic(req) if callable(topic) else topic
 
-            # Initial render
-            html_str = render_html()
+    @wraps(handler)
+    def wrapper(req):
+        live_counter = req["_live"]
+        changes = req["_changes"]
+        head_fragments = req.get("_head", [])
+        ui_theme = req.get("_ui_theme", "dark")
+        if live_counter is None or changes is None:
+            raise RuntimeError(
+                "live() requires req['_live'] and req['_changes']")
 
-            # Polling fallback: above the live cap
-            if not live.should_be_live(resource):
-                yield f"event: datastar-patch-elements\ndata: elements {html_str}"
-                return
+        t = _topic_for(req)
 
-            # Live stream
-            with live.join(resource):
-                yield f"event: datastar-patch-elements\ndata: elements {html_str}"
-                while True:
-                    if changes.wait(pattern, timeout=15):
-                        try:
-                            html_str = render_html()
-                            yield f"event: datastar-patch-elements\ndata: elements {html_str}"
-                        except (OSError, BrokenPipeError):
-                            return
-                    else:
-                        yield sse_keepalive()
+        def render_inner():
+            """Render the handler's output to an HTML string (no envelope)."""
+            return internal_render_content(handler(req))
 
-        return wrapper
-    return decorator
+        accept = req["headers"].get("accept", "")
+        is_sse_request = "text/event-stream" in accept
+
+        if is_sse_request:
+            # SSE stream loop. Wrapper id="live-root" anchors idiomorph.
+            # No data-init on stream frames (would re-trigger the stream).
+            return internal_stream_live(t, live_counter, changes, render_inner)
+
+        # Non-SSE: initial page load, polling refetch, or static.
+        # Decide mode based on viewer count.
+        mode = live_counter.mode(t)
+        if hard_cap is not None:
+            # Per-route override
+            count = live_counter.count(t)
+            if count >= hard_cap:
+                mode = "static"
+
+        inner = render_inner()
+        path = req["path"]
+
+        if mode == "live":
+            # Initial page: data-init triggers the SSE stream.
+            wrapper_html = (
+                f'<div id="{LIVE_ROOT_ID}" '
+                f'data-init="@get(\'{path}\')">{inner}</div>'
+            )
+        elif mode == "poll":
+            interval_ms = live_counter.poll_interval_ms(t)
+            wrapper_html = (
+                f'<div id="{LIVE_ROOT_ID}" '
+                f'data-on-interval__duration.{interval_ms}ms="@get(\'{path}\')">'
+                f'{inner}</div>'
+            )
+        else:  # static
+            wrapper_html = f'<div id="{LIVE_ROOT_ID}">{inner}</div>'
+
+        full = internal_envelope_safe(head_fragments, wrapper_html, ui_theme)
+        return html(full)
+
+    return wrapper
 
 
-@app.cell(hide_code=True)
-def _(mo):
-    mo.md(r"""
-    ## Connection handling
-    """)
+@app.function
+def internal_stream_live(topic, live_counter, changes, render_inner):
+    """Generator for the SSE live stream. Each frame patches the
+    #live-root element with the latest content."""
+
+    def frame():
+        return (
+            f"event: datastar-patch-elements\n"
+            f"data: elements <div id=\"{LIVE_ROOT_ID}\">{render_inner()}</div>"
+        )
+
+    with live_counter.join(topic):
+        yield frame()
+        while True:
+            if changes.wait(topic, timeout=15):
+                try:
+                    yield frame()
+                except (OSError, BrokenPipeError):
+                    return
+            else:
+                yield sse_keepalive()
+
+
+@app.cell
+def _():
+    # ─── Section 10: connection handling ──────────────────────────────────
+
     return
 
 
 @app.function
 def handle_connection(sock, addr, routes, before_hooks,
-                      live=None, changes=None, access_log=True):
-    """Run one request to completion, then close the socket.
-    Called in its own OS thread. Never raises out of this function.
-
-    `live` and `changes` are attached to req as req["_live"] and
-    req["_changes"] so stream_handler-decorated handlers can find them
-    without consulting module globals.
-    """
+                      live_counter=None, changes_obj=None,
+                      head_fragments=None, ui_theme="dark",
+                      access_log=True):
+    """Run one request to completion, then close the socket."""
     start = time.time()
     status = 0
     method = path = "?"
     req = None
+    head_fragments = head_fragments or []
+
     try:
-        # Parse
         try:
             req = parse_request(sock)
-            req["_live"] = live
-            req["_changes"] = changes
+            req["_live"] = live_counter
+            req["_changes"] = changes_obj
+            req["_head"] = head_fragments
+            req["_ui_theme"] = ui_theme
         except socket.timeout:
             status = 408
             write_response(sock, 408, [("content-type", "text/plain")],
@@ -722,7 +740,6 @@ def handle_connection(sock, addr, routes, before_hooks,
         method = req["method"]
         path = req["path"]
 
-        # Route
         matched = match_route(routes, method, path)
         if matched is None:
             status = 404
@@ -732,7 +749,6 @@ def handle_connection(sock, addr, routes, before_hooks,
         handler, params = matched
         req["params"] = params
 
-        # Before-hooks
         try:
             for hook in before_hooks:
                 hook(req)
@@ -743,7 +759,6 @@ def handle_connection(sock, addr, routes, before_hooks,
                            "internal error")
             return
 
-        # Handler
         try:
             result = handler(req)
         except Exception:
@@ -756,7 +771,7 @@ def handle_connection(sock, addr, routes, before_hooks,
         if result is None:
             result = no_content()
 
-        # Short response (tuple)
+        # Tuple response (one-shot)
         if isinstance(result, tuple):
             status_, headers, body = result
             status = status_
@@ -766,7 +781,7 @@ def handle_connection(sock, addr, routes, before_hooks,
             write_response(sock, status, headers, body)
             return
 
-        # SSE stream (generator)
+        # Generator response (SSE)
         status = 200
         sock.settimeout(SSE_WRITE_TIMEOUT)
         extra = [("set-cookie", c) for c in req["_cookies_out"]]
@@ -807,7 +822,7 @@ def handle_connection(sock, addr, routes, before_hooks,
 
 @app.cell
 def _():
-    # ─── Section 10: the listen loop ──────────────────────────────────────
+    # ─── Section 11: serve() ──────────────────────────────────────────────
 
     return
 
@@ -827,22 +842,22 @@ class internal_ShutdownFlag:
 @app.function
 def serve(routes, *, host="127.0.0.1", port=8000,
           before_hooks=(), live=None, changes=None,
+          head=None, ui_theme="dark",
           max_connections=MAX_CONNECTIONS, access_log=True):
-    """Run the server. Blocks until SIGINT/SIGTERM.
+    """Run the server.
 
-    `routes`:           list of (method, path, handler) tuples.
-    `before_hooks`:     run before each handler, in order; may mutate req.
-    `live`:             LiveCounter instance for capacity management.
-                        Default: LiveCounter(soft_cap=200, ...).
-    `changes`:          Changes instance for pub/sub notifications.
-                        Default: a fresh Changes().
-    `max_connections`:  cap on concurrent connection threads.
-    `access_log`:       one INFO line per request to the py_sse logger.
-
-    The `live` and `changes` instances are attached to each request
-    dict as req["_live"] and req["_changes"] so handlers (especially
-    those decorated with @stream_handler) can find them without
-    consulting any module globals.
+    Args:
+        routes:          list of (method, path, handler) tuples
+        before_hooks:    callables run before each handler; may mutate req
+        live:            LiveCounter instance (default: LiveCounter())
+        changes:         Changes instance (default: new Changes())
+        head:            list of html_tags elements injected into <head>
+                         of every live-page response (stylesheet, scripts,
+                         title, etc). Same on every render so idiomorph
+                         leaves head alone.
+        ui_theme:        value for the <html data-ui-theme="..."> attr
+        max_connections: cap on concurrent connection threads
+        access_log:      one INFO line per request
     """
     if not logger.handlers:
         h = logging.StreamHandler()
@@ -851,13 +866,12 @@ def serve(routes, *, host="127.0.0.1", port=8000,
         logger.addHandler(h)
         logger.setLevel(logging.INFO)
 
-    # Avoid circular import: import LiveCounter from .live at call time
-    from .live import LiveCounter
+    from .counter import LiveCounter
     if live is None:
-        live = LiveCounter(soft_cap=200, min_poll_ms=1_000,
-                           max_poll_ms=8_000, ramp_users=50)
+        live = LiveCounter()
     if changes is None:
         changes = Changes()
+    head_fragments = list(head or [])
 
     compiled = compile_routes(routes)
     semaphore = threading.BoundedSemaphore(max_connections)
@@ -866,8 +880,6 @@ def serve(routes, *, host="127.0.0.1", port=8000,
     def _signal(_signum, _frame):
         logger.info("shutdown signal received")
         stop.set()
-    # signal.signal() only works from the main thread. In tests we may
-    # run serve() in a background thread; skip signal handlers there.
     if threading.current_thread() is threading.main_thread():
         signal.signal(signal.SIGINT, _signal)
         signal.signal(signal.SIGTERM, _signal)
@@ -884,7 +896,6 @@ def serve(routes, *, host="127.0.0.1", port=8000,
                 host, port, max_connections)
 
     in_flight = []
-
     try:
         while not stop.is_set():
             try:
@@ -893,7 +904,6 @@ def serve(routes, *, host="127.0.0.1", port=8000,
                 continue
             except OSError:
                 break
-
             if not semaphore.acquire(blocking=False):
                 logger.warning("connection cap (%d) reached, dropping %s",
                                max_connections, addr[0])
@@ -907,11 +917,14 @@ def serve(routes, *, host="127.0.0.1", port=8000,
                 conn.close()
                 continue
 
-            def _run(c=conn, a=addr, lv=live, ch=changes):
+            def _run(c=conn, a=addr, lv=live, ch=changes,
+                     hf=head_fragments, theme=ui_theme):
                 try:
-                    handle_connection(c, a, compiled, before_hooks,
-                                      live=lv, changes=ch,
-                                      access_log=access_log)
+                    handle_connection(
+                        c, a, compiled, before_hooks,
+                        live_counter=lv, changes_obj=ch,
+                        head_fragments=hf, ui_theme=theme,
+                        access_log=access_log)
                 finally:
                     semaphore.release()
 
@@ -920,7 +933,6 @@ def serve(routes, *, host="127.0.0.1", port=8000,
             in_flight.append(t)
             if len(in_flight) > 1024:
                 in_flight = [x for x in in_flight if x.is_alive()]
-
     finally:
         s.close()
         deadline = time.time() + SHUTDOWN_GRACE
@@ -929,11 +941,10 @@ def serve(routes, *, host="127.0.0.1", port=8000,
             if remaining <= 0:
                 break
             t.join(timeout=remaining)
-        alive_threads = sum(1 for t in in_flight if t.is_alive())
-        if alive_threads:
+        alive = sum(1 for t in in_flight if t.is_alive())
+        if alive:
             logger.warning(
-                "shutdown: %d threads still running after grace period",
-                alive_threads)
+                "shutdown: %d threads still running after grace period", alive)
         logger.info("shutdown complete")
 
 
