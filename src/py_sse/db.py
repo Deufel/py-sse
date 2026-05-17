@@ -1,26 +1,39 @@
-import atexit, os, threading
+import atexit
+import os
+import threading
 import apsw
 from .server import Changes
 
-class Database:
-    """SQLite (APSW) wrapper. Per-thread connections. Notification of
-    changes is fired by `execute()` itself, after SQLite has committed,
-    by calling `changes.notify()`.
+"""SQLite (APSW) wrapper. Per-thread connections.
 
-    The set of subscribers is implicit: it's the set of threads currently
-    parked in `changes.wait()`. A dropped connection ends its handler
-    thread, which ends the subscription. No registry, no list.
+    Pure pass-through to SQL. The app is responsible for calling
+    `db.changes.notify("subject")` with appropriate subjects when state
+    changes. No magic dependency tracking, no SQL parsing — just a
+    database.
 
-    Why notify from execute() and not from an APSW update_hook:
-        update_hook fires *during* the write, before commit. A reader
-        woken by the hook will see the pre-commit snapshot and render
-        the stale state — the "one transaction behind" symptom.
-        Notifying after execute() returns guarantees the commit has
-        landed before any reader wakes.
+    Notification model:
+        Each Database has a Changes instance. Writers call notify() with
+        a dotted subject like "game.5.score" or "chat.room1". Subscribers
+        wait() on a pattern that may include wildcards.
+
+        The set of subscribers is implicit: it's the set of threads
+        currently parked in changes.wait(). A dropped connection ends its
+        handler thread, which ends the subscription. No registry, no list.
 
     Handler code:
-        db.execute("INSERT INTO msgs ...", (...))   # writes (auto-notify)
-        db.changes.wait(timeout=15)                  # readers park
+        db.execute("INSERT INTO score ...", (...))
+        db.changes.notify(f"game.{game_id}.score")
+
+    Reader code (inside an SSE stream):
+        db.changes.wait(f"game.{game_id}.*", timeout=15)
+    """
+
+class Database:
+    """SQLite wrapper. Per-thread connections via thread-local storage.
+
+    Owns a Changes instance for pub/sub notifications, but does NOT
+    auto-notify on writes — the app handler decides when and what to
+    publish.
     """
 
     def __init__(self, path, schema="", changes=None,
@@ -61,13 +74,7 @@ class Database:
         return self._conn()
 
     def execute(self, sql, params=()):
-        cur = self._conn().execute(sql, params)
-        # Notify after execute returns: SQLite has committed by now, so
-        # any reader we wake will see the new state. Reads also notify,
-        # which is wasteful but harmless — waiters wake, re-render the
-        # same thing, sleep again.
-        self.changes.notify()
-        return cur
+        return self._conn().execute(sql, params)
 
     def one(self, sql, params=()):
         return self.execute(sql, params).fetchone()

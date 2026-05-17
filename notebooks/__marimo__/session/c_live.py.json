@@ -7,7 +7,7 @@
   "cells": [
     {
       "id": "setup",
-      "code_hash": "8e30d0a9ad71f5d5f405906f524c87b3",
+      "code_hash": "32bc2a5970fa22ba66ede0d5599c7734",
       "outputs": [
         {
           "type": "data",
@@ -20,7 +20,7 @@
     },
     {
       "id": "Hbol",
-      "code_hash": "9a16ba310560d04600005b9d45156f27",
+      "code_hash": "5d14c98e6d450f88511a3a47fe59c142",
       "outputs": [
         {
           "type": "data",
@@ -32,16 +32,9 @@
       "console": []
     },
     {
-      "id": "FBij",
+      "id": "MJUe",
       "code_hash": null,
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
+      "outputs": [],
       "console": []
     }
   ]

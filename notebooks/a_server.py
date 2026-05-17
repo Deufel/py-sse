@@ -1,9 +1,26 @@
 import marimo
 
 __generated_with = "0.23.6"
-app = marimo.App()
+app = marimo.App(width="medium")
 
 with app.setup:
+    """py_sse server — a minimal SSE web framework.
+
+    Pure Python. Pure stdlib + brotli + apsw. One OS thread per connection.
+    No async/await. Each function does one thing, named for it.
+
+    DEPLOYMENT MODEL:
+        py_sse runs BEHIND a reverse proxy (caddy, nginx) that terminates
+        TLS and speaks HTTP/1.1 cleartext to us on localhost. We handle:
+          * Per-connection timeouts (slowloris defense)
+          * Bounded concurrent connections (thread/RAM cap)
+          * Strict request-line and header validation
+          * Cookie value sanitization (no response splitting)
+          * Generic 500 responses (no exception text leaked)
+          * Graceful shutdown on SIGINT/SIGTERM
+          * Brotli SSE compression across frames (huge wins for fat morph)
+    """
+
     import logging
     import re
     import signal
@@ -11,9 +28,13 @@ with app.setup:
     import threading
     import time
     import zlib
+    from contextlib import contextmanager
+    from functools import wraps
     from urllib.parse import parse_qs, unquote
 
     import brotli
+
+    # ─── Configuration ────────────────────────────────────────────────────
 
     MAX_HEADER_BYTES = 64 * 1024
     MAX_BODY_BYTES = 16 * 1024 * 1024
@@ -22,68 +43,110 @@ with app.setup:
     BODY_READ_TIMEOUT = 60
     SSE_WRITE_TIMEOUT = 60
     SHUTDOWN_GRACE = 5
-
-    # SSE compression tunables. Larger lgwin = better ratio for fat-morph
-    # streams where N+1's HTML mostly equals N's, at the cost of N KB of
-    # encoder state per connection. 18 = 256KB, 22 = brotli max (4MB).
     SSE_BROTLI_LGWIN = 18
-    SSE_BROTLI_QUALITY = 4    # 0-11; 4 is the speed/ratio knee for streaming.
-    SSE_GZIP_LEVEL = 6        # 1-9; zlib default.
+    SSE_BROTLI_QUALITY = 4
+    SSE_GZIP_LEVEL = 6
+
     _METHOD_RE = re.compile(b'^[A-Z]{1,16}$')
     _TARGET_RE = re.compile(b'^/[\\x21-\\x7e]{0,2047}$')
     _HEADER_NAME_RE = re.compile(b"^[!#$%&'*+\\-.0-9A-Z^_`a-z|~]{1,128}$")
     _COOKIE_FORBIDDEN = re.compile('[\\r\\n\\x00]')
-    logger = logging.getLogger('nano_sse')
     PARAM_RE = re.compile('\\{(\\w+)\\}')
 
-    """nano_sse — a Wirth-style minimal SSE web framework.
+    logger = logging.getLogger('py_sse')
 
-        Pure Python. Pure stdlib. One OS thread per connection. No async/await.
-
-        Goal: see every byte from socket to handler. Each function does one
-        thing, named for it. Data structures are plain dicts. The flow is:
-
-            serve(routes)               accepts TCP, spawns threads
-                handle_connection(...)  parses request, finds route, calls handler
-                    handler(req)        returns a Response or yields SSE frames
-
-        DEPLOYMENT MODEL:
-            nano_sse is meant to run BEHIND a reverse proxy (caddy, nginx).
-            The proxy terminates TLS, speaks HTTP/1.1 cleartext to us on
-            localhost, and handles all the things we deliberately don't:
-            TLS, HTTP/2, keepalive coalescing, response compression, IP
-            spoofing defense.
-
-            Wire protocol to nano_sse: HTTP/1.1 cleartext. One request per
-            connection — we close after responding. Simpler than keepalive
-            and fine because the proxy keeps its own pool to us.
-
-        HARDENING (relevant for any non-local exposure, even behind a proxy):
-          * Per-connection timeouts (slowloris defense)
-          * Bounded concurrent connections (thread/RAM cap)
-          * Strict request-line and header validation
-          * Cookie value sanitization (no response splitting)
-          * Generic 500 responses (no exception text leaked to clients)
-          * Graceful shutdown on SIGINT/SIGTERM
-          * Access logging
-        """
+    # Module-level singletons set by serve(); used by stream_handler.
+    _live = None
+    _changes = None
 
 
 @app.cell
 def _():
     import marimo as mo
 
-    return (mo,)
+    return
+
+
+@app.cell
+def _():
+
+
+    # ─── Section 1: Changes — topic-scoped pub/sub ────────────────────────
+    #
+    # Hierarchical subjects with dotted notation: "game.5.score".
+    # Patterns: exact ("game.5.score"), prefix wildcard ("game.5.*"), or
+    # bare wildcard ("*"). A notify on "a.b.c" wakes waiters on "a.b.c",
+    # "a.b.*", "a.*", and "*".
+    #
+    # Subscribers are implicit: they're the threads currently parked in
+    # wait(). A dropped connection ends its thread, ends the subscription.
+
+    return
+
+
+@app.class_definition
+class Changes:
+    """In-process pub/sub. Threads wait on dotted subject patterns;
+    publishes match by walking the hierarchy.
+
+    Usage:
+        # Writer
+        changes.notify("game.5.score")
+
+        # Reader (in an SSE stream)
+        while True:
+            changes.wait("game.5.*", timeout=15)
+            yield render_frame()
+    """
+
+    def __init__(self):
+        self._events = {}
+        self._lock = threading.Lock()
+
+    def _event_for(self, pattern):
+        with self._lock:
+            if pattern not in self._events:
+                self._events[pattern] = threading.Event()
+            return self._events[pattern]
+
+    def notify(self, subject):
+        """Wake all subscribers whose pattern matches this subject.
+
+        Matching walks the hierarchy: notify("a.b.c") wakes waiters
+        registered on "a.b.c", "a.b.*", "a.*", and "*".
+        """
+        parts = subject.split(".")
+        patterns = [subject]
+        for i in range(len(parts) - 1, -1, -1):
+            patterns.append(".".join(parts[:i] + ["*"]))
+
+        with self._lock:
+            for p in patterns:
+                if p in self._events:
+                    self._events[p].set()
+
+    def wait(self, pattern, timeout=None):
+        """Wait for a notify whose subject matches this pattern.
+
+        Returns True if matched, False on timeout.
+        """
+        evt = self._event_for(pattern)
+        ok = evt.wait(timeout=timeout)
+        if ok:
+            evt.clear()
+        return ok
+
+
+@app.cell
+def _():
+    # ─── Section 2: low-level I/O ─────────────────────────────────────────
+
+    return
 
 
 @app.function
-# ─── Section 0: low-level I/O ─────────────────────────────────────────
-#
-# Read until we see the end of headers (`\r\n\r\n`). Write status/headers/
-# body. Nothing higher-level here — just bytes on a socket.
-
 def read_until_double_crlf(sock):
-    "Read socket bytes until we see \\r\\n\\r\\n. Returns (head_bytes, leftover)."
+    "Read socket bytes until \\r\\n\\r\\n. Returns (head_bytes, leftover)."
     buf = b""
     while b"\r\n\r\n" not in buf:
         chunk = sock.recv(4096)
@@ -98,7 +161,7 @@ def read_until_double_crlf(sock):
 
 @app.function
 def read_body(sock, content_length, already_have, limit=MAX_BODY_BYTES):
-    "Read exactly content_length bytes, with `already_have` as a prefix."
+    "Read exactly content_length bytes."
     if content_length < 0:
         raise ValueError("negative content-length")
     if content_length > limit:
@@ -114,14 +177,15 @@ def read_body(sock, content_length, already_have, limit=MAX_BODY_BYTES):
 
 @app.function
 def write_response(sock, status, headers, body=b""):
-    "Write a complete HTTP/1.1 response. Body may be bytes or str."
+    "Write a complete HTTP/1.1 response."
     if isinstance(body, str):
         body = body.encode("utf-8")
-    reason = {200:"OK", 204:"No Content", 303:"See Other",
-              400:"Bad Request", 401:"Unauthorized", 404:"Not Found",
-              408:"Request Timeout", 413:"Payload Too Large",
-              500:"Internal Server Error", 503:"Service Unavailable",
-              507:"Insufficient Storage"}.get(status, "OK")
+    reason = {200: "OK", 204: "No Content", 303: "See Other",
+              400: "Bad Request", 401: "Unauthorized", 403: "Forbidden",
+              404: "Not Found", 408: "Request Timeout",
+              413: "Payload Too Large", 500: "Internal Server Error",
+              503: "Service Unavailable",
+              507: "Insufficient Storage"}.get(status, "OK")
     lines = [f"HTTP/1.1 {status} {reason}"]
     headers = list(headers)
     headers.append(("content-length", str(len(body))))
@@ -137,23 +201,17 @@ def write_response(sock, status, headers, body=b""):
 
 @app.function
 def write_sse_headers(sock, extra_headers=(), encoding="identity"):
-    """Write the response head for a streaming SSE response. No
-    content-length. If `encoding` is 'br' or 'gzip', advertises the
-    Content-Encoding so the client knows to decode the bytes that
-    follow."""
+    "Write the response head for a streaming SSE response."
     lines = [
         "HTTP/1.1 200 OK",
         "content-type: text/event-stream",
         "cache-control: no-cache",
-        "x-accel-buffering: no",       # nginx: don't buffer
-        "proxy-buffering: off",        # generic: don't buffer
+        "x-accel-buffering: no",
+        "proxy-buffering: off",
         "connection: keep-alive",
     ]
     if encoding and encoding != "identity":
         lines.append(f"content-encoding: {encoding}")
-        # Vary is good citizenship — proxies that cache (none should for
-        # event-stream, but defensively) know the response varies with
-        # the client's Accept-Encoding.
         lines.append("vary: accept-encoding")
     for k, v in extra_headers:
         lines.append(f"{k}: {v}")
@@ -162,10 +220,7 @@ def write_sse_headers(sock, extra_headers=(), encoding="identity"):
 
 @app.function
 def write_sse_frame(sock, payload, encoder=None):
-    """Write one SSE frame. `payload` is the data line(s) verbatim —
-    caller decides whether to send 'data: …', 'event: …\\ndata: …', etc.
-    If an `_SseEncoder` is given, the frame is compressed and flushed
-    through it so the client sees the event immediately."""
+    "Write one SSE frame, optionally compressed."
     raw = payload.encode("utf-8") + b"\n\n"
     if encoder is None or encoder.name == "identity":
         sock.sendall(raw)
@@ -175,19 +230,24 @@ def write_sse_frame(sock, payload, encoder=None):
         sock.sendall(chunk)
 
 
+@app.cell
+def _():
+ 
+
+
+    # ─── Section 3: SSE encoder ───────────────────────────────────────────
+
+    return
+
+
 @app.class_definition
 class internal_SseEncoder:
-    """Per-connection streaming encoder for SSE. Created once when the
-    response starts, fed every frame, finished when the connection
-    closes. The cross-frame state is what gives us the compression
-    ratio: frame N+1's bytes are mostly equal to frame N's, so the
-    encoder emits a "copy from N KB ago" reference for almost
-    everything. Each per-frame flush() emits a syncable point without
-    ending the stream.
+    """Per-connection streaming encoder.
 
-    Three flavours: 'br', 'gzip', or 'identity' (passthrough). Callers
-    don't branch — they call `encode(bytes)` then `flush()` and write
-    the result; both return b"" for identity.
+    Brotli's cross-frame state is the whole game: frame N+1 mostly
+    equals frame N, so the encoder emits "copy from N KB ago" for
+    almost everything. Each per-frame flush() emits a syncable point
+    without ending the stream.
     """
     __slots__ = ("name", "_c")
 
@@ -195,13 +255,8 @@ class internal_SseEncoder:
         self.name = encoding
         if encoding == "br":
             self._c = brotli.Compressor(
-                quality=SSE_BROTLI_QUALITY,
-                lgwin=SSE_BROTLI_LGWIN,
-            )
+                quality=SSE_BROTLI_QUALITY, lgwin=SSE_BROTLI_LGWIN)
         elif encoding == "gzip":
-            # wbits=31 → gzip framing on top of deflate (15 = max window,
-            # +16 = gzip wrapper). Pair with Z_SYNC_FLUSH per frame to
-            # emit bytes without ending the stream.
             self._c = zlib.compressobj(level=SSE_GZIP_LEVEL, wbits=31)
         elif encoding == "identity":
             self._c = None
@@ -216,8 +271,6 @@ class internal_SseEncoder:
         return self._c.compress(data)
 
     def flush(self):
-        """Force the encoder to emit any buffered bytes as a syncable
-        point. The encoder stays alive — only finish() ends it."""
         if self._c is None:
             return b""
         if self.name == "br":
@@ -225,9 +278,6 @@ class internal_SseEncoder:
         return self._c.flush(zlib.Z_SYNC_FLUSH)
 
     def finish(self):
-        """End the stream cleanly. Returns the encoder's epilogue
-        (gzip CRC + length, or brotli's last block). Called once when
-        the connection is being torn down. Cheap on 'identity'."""
         if self._c is None:
             return b""
         if self.name == "br":
@@ -237,10 +287,7 @@ class internal_SseEncoder:
 
 @app.function
 def pick_encoding(req, prefer=("br", "gzip")):
-    """Pick the best encoding the client supports from a preference
-    list. Returns 'br', 'gzip', or 'identity'. Parses Accept-Encoding
-    leniently — q-values are not honoured; SSE is real-time and nobody
-    legitimately assigns q=0 to br just for fun."""
+    "Pick the best encoding the client supports."
     raw = req["headers"].get("accept-encoding", "").lower()
     if not raw:
         return "identity"
@@ -255,10 +302,8 @@ def pick_encoding(req, prefer=("br", "gzip")):
 
 @app.cell
 def _():
-    # ─── Section 2: parsing ───────────────────────────────────────────────
-    #
-    # An HTTP request becomes a plain dict. Cookies are parsed once. Path
-    # parameters are filled in by the route matcher (Section 3).
+
+    # ─── Section 4: request parsing ───────────────────────────────────────
 
     return
 
@@ -268,33 +313,15 @@ def parse_request(sock):
     """Read one request off the socket, return a request dict.
 
     Validates request line and header names strictly. Raises ValueError
-    for malformed input, ConnectionError for truncated reads. Callers
-    map both to a 400 response.
-
-    The request dict shape is:
-        {
-            "method":  "GET" | "POST" | ...,
-            "path":    "/login",
-            "query":   {"k": "v"},
-            "headers": {"cookie": "...", ...},  lowercased keys
-            "cookies": {"session": "..."},
-            "body":    b"...",                  raw bytes; may be b""
-            "_sock":   sock,                    for SSE handlers
-            "params":  {},                      filled by route matcher
-            "_cookies_out": [],                 queued by set_cookie()
-        }
+    for malformed input, ConnectionError for truncated reads.
     """
     sock.settimeout(HEADER_READ_TIMEOUT)
     head, leftover = read_until_double_crlf(sock)
 
-    # The request head must be valid ASCII (request line) + ISO-8859-1
-    # (header values). We split on raw bytes so a stray non-ASCII char
-    # in the request line is caught by the strict regex.
     raw_lines = head.split(b"\r\n")
     if not raw_lines or not raw_lines[0]:
         raise ValueError("empty request")
 
-    # Strict request line: METHOD SP TARGET SP HTTP/1.1
     rl = raw_lines[0]
     if len(rl) > 8192:
         raise ValueError("request line too long")
@@ -311,7 +338,6 @@ def parse_request(sock):
     method = method_b.decode("ascii")
     target = target_b.decode("ascii")
 
-    # Split path and query string
     raw_path, _, raw_query = target.partition("?")
     path = unquote(raw_path)
     query = {k: v[0] if len(v) == 1 else v
@@ -326,7 +352,6 @@ def parse_request(sock):
         name_b, _, value_b = raw.partition(b":")
         if not _HEADER_NAME_RE.match(name_b):
             raise ValueError("invalid header name")
-        # Header values may contain ISO-8859-1; reject CR/LF/NUL though.
         if any(b in value_b for b in (b"\r", b"\n", b"\x00")):
             raise ValueError("invalid byte in header value")
         headers[name_b.decode("ascii").lower()] = value_b.decode("iso-8859-1").strip()
@@ -366,7 +391,6 @@ def parse_cookies(cookie_header):
         if "=" in pair:
             k, _, v = pair.partition("=")
             k, v = k.strip(), v.strip()
-            # Defensive: reject control chars rather than store them.
             if k and not _COOKIE_FORBIDDEN.search(k) and not _COOKIE_FORBIDDEN.search(v):
                 out[k] = v
     return out
@@ -374,11 +398,8 @@ def parse_cookies(cookie_header):
 
 @app.function
 def set_cookie(req, name, value, **opts):
-    """Queue a Set-Cookie on the response. Called from inside a handler.
-    Options: max_age (int), path (str), httponly (bool), samesite ('Lax'|...)
-
-    Rejects any name/value containing CR, LF, or NUL — those would allow
-    response-splitting attacks via header injection.
+    """Queue a Set-Cookie on the response.
+    Options: max_age (int), path (str), httponly (bool), samesite ('Lax'|...).
     """
     if _COOKIE_FORBIDDEN.search(name) or _COOKIE_FORBIDDEN.search(str(value)):
         raise ValueError("cookie name/value contains forbidden control characters")
@@ -388,7 +409,8 @@ def set_cookie(req, name, value, **opts):
         if _COOKIE_FORBIDDEN.search(str(v)):
             raise ValueError(f"cookie option {k} contains forbidden characters")
         if isinstance(v, bool):
-            if v: pieces.append(k)
+            if v:
+                pieces.append(k)
         else:
             pieces.append(f"{k}={v}")
     req["_cookies_out"].append("; ".join(pieces))
@@ -397,8 +419,10 @@ def set_cookie(req, name, value, **opts):
 @app.function
 def signals(req):
     """Parse Datastar signals from a request.
-    GET: JSON-encoded `datastar` query parameter.
-    POST/PUT/PATCH/DELETE: JSON body."""
+
+    GET: JSON-encoded 'datastar' query parameter.
+    POST/PUT/PATCH/DELETE: JSON body.
+    """
     import json
     if req["method"] == "GET":
         raw = req["query"].get("datastar", "{}")
@@ -409,19 +433,16 @@ def signals(req):
     return data.get("datastar", data) if isinstance(data, dict) else data
 
 
-@app.cell(hide_code=True)
-def _(mo):
-    mo.md(r"""
-    # Section 3: routing
-    > Routes are a plain list of (method, regex_pattern, handler) tuples, built once by compile_routes(). Matching is a linear scan; for a chat app with ~10 routes that's negligible.
-    """)
+@app.cell
+def _():
+    # ─── Section 5: routing ───────────────────────────────────────────────
+
     return
 
 
 @app.function
 def compile_routes(routes):
-    """Take a list of (method, path, handler) tuples and compile path
-    patterns to regex. Returns a list ready for match_route()."""
+    "Compile path patterns to regex."
     compiled = []
     for method, path, handler in routes:
         if "{" in path:
@@ -434,7 +455,7 @@ def compile_routes(routes):
 
 @app.function
 def match_route(routes, method, path):
-    "Find the first route matching (method, path). Returns (handler, params) or None."
+    "Find the first matching route. Returns (handler, params) or None."
     for route_method, pattern, handler in routes:
         if route_method != method:
             continue
@@ -444,16 +465,22 @@ def match_route(routes, method, path):
     return None
 
 
+@app.cell
+def _():
+    # ─── Section 6: response helpers ──────────────────────────────────────
+
+    return
+
+
 @app.function
 def html(body, status=200):
-    "Return a Response for an HTML page."
+    "Return an HTML page response."
     return (status, [("content-type", "text/html; charset=utf-8")], body)
 
 
 @app.function
 def redirect(location, status=303):
-    "Return a Response that redirects to `location`."
-    # Don't allow header injection via crafted location values.
+    "Return a redirect response."
     if "\r" in location or "\n" in location:
         raise ValueError("redirect target contains forbidden characters")
     return (status, [("location", location)], b"")
@@ -467,8 +494,7 @@ def no_content():
 
 @app.function
 def blob(data, content_type, filename=None):
-    """Return a Response carrying raw bytes. If filename is given, sets
-    Content-Disposition: attachment so the browser downloads it."""
+    "Return a Response carrying raw bytes."
     headers = [
         ("content-type", content_type),
         ("x-content-type-options", "nosniff"),
@@ -482,95 +508,205 @@ def blob(data, content_type, filename=None):
 
 @app.function
 def error(status, message=""):
-    "Return an error Response with optional plain-text body."
+    "Return an error response."
     return (status, [("content-type", "text/plain; charset=utf-8")], message)
 
 
-@app.function
-# ─── Section 5: connection handling ───────────────────────────────────
-#
-# This is the per-thread entry point. It does:
-#   1. Parse the request from the socket (with timeouts)
-#   2. Find a matching route
-#   3. Call the handler
-#   4. Write the response — short, redirect, or SSE stream
-#
-# Errors are caught, logged, and turned into generic responses. The
-# socket is closed in a single `finally` regardless of code path.
+@app.cell
+def _():
+    # ─── Section 7: SSE primitives ────────────────────────────────────────
 
+    return
+
+
+@app.function
+def sse_data(text):
+    "Format a string as an SSE data line."
+    return "\n".join(f"data: {line}" for line in (text.splitlines() or [""]))
+
+
+@app.function
+def sse_event(event_name, data):
+    "Format a named SSE event."
+    return f"event: {event_name}\n{sse_data(data)}"
+
+
+@app.function
+def sse_keepalive():
+    "An SSE comment line. Keeps the connection alive without firing an event."
+    return ":"
+
+
+@app.cell
+def _():
+
+    # ─── Section 8: stream_handler decorator ──────────────────────────────
+    #
+    # Wraps a plain page handler with SSE streaming. The handler stays pure
+    # — fetch data, render HTML, return it. The decorator adds:
+    #   * Live vs polling degradation based on viewer count
+    #   * Subscribe to a Changes pattern; re-render on notify
+    #   * Keepalive on timeout
+    #   * Disconnect handling
+
+    return
+
+
+@app.cell
+def _(_cell_31_changes, _cell_31_live):
+    def stream_handler(resource_id_fn, subscribe_to):
+        """Decorator. Wraps a handler with SSE/polling degradation.
+
+        Args:
+            resource_id_fn: callable(req) -> str. Identifier used by
+                LiveCounter to decide live vs polling for this resource.
+                E.g. lambda req: f"game-{req['params']['id']}"
+            subscribe_to: callable(req) -> str. The Changes pattern this
+                stream subscribes to for re-render triggers.
+                E.g. lambda req: f"game.{req['params']['id']}.*"
+
+        The wrapped handler is called once initially to render the page,
+        then again on each matching notify. The handler returns the same
+        shape as any other handler: (status, headers, body).
+
+        Usage:
+            @stream_handler(
+                resource_id_fn=lambda req: f"game-{req['params']['id']}",
+                subscribe_to=lambda req: f"game.{req['params']['id']}.*"
+            )
+            def get_scorecard(req):
+                game = get_game(...)
+                return html(h_render(full_page(...)))
+        """
+        def decorator(handler):
+            @wraps(handler)
+            def wrapper(req):
+                global _live, _changes
+                if _live is None or _changes is None:
+                    raise RuntimeError(
+                        "stream_handler requires serve() to be called with "
+                        "live and changes set (or defaults).")
+
+                resource = resource_id_fn(req)
+                pattern = subscribe_to(req)
+
+                def render_html():
+                    response = handler(req)
+                    if isinstance(response, tuple):
+                        _, _, body = response
+                    else:
+                        body = response
+                    return body.decode("utf-8") if isinstance(body, bytes) else body
+
+                # Initial render
+                html_str = render_html()
+
+                # Polling fallback: above the live cap
+                if not _live.should_be_live(resource):
+                    yield f"event: datastar-patch-elements\ndata: elements {html_str}"
+                    return
+
+                # Live stream
+                with _live.join(resource):
+                    yield f"event: datastar-patch-elements\ndata: elements {html_str}"
+                    while True:
+                        if _changes.wait(pattern, timeout=15):
+                            try:
+                                html_str = render_html()
+                                yield f"event: datastar-patch-elements\ndata: elements {html_str}"
+                            except (OSError, BrokenPipeError):
+                                return
+                        else:
+                            yield sse_keepalive()
+
+            return wrapper
+        return decorator
+
+
+
+
+    return
+
+
+@app.function
 def handle_connection(sock, addr, routes, before_hooks, access_log=True):
     """Run one request to completion, then close the socket.
-    Called in its own OS thread. Never raises out of this function."""
+    Called in its own OS thread. Never raises out of this function.
+    """
     start = time.time()
     status = 0
     method = path = "?"
     req = None
     try:
-        # ── parse ──────────────────────────────────────────────
+        # Parse
         try:
             req = parse_request(sock)
         except socket.timeout:
             status = 408
-            write_response(sock, 408, [("content-type","text/plain")], "request timeout")
+            write_response(sock, 408, [("content-type", "text/plain")],
+                           "request timeout")
             return
         except (ValueError, ConnectionError) as e:
             status = 400
-            # Log the *real* reason locally; tell the client nothing.
             logger.info("400 from %s: %s", addr[0] if addr else "?", e)
-            write_response(sock, 400, [("content-type","text/plain")], "bad request")
+            write_response(sock, 400, [("content-type", "text/plain")],
+                           "bad request")
             return
         except Exception:
             status = 400
             logger.exception("error parsing request from %s", addr)
-            write_response(sock, 400, [("content-type","text/plain")], "bad request")
+            write_response(sock, 400, [("content-type", "text/plain")],
+                           "bad request")
             return
 
-        method = req["method"]; path = req["path"]
+        method = req["method"]
+        path = req["path"]
 
-        # ── route ──────────────────────────────────────────────
+        # Route
         matched = match_route(routes, method, path)
         if matched is None:
             status = 404
-            write_response(sock, 404, [("content-type","text/plain")], "not found")
+            write_response(sock, 404, [("content-type", "text/plain")],
+                           "not found")
             return
         handler, params = matched
         req["params"] = params
 
-        # ── before-hooks ───────────────────────────────────────
+        # Before-hooks
         try:
             for hook in before_hooks:
                 hook(req)
         except Exception:
             status = 500
             logger.exception("before-hook failed")
-            write_response(sock, 500, [("content-type","text/plain")], "internal error")
+            write_response(sock, 500, [("content-type", "text/plain")],
+                           "internal error")
             return
 
-        # ── handler ────────────────────────────────────────────
+        # Handler
         try:
             result = handler(req)
         except Exception:
             status = 500
             logger.exception("handler raised for %s %s", method, path)
-            write_response(sock, 500, [("content-type","text/plain")], "internal error")
+            write_response(sock, 500, [("content-type", "text/plain")],
+                           "internal error")
             return
 
         if result is None:
             result = no_content()
 
-        # ── short response: tuple ──────────────────────────────
+        # Short response (tuple)
         if isinstance(result, tuple):
             status_, headers, body = result
             status = status_
             for c in req["_cookies_out"]:
                 headers = list(headers) + [("set-cookie", c)]
-            # Clear any earlier read timeout before the write; some clients
-            # take a beat to ACK the response.
             sock.settimeout(SSE_WRITE_TIMEOUT)
             write_response(sock, status, headers, body)
             return
 
-        # ── SSE stream: generator ──────────────────────────────
+        # SSE stream (generator)
         status = 200
         sock.settimeout(SSE_WRITE_TIMEOUT)
         extra = [("set-cookie", c) for c in req["_cookies_out"]]
@@ -583,26 +719,26 @@ def handle_connection(sock, addr, routes, before_hooks, access_log=True):
                     continue
                 write_sse_frame(sock, frame, encoder=encoder)
         except (OSError, ConnectionError, socket.timeout):
-            pass  # client disconnected or stalled; normal for SSE
+            pass
         except Exception:
             logger.exception("SSE generator raised for %s %s", method, path)
         finally:
-            # Close the encoder cleanly before the socket closes.
-            # finish() may emit final bytes (gzip CRC + length, or
-            # brotli's last block). Best-effort: if the socket is dead
-            # we don't care.
             try:
                 tail = encoder.finish()
                 if tail:
                     sock.sendall(tail)
             except Exception:
                 pass
-            try: result.close()
-            except Exception: pass
+            try:
+                result.close()
+            except Exception:
+                pass
 
     finally:
-        try: sock.close()
-        except Exception: pass
+        try:
+            sock.close()
+        except Exception:
+            pass
         if access_log:
             dt_ms = (time.time() - start) * 1000
             logger.info("%s %s %s → %d %.1fms",
@@ -610,169 +746,125 @@ def handle_connection(sock, addr, routes, before_hooks, access_log=True):
 
 
 @app.class_definition
-# ─── Section 6: the listen loop ───────────────────────────────────────
-#
-# Bind, listen, accept. Each connection gets one OS thread, but we cap
-# the total via a semaphore — past that, new connections get an
-# immediate 503 and close, so a flood can't OOM the process.
-
 class internal_ShutdownFlag:
-    "A flag set by SIGINT/SIGTERM to stop the accept loop."
     def __init__(self):
         self._stop = False
-    def set(self): self._stop = True
-    def is_set(self): return self._stop
 
+    def set(self):
+        self._stop = True
 
-@app.function
-def serve(routes, *, host="127.0.0.1", port=8000,
-          before_hooks=(), max_connections=MAX_CONNECTIONS,
-          access_log=True):
-    """Run the server. Blocks until SIGINT/SIGTERM.
-
-    `routes`:           list of (method, path, handler) tuples.
-    `before_hooks`:     run before each handler, in order; may mutate req.
-    `max_connections`:  cap on concurrent connection threads.
-    `access_log`:       one INFO line per request to the nano_sse logger.
-
-    Hardening behaviors:
-      * Per-conn read timeouts: HEADER_READ_TIMEOUT, BODY_READ_TIMEOUT.
-      * Bounded thread count: connections past `max_connections` get an
-        immediate 503 and close — the process won't OOM under flood.
-      * Graceful shutdown on SIGINT/SIGTERM: stop accepting, wait up to
-        SHUTDOWN_GRACE seconds for in-flight requests, then exit.
-    """
-    if not logger.handlers:
-        # Default to stderr at INFO level. Caller can override.
-        h = logging.StreamHandler()
-        h.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
-        logger.addHandler(h)
-        logger.setLevel(logging.INFO)
-
-    compiled = compile_routes(routes)
-    semaphore = threading.BoundedSemaphore(max_connections)
-    stop = internal_ShutdownFlag()
-
-    def _signal(_signum, _frame):
-        logger.info("shutdown signal received")
-        stop.set()
-    signal.signal(signal.SIGINT, _signal)
-    signal.signal(signal.SIGTERM, _signal)
-
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    s.bind((host, port))
-    s.listen(128)
-    s.settimeout(0.5)  # let the accept loop tick every 500ms to check `stop`
-    logger.info("nano_sse listening on http://%s:%d (max_connections=%d)",
-                host, port, max_connections)
-
-    in_flight = []  # weak list of running threads, for graceful shutdown wait
-
-    try:
-        while not stop.is_set():
-            try:
-                conn, addr = s.accept()
-            except socket.timeout:
-                continue
-            except OSError:
-                break  # socket closed
-
-            # Try to acquire a slot in the bounded pool. Past the cap,
-            # immediately answer 503 and close — don't queue, don't fork
-            # a thread we can't sustain.
-            if not semaphore.acquire(blocking=False):
-                logger.warning("connection cap (%d) reached, dropping %s",
-                               max_connections, addr[0])
-                try:
-                    write_response(conn, 503,
-                                   [("content-type","text/plain"),
-                                    ("retry-after","1")],
-                                   "server busy")
-                except Exception:
-                    pass
-                conn.close()
-                continue
-
-            def _run(c=conn, a=addr):
-                try:
-                    handle_connection(c, a, compiled, before_hooks, access_log)
-                finally:
-                    semaphore.release()
-
-            t = threading.Thread(target=_run, daemon=True)
-            t.start()
-            in_flight.append(t)
-            # Prune dead threads occasionally so the list doesn't grow forever.
-            if len(in_flight) > 1024:
-                in_flight = [x for x in in_flight if x.is_alive()]
-
-    finally:
-        s.close()
-        # Graceful drain: wait for in-flight threads up to SHUTDOWN_GRACE.
-        deadline = time.time() + SHUTDOWN_GRACE
-        for t in in_flight:
-            remaining = deadline - time.time()
-            if remaining <= 0:
-                break
-            t.join(timeout=remaining)
-        live = sum(1 for t in in_flight if t.is_alive())
-        if live:
-            logger.warning("shutdown: %d threads still running after grace period",
-                           live)
-        logger.info("shutdown complete")
+    def is_set(self):
+        return self._stop
 
 
 @app.cell
-def _():
-    # ─── Section 7: SSE helpers ───────────────────────────────────────────
-    #
-    # A `Changes` object: subscribers wait on it; producers `notify_all()` to
-    # wake them. Built on threading.Condition — no asyncio bridge needed
-    # because everything is threaded.
+def _(_cell_34_changes, _cell_34_live):
+    def serve(routes, *, host="127.0.0.1", port=8000,
+              before_hooks=(), live=None, changes=None,
+              max_connections=MAX_CONNECTIONS, access_log=True):
+        """Run the server. Blocks until SIGINT/SIGTERM.
+
+        `routes`:           list of (method, path, handler) tuples.
+        `before_hooks`:     run before each handler, in order; may mutate req.
+        `live`:             LiveCounter instance for capacity management.
+                            Default: LiveCounter(soft_cap=200, ...).
+        `changes`:          Changes instance for pub/sub notifications.
+                            Default: a fresh Changes().
+        `max_connections`:  cap on concurrent connection threads.
+        `access_log`:       one INFO line per request to the py_sse logger.
+
+        The `live` and `changes` instances are made available globally so
+        `stream_handler` decorators can access them without explicit injection.
+        """
+        global _live, _changes
+
+        if not logger.handlers:
+            h = logging.StreamHandler()
+            h.setFormatter(logging.Formatter(
+                "%(asctime)s %(levelname)s %(name)s: %(message)s"))
+            logger.addHandler(h)
+            logger.setLevel(logging.INFO)
+
+        # Avoid circular import: import LiveCounter from .live at call time
+        from .live import LiveCounter
+        if live is None:
+            live = LiveCounter(soft_cap=200, min_poll_ms=1_000,
+                               max_poll_ms=8_000, ramp_users=50)
+        if changes is None:
+            changes = Changes()
+        _live = live
+        _changes = changes
+
+        compiled = compile_routes(routes)
+        semaphore = threading.BoundedSemaphore(max_connections)
+        stop = internal_ShutdownFlag()
+
+        def _signal(_signum, _frame):
+            logger.info("shutdown signal received")
+            stop.set()
+        signal.signal(signal.SIGINT, _signal)
+        signal.signal(signal.SIGTERM, _signal)
+
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        s.bind((host, port))
+        s.listen(128)
+        s.settimeout(0.5)
+        logger.info("py_sse listening on http://%s:%d (max_connections=%d)",
+                    host, port, max_connections)
+
+        in_flight = []
+
+        try:
+            while not stop.is_set():
+                try:
+                    conn, addr = s.accept()
+                except socket.timeout:
+                    continue
+                except OSError:
+                    break
+
+                if not semaphore.acquire(blocking=False):
+                    logger.warning("connection cap (%d) reached, dropping %s",
+                                   max_connections, addr[0])
+                    try:
+                        write_response(conn, 503,
+                                       [("content-type", "text/plain"),
+                                        ("retry-after", "1")],
+                                       "server busy")
+                    except Exception:
+                        pass
+                    conn.close()
+                    continue
+
+                def _run(c=conn, a=addr):
+                    try:
+                        handle_connection(c, a, compiled, before_hooks, access_log)
+                    finally:
+                        semaphore.release()
+
+                t = threading.Thread(target=_run, daemon=True)
+                t.start()
+                in_flight.append(t)
+                if len(in_flight) > 1024:
+                    in_flight = [x for x in in_flight if x.is_alive()]
+
+        finally:
+            s.close()
+            deadline = time.time() + SHUTDOWN_GRACE
+            for t in in_flight:
+                remaining = deadline - time.time()
+                if remaining <= 0:
+                    break
+                t.join(timeout=remaining)
+            live_threads = sum(1 for t in in_flight if t.is_alive())
+            if live_threads:
+                logger.warning(
+                    "shutdown: %d threads still running after grace period",
+                    live_threads)
+            logger.info("shutdown complete")
 
     return
-
-
-@app.class_definition
-class Changes:
-    """A single shared bit: 'something changed'. Subscribers are implicit —
-    they are the threads currently parked in wait(). No registry, no list.
-
-    A writer flips the bit; every waiter wakes; each waiter re-renders from
-    the DB on its own. When a connection dies, its generator dies, its
-    thread dies, and the subscription disappears by construction.
-    """
-    def __init__(self):
-        self._event = threading.Event()
-
-    def notify(self):
-        """Wake every thread parked in wait(). Safe to call from any thread."""
-        self._event.set()
-        self._event.clear()
-
-    def wait(self, timeout=15):
-        """Block until the next notify(), or until `timeout` seconds pass.
-        Returns when there's something new OR on timeout (for keepalive)."""
-        self._event.wait(timeout=timeout)
-
-
-@app.function
-def sse_data(text):
-    "Format a string as an SSE data line."
-    return "\n".join(f"data: {line}" for line in text.splitlines() or [""])
-
-
-@app.function
-def sse_event(event_name, data):
-    "Format a named SSE event."
-    return f"event: {event_name}\n{sse_data(data)}"
-
-
-@app.function
-def sse_keepalive():
-    "An SSE comment line that keeps the connection alive without firing a real event."
-    return ":"
 
 
 @app.cell
