@@ -326,9 +326,88 @@ def sse_keepalive():
     "An SSE comment line. Keeps the connection alive without firing an event."
     return ":"
 
-def handle_connection(sock, addr, routes, before_hooks, access_log=True):
+def stream_handler(resource_id_fn, subscribe_to):
+    """Decorator. Wraps a handler with SSE/polling degradation.
+
+    Args:
+        resource_id_fn: callable(req) -> str. Identifier used by
+            LiveCounter to decide live vs polling for this resource.
+            E.g. lambda req: f"game-{req['params']['id']}"
+        subscribe_to: callable(req) -> str. The Changes pattern this
+            stream subscribes to for re-render triggers.
+            E.g. lambda req: f"game.{req['params']['id']}.*"
+
+    The wrapped handler is called once initially to render the page,
+    then again on each matching notify. The handler returns the same
+    shape as any other handler: (status, headers, body).
+
+    Requires req["_live"] and req["_changes"] to be set. serve()
+    handles this automatically.
+
+    Usage:
+        @stream_handler(
+            resource_id_fn=lambda req: f"game-{req['params']['id']}",
+            subscribe_to=lambda req: f"game.{req['params']['id']}.*"
+        )
+        def get_scorecard(req):
+            game = get_game(...)
+            return html(h_render(full_page(...)))
+    """
+    def decorator(handler):
+        @wraps(handler)
+        def wrapper(req):
+            live = req.get("_live")
+            changes = req.get("_changes")
+            if live is None or changes is None:
+                raise RuntimeError(
+                    "stream_handler requires req['_live'] and "
+                    "req['_changes'] to be set. serve() does this "
+                    "automatically; apps wiring requests manually "
+                    "must do the same.")
+
+            resource = resource_id_fn(req)
+            pattern = subscribe_to(req)
+
+            def render_html():
+                response = handler(req)
+                if isinstance(response, tuple):
+                    _, _, body = response
+                else:
+                    body = response
+                return body.decode("utf-8") if isinstance(body, bytes) else body
+
+            # Initial render
+            html_str = render_html()
+
+            # Polling fallback: above the live cap
+            if not live.should_be_live(resource):
+                yield f"event: datastar-patch-elements\ndata: elements {html_str}"
+                return
+
+            # Live stream
+            with live.join(resource):
+                yield f"event: datastar-patch-elements\ndata: elements {html_str}"
+                while True:
+                    if changes.wait(pattern, timeout=15):
+                        try:
+                            html_str = render_html()
+                            yield f"event: datastar-patch-elements\ndata: elements {html_str}"
+                        except (OSError, BrokenPipeError):
+                            return
+                    else:
+                        yield sse_keepalive()
+
+        return wrapper
+    return decorator
+
+def handle_connection(sock, addr, routes, before_hooks,
+                      live=None, changes=None, access_log=True):
     """Run one request to completion, then close the socket.
     Called in its own OS thread. Never raises out of this function.
+
+    `live` and `changes` are attached to req as req["_live"] and
+    req["_changes"] so stream_handler-decorated handlers can find them
+    without consulting module globals.
     """
     start = time.time()
     status = 0
@@ -338,6 +417,8 @@ def handle_connection(sock, addr, routes, before_hooks, access_log=True):
         # Parse
         try:
             req = parse_request(sock)
+            req["_live"] = live
+            req["_changes"] = changes
         except socket.timeout:
             status = 408
             write_response(sock, 408, [("content-type", "text/plain")],
@@ -440,6 +521,117 @@ def handle_connection(sock, addr, routes, before_hooks, access_log=True):
             dt_ms = (time.time() - start) * 1000
             logger.info("%s %s %s → %d %.1fms",
                         addr[0] if addr else "?", method, path, status, dt_ms)
+
+def serve(routes, *, host="127.0.0.1", port=8000,
+          before_hooks=(), live=None, changes=None,
+          max_connections=MAX_CONNECTIONS, access_log=True):
+    """Run the server. Blocks until SIGINT/SIGTERM.
+
+    `routes`:           list of (method, path, handler) tuples.
+    `before_hooks`:     run before each handler, in order; may mutate req.
+    `live`:             LiveCounter instance for capacity management.
+                        Default: LiveCounter(soft_cap=200, ...).
+    `changes`:          Changes instance for pub/sub notifications.
+                        Default: a fresh Changes().
+    `max_connections`:  cap on concurrent connection threads.
+    `access_log`:       one INFO line per request to the py_sse logger.
+
+    The `live` and `changes` instances are attached to each request
+    dict as req["_live"] and req["_changes"] so handlers (especially
+    those decorated with @stream_handler) can find them without
+    consulting any module globals.
+    """
+    if not logger.handlers:
+        h = logging.StreamHandler()
+        h.setFormatter(logging.Formatter(
+            "%(asctime)s %(levelname)s %(name)s: %(message)s"))
+        logger.addHandler(h)
+        logger.setLevel(logging.INFO)
+
+    # Avoid circular import: import LiveCounter from .live at call time
+    from .live import LiveCounter
+    if live is None:
+        live = LiveCounter(soft_cap=200, min_poll_ms=1_000,
+                           max_poll_ms=8_000, ramp_users=50)
+    if changes is None:
+        changes = Changes()
+
+    compiled = compile_routes(routes)
+    semaphore = threading.BoundedSemaphore(max_connections)
+    stop = internal_ShutdownFlag()
+
+    def _signal(_signum, _frame):
+        logger.info("shutdown signal received")
+        stop.set()
+    # signal.signal() only works from the main thread. In tests we may
+    # run serve() in a background thread; skip signal handlers there.
+    if threading.current_thread() is threading.main_thread():
+        signal.signal(signal.SIGINT, _signal)
+        signal.signal(signal.SIGTERM, _signal)
+    else:
+        logger.info("serve() running in background thread; SIGINT/SIGTERM "
+                    "handlers not installed")
+
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s.bind((host, port))
+    s.listen(128)
+    s.settimeout(0.5)
+    logger.info("py_sse listening on http://%s:%d (max_connections=%d)",
+                host, port, max_connections)
+
+    in_flight = []
+
+    try:
+        while not stop.is_set():
+            try:
+                conn, addr = s.accept()
+            except socket.timeout:
+                continue
+            except OSError:
+                break
+
+            if not semaphore.acquire(blocking=False):
+                logger.warning("connection cap (%d) reached, dropping %s",
+                               max_connections, addr[0])
+                try:
+                    write_response(conn, 503,
+                                   [("content-type", "text/plain"),
+                                    ("retry-after", "1")],
+                                   "server busy")
+                except Exception:
+                    pass
+                conn.close()
+                continue
+
+            def _run(c=conn, a=addr, lv=live, ch=changes):
+                try:
+                    handle_connection(c, a, compiled, before_hooks,
+                                      live=lv, changes=ch,
+                                      access_log=access_log)
+                finally:
+                    semaphore.release()
+
+            t = threading.Thread(target=_run, daemon=True)
+            t.start()
+            in_flight.append(t)
+            if len(in_flight) > 1024:
+                in_flight = [x for x in in_flight if x.is_alive()]
+
+    finally:
+        s.close()
+        deadline = time.time() + SHUTDOWN_GRACE
+        for t in in_flight:
+            remaining = deadline - time.time()
+            if remaining <= 0:
+                break
+            t.join(timeout=remaining)
+        alive_threads = sum(1 for t in in_flight if t.is_alive())
+        if alive_threads:
+            logger.warning(
+                "shutdown: %d threads still running after grace period",
+                alive_threads)
+        logger.info("shutdown complete")
 
 ## db
 

@@ -2,7 +2,7 @@
 
 > minimal python sse server
 
-- [server](/server): Changes, read_until_double_crlf, read_body, write_response, write_sse_headers, write_sse_frame, pick_encoding, parse_request, parse_cookies, set_cookie, signals, compile_routes, match_route, html, redirect, no_content, blob, error, sse_data, sse_event, sse_keepalive, handle_connection
+- [server](/server): Changes, read_until_double_crlf, read_body, write_response, write_sse_headers, write_sse_frame, pick_encoding, parse_request, parse_cookies, set_cookie, signals, compile_routes, match_route, html, redirect, no_content, blob, error, sse_data, sse_event, sse_keepalive, stream_handler, handle_connection, serve
 - [db](/db): Database
 - [live](/live): LiveCounter
 

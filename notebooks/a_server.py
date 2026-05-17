@@ -4,7 +4,7 @@ __generated_with = "0.23.6"
 app = marimo.App(width="medium")
 
 with app.setup:
-    """py_sse server — a minimal SSE web framework.
+    """py_sse server — a Wirth-style minimal SSE web framework.
 
     Pure Python. Pure stdlib + brotli + apsw. One OS thread per connection.
     No async/await. Each function does one thing, named for it.
@@ -55,22 +55,34 @@ with app.setup:
 
     logger = logging.getLogger('py_sse')
 
-    # Module-level singletons set by serve(); used by stream_handler.
-    _live = None
-    _changes = None
+
 
 
 @app.cell
 def _():
     import marimo as mo
 
+    return (mo,)
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # Py-sse.server
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Changes
+    """)
     return
 
 
 @app.cell
 def _():
-
-
     # ─── Section 1: Changes — topic-scoped pub/sub ────────────────────────
     #
     # Hierarchical subjects with dotted notation: "game.5.score".
@@ -137,10 +149,11 @@ class Changes:
         return ok
 
 
-@app.cell
-def _():
-    # ─── Section 2: low-level I/O ─────────────────────────────────────────
-
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## low-level I/O
+    """)
     return
 
 
@@ -230,13 +243,11 @@ def write_sse_frame(sock, payload, encoder=None):
         sock.sendall(chunk)
 
 
-@app.cell
-def _():
- 
-
-
-    # ─── Section 3: SSE encoder ───────────────────────────────────────────
-
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## SSE encoder
+    """)
     return
 
 
@@ -300,11 +311,11 @@ def pick_encoding(req, prefer=("br", "gzip")):
     return "identity"
 
 
-@app.cell
-def _():
-
-    # ─── Section 4: request parsing ───────────────────────────────────────
-
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Request parsing
+    """)
     return
 
 
@@ -433,10 +444,11 @@ def signals(req):
     return data.get("datastar", data) if isinstance(data, dict) else data
 
 
-@app.cell
-def _():
-    # ─── Section 5: routing ───────────────────────────────────────────────
-
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Routing
+    """)
     return
 
 
@@ -453,6 +465,11 @@ def compile_routes(routes):
     return compiled
 
 
+@app.cell
+def _():
+    return
+
+
 @app.function
 def match_route(routes, method, path):
     "Find the first matching route. Returns (handler, params) or None."
@@ -463,6 +480,14 @@ def match_route(routes, method, path):
         if m:
             return handler, m.groupdict()
     return None
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Response helpers
+    """)
+    return
 
 
 @app.cell
@@ -512,6 +537,14 @@ def error(status, message=""):
     return (status, [("content-type", "text/plain; charset=utf-8")], message)
 
 
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## SSE primitives
+    """)
+    return
+
+
 @app.cell
 def _():
     # ─── Section 7: SSE primitives ────────────────────────────────────────
@@ -537,9 +570,16 @@ def sse_keepalive():
     return ":"
 
 
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Stream Handler Decorator
+    """)
+    return
+
+
 @app.cell
 def _():
-
     # ─── Section 8: stream_handler decorator ──────────────────────────────
     #
     # Wraps a plain page handler with SSE streaming. The handler stays pure
@@ -548,90 +588,108 @@ def _():
     #   * Subscribe to a Changes pattern; re-render on notify
     #   * Keepalive on timeout
     #   * Disconnect handling
-
-    return
-
-
-@app.cell
-def _(_cell_31_changes, _cell_31_live):
-    def stream_handler(resource_id_fn, subscribe_to):
-        """Decorator. Wraps a handler with SSE/polling degradation.
-
-        Args:
-            resource_id_fn: callable(req) -> str. Identifier used by
-                LiveCounter to decide live vs polling for this resource.
-                E.g. lambda req: f"game-{req['params']['id']}"
-            subscribe_to: callable(req) -> str. The Changes pattern this
-                stream subscribes to for re-render triggers.
-                E.g. lambda req: f"game.{req['params']['id']}.*"
-
-        The wrapped handler is called once initially to render the page,
-        then again on each matching notify. The handler returns the same
-        shape as any other handler: (status, headers, body).
-
-        Usage:
-            @stream_handler(
-                resource_id_fn=lambda req: f"game-{req['params']['id']}",
-                subscribe_to=lambda req: f"game.{req['params']['id']}.*"
-            )
-            def get_scorecard(req):
-                game = get_game(...)
-                return html(h_render(full_page(...)))
-        """
-        def decorator(handler):
-            @wraps(handler)
-            def wrapper(req):
-                global _live, _changes
-                if _live is None or _changes is None:
-                    raise RuntimeError(
-                        "stream_handler requires serve() to be called with "
-                        "live and changes set (or defaults).")
-
-                resource = resource_id_fn(req)
-                pattern = subscribe_to(req)
-
-                def render_html():
-                    response = handler(req)
-                    if isinstance(response, tuple):
-                        _, _, body = response
-                    else:
-                        body = response
-                    return body.decode("utf-8") if isinstance(body, bytes) else body
-
-                # Initial render
-                html_str = render_html()
-
-                # Polling fallback: above the live cap
-                if not _live.should_be_live(resource):
-                    yield f"event: datastar-patch-elements\ndata: elements {html_str}"
-                    return
-
-                # Live stream
-                with _live.join(resource):
-                    yield f"event: datastar-patch-elements\ndata: elements {html_str}"
-                    while True:
-                        if _changes.wait(pattern, timeout=15):
-                            try:
-                                html_str = render_html()
-                                yield f"event: datastar-patch-elements\ndata: elements {html_str}"
-                            except (OSError, BrokenPipeError):
-                                return
-                        else:
-                            yield sse_keepalive()
-
-            return wrapper
-        return decorator
-
-
-
+    #
+    # The decorator reads `live` and `changes` from the request dict
+    # (req["_live"], req["_changes"]) so it has no hidden module state.
+    # `serve()` attaches them to every request. Apps that wire up requests
+    # themselves must do the same.
 
     return
 
 
 @app.function
-def handle_connection(sock, addr, routes, before_hooks, access_log=True):
+def stream_handler(resource_id_fn, subscribe_to):
+    """Decorator. Wraps a handler with SSE/polling degradation.
+
+    Args:
+        resource_id_fn: callable(req) -> str. Identifier used by
+            LiveCounter to decide live vs polling for this resource.
+            E.g. lambda req: f"game-{req['params']['id']}"
+        subscribe_to: callable(req) -> str. The Changes pattern this
+            stream subscribes to for re-render triggers.
+            E.g. lambda req: f"game.{req['params']['id']}.*"
+
+    The wrapped handler is called once initially to render the page,
+    then again on each matching notify. The handler returns the same
+    shape as any other handler: (status, headers, body).
+
+    Requires req["_live"] and req["_changes"] to be set. serve()
+    handles this automatically.
+
+    Usage:
+        @stream_handler(
+            resource_id_fn=lambda req: f"game-{req['params']['id']}",
+            subscribe_to=lambda req: f"game.{req['params']['id']}.*"
+        )
+        def get_scorecard(req):
+            game = get_game(...)
+            return html(h_render(full_page(...)))
+    """
+    def decorator(handler):
+        @wraps(handler)
+        def wrapper(req):
+            live = req.get("_live")
+            changes = req.get("_changes")
+            if live is None or changes is None:
+                raise RuntimeError(
+                    "stream_handler requires req['_live'] and "
+                    "req['_changes'] to be set. serve() does this "
+                    "automatically; apps wiring requests manually "
+                    "must do the same.")
+
+            resource = resource_id_fn(req)
+            pattern = subscribe_to(req)
+
+            def render_html():
+                response = handler(req)
+                if isinstance(response, tuple):
+                    _, _, body = response
+                else:
+                    body = response
+                return body.decode("utf-8") if isinstance(body, bytes) else body
+
+            # Initial render
+            html_str = render_html()
+
+            # Polling fallback: above the live cap
+            if not live.should_be_live(resource):
+                yield f"event: datastar-patch-elements\ndata: elements {html_str}"
+                return
+
+            # Live stream
+            with live.join(resource):
+                yield f"event: datastar-patch-elements\ndata: elements {html_str}"
+                while True:
+                    if changes.wait(pattern, timeout=15):
+                        try:
+                            html_str = render_html()
+                            yield f"event: datastar-patch-elements\ndata: elements {html_str}"
+                        except (OSError, BrokenPipeError):
+                            return
+                    else:
+                        yield sse_keepalive()
+
+        return wrapper
+    return decorator
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Connection handling
+    """)
+    return
+
+
+@app.function
+def handle_connection(sock, addr, routes, before_hooks,
+                      live=None, changes=None, access_log=True):
     """Run one request to completion, then close the socket.
     Called in its own OS thread. Never raises out of this function.
+
+    `live` and `changes` are attached to req as req["_live"] and
+    req["_changes"] so stream_handler-decorated handlers can find them
+    without consulting module globals.
     """
     start = time.time()
     status = 0
@@ -641,6 +699,8 @@ def handle_connection(sock, addr, routes, before_hooks, access_log=True):
         # Parse
         try:
             req = parse_request(sock)
+            req["_live"] = live
+            req["_changes"] = changes
         except socket.timeout:
             status = 408
             write_response(sock, 408, [("content-type", "text/plain")],
@@ -745,6 +805,13 @@ def handle_connection(sock, addr, routes, before_hooks, access_log=True):
                         addr[0] if addr else "?", method, path, status, dt_ms)
 
 
+@app.cell
+def _():
+    # ─── Section 10: the listen loop ──────────────────────────────────────
+
+    return
+
+
 @app.class_definition
 class internal_ShutdownFlag:
     def __init__(self):
@@ -757,114 +824,117 @@ class internal_ShutdownFlag:
         return self._stop
 
 
-@app.cell
-def _(_cell_34_changes, _cell_34_live):
-    def serve(routes, *, host="127.0.0.1", port=8000,
-              before_hooks=(), live=None, changes=None,
-              max_connections=MAX_CONNECTIONS, access_log=True):
-        """Run the server. Blocks until SIGINT/SIGTERM.
+@app.function
+def serve(routes, *, host="127.0.0.1", port=8000,
+          before_hooks=(), live=None, changes=None,
+          max_connections=MAX_CONNECTIONS, access_log=True):
+    """Run the server. Blocks until SIGINT/SIGTERM.
 
-        `routes`:           list of (method, path, handler) tuples.
-        `before_hooks`:     run before each handler, in order; may mutate req.
-        `live`:             LiveCounter instance for capacity management.
-                            Default: LiveCounter(soft_cap=200, ...).
-        `changes`:          Changes instance for pub/sub notifications.
-                            Default: a fresh Changes().
-        `max_connections`:  cap on concurrent connection threads.
-        `access_log`:       one INFO line per request to the py_sse logger.
+    `routes`:           list of (method, path, handler) tuples.
+    `before_hooks`:     run before each handler, in order; may mutate req.
+    `live`:             LiveCounter instance for capacity management.
+                        Default: LiveCounter(soft_cap=200, ...).
+    `changes`:          Changes instance for pub/sub notifications.
+                        Default: a fresh Changes().
+    `max_connections`:  cap on concurrent connection threads.
+    `access_log`:       one INFO line per request to the py_sse logger.
 
-        The `live` and `changes` instances are made available globally so
-        `stream_handler` decorators can access them without explicit injection.
-        """
-        global _live, _changes
+    The `live` and `changes` instances are attached to each request
+    dict as req["_live"] and req["_changes"] so handlers (especially
+    those decorated with @stream_handler) can find them without
+    consulting any module globals.
+    """
+    if not logger.handlers:
+        h = logging.StreamHandler()
+        h.setFormatter(logging.Formatter(
+            "%(asctime)s %(levelname)s %(name)s: %(message)s"))
+        logger.addHandler(h)
+        logger.setLevel(logging.INFO)
 
-        if not logger.handlers:
-            h = logging.StreamHandler()
-            h.setFormatter(logging.Formatter(
-                "%(asctime)s %(levelname)s %(name)s: %(message)s"))
-            logger.addHandler(h)
-            logger.setLevel(logging.INFO)
+    # Avoid circular import: import LiveCounter from .live at call time
+    from .live import LiveCounter
+    if live is None:
+        live = LiveCounter(soft_cap=200, min_poll_ms=1_000,
+                           max_poll_ms=8_000, ramp_users=50)
+    if changes is None:
+        changes = Changes()
 
-        # Avoid circular import: import LiveCounter from .live at call time
-        from .live import LiveCounter
-        if live is None:
-            live = LiveCounter(soft_cap=200, min_poll_ms=1_000,
-                               max_poll_ms=8_000, ramp_users=50)
-        if changes is None:
-            changes = Changes()
-        _live = live
-        _changes = changes
+    compiled = compile_routes(routes)
+    semaphore = threading.BoundedSemaphore(max_connections)
+    stop = internal_ShutdownFlag()
 
-        compiled = compile_routes(routes)
-        semaphore = threading.BoundedSemaphore(max_connections)
-        stop = internal_ShutdownFlag()
-
-        def _signal(_signum, _frame):
-            logger.info("shutdown signal received")
-            stop.set()
+    def _signal(_signum, _frame):
+        logger.info("shutdown signal received")
+        stop.set()
+    # signal.signal() only works from the main thread. In tests we may
+    # run serve() in a background thread; skip signal handlers there.
+    if threading.current_thread() is threading.main_thread():
         signal.signal(signal.SIGINT, _signal)
         signal.signal(signal.SIGTERM, _signal)
+    else:
+        logger.info("serve() running in background thread; SIGINT/SIGTERM "
+                    "handlers not installed")
 
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        s.bind((host, port))
-        s.listen(128)
-        s.settimeout(0.5)
-        logger.info("py_sse listening on http://%s:%d (max_connections=%d)",
-                    host, port, max_connections)
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s.bind((host, port))
+    s.listen(128)
+    s.settimeout(0.5)
+    logger.info("py_sse listening on http://%s:%d (max_connections=%d)",
+                host, port, max_connections)
 
-        in_flight = []
+    in_flight = []
 
-        try:
-            while not stop.is_set():
+    try:
+        while not stop.is_set():
+            try:
+                conn, addr = s.accept()
+            except socket.timeout:
+                continue
+            except OSError:
+                break
+
+            if not semaphore.acquire(blocking=False):
+                logger.warning("connection cap (%d) reached, dropping %s",
+                               max_connections, addr[0])
                 try:
-                    conn, addr = s.accept()
-                except socket.timeout:
-                    continue
-                except OSError:
-                    break
+                    write_response(conn, 503,
+                                   [("content-type", "text/plain"),
+                                    ("retry-after", "1")],
+                                   "server busy")
+                except Exception:
+                    pass
+                conn.close()
+                continue
 
-                if not semaphore.acquire(blocking=False):
-                    logger.warning("connection cap (%d) reached, dropping %s",
-                                   max_connections, addr[0])
-                    try:
-                        write_response(conn, 503,
-                                       [("content-type", "text/plain"),
-                                        ("retry-after", "1")],
-                                       "server busy")
-                    except Exception:
-                        pass
-                    conn.close()
-                    continue
+            def _run(c=conn, a=addr, lv=live, ch=changes):
+                try:
+                    handle_connection(c, a, compiled, before_hooks,
+                                      live=lv, changes=ch,
+                                      access_log=access_log)
+                finally:
+                    semaphore.release()
 
-                def _run(c=conn, a=addr):
-                    try:
-                        handle_connection(c, a, compiled, before_hooks, access_log)
-                    finally:
-                        semaphore.release()
+            t = threading.Thread(target=_run, daemon=True)
+            t.start()
+            in_flight.append(t)
+            if len(in_flight) > 1024:
+                in_flight = [x for x in in_flight if x.is_alive()]
 
-                t = threading.Thread(target=_run, daemon=True)
-                t.start()
-                in_flight.append(t)
-                if len(in_flight) > 1024:
-                    in_flight = [x for x in in_flight if x.is_alive()]
-
-        finally:
-            s.close()
-            deadline = time.time() + SHUTDOWN_GRACE
-            for t in in_flight:
-                remaining = deadline - time.time()
-                if remaining <= 0:
-                    break
-                t.join(timeout=remaining)
-            live_threads = sum(1 for t in in_flight if t.is_alive())
-            if live_threads:
-                logger.warning(
-                    "shutdown: %d threads still running after grace period",
-                    live_threads)
-            logger.info("shutdown complete")
-
-    return
+    finally:
+        s.close()
+        deadline = time.time() + SHUTDOWN_GRACE
+        for t in in_flight:
+            remaining = deadline - time.time()
+            if remaining <= 0:
+                break
+            t.join(timeout=remaining)
+        alive_threads = sum(1 for t in in_flight if t.is_alive())
+        if alive_threads:
+            logger.warning(
+                "shutdown: %d threads still running after grace period",
+                alive_threads)
+        logger.info("shutdown complete")
 
 
 @app.cell
