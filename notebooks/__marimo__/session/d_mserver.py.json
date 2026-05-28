@@ -7,7 +7,7 @@
   "cells": [
     {
       "id": "setup",
-      "code_hash": "30a58d1788bee6bd7885c23f8a23fb72",
+      "code_hash": "5b0cca9f4e4a2897ca929b1d9ec84609",
       "outputs": [
         {
           "type": "data",
@@ -20,6 +20,19 @@
     },
     {
       "id": "Hbol",
+      "code_hash": "bfe1016838e1b5065679eb1c5cbb1cef",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h1 id=\"package-py-sse\">Package: py-sse</h1>\n<h2 id=\"module-mserver\">Module: .mserver</h2>\n<blockquote>\n<span class=\"paragraph\">run a thread safe server (useful in a repl or notebook enviorment)</span>\n</blockquote></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "MJUe",
       "code_hash": "1d0db38904205bec4d6f6f6a1f6cec3e",
       "outputs": [
         {
@@ -32,21 +45,8 @@
       "console": []
     },
     {
-      "id": "MJUe",
-      "code_hash": "94956e35cb4d024cdfd01bc5cb93080a",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
-      "console": []
-    },
-    {
       "id": "vblA",
-      "code_hash": "d3cc1393df6a2dbbd203a60238000a92",
+      "code_hash": "6509023c804d74ea497d4c506a55af32",
       "outputs": [
         {
           "type": "data",
@@ -59,7 +59,7 @@
     },
     {
       "id": "bkHC",
-      "code_hash": "628cf69988735d4072faef083c2b203a",
+      "code_hash": "afe0d7ba5c86e2f8619d5c962108dee1",
       "outputs": [
         {
           "type": "data",
@@ -72,7 +72,7 @@
     },
     {
       "id": "lEQa",
-      "code_hash": "f91af2d1532dac279ae50f9fad1f640b",
+      "code_hash": "8b3762bd1a557324a55892e3ac61e192",
       "outputs": [
         {
           "type": "data",
@@ -85,7 +85,7 @@
     },
     {
       "id": "PKri",
-      "code_hash": "80c01675adb0ce23e87cfa5bf3e12fea",
+      "code_hash": "27fa9d7b703c40c9fee5f8cd3ea285f8",
       "outputs": [
         {
           "type": "data",

@@ -10,3 +10,7 @@ wheels/
 .venv
 *.js
 ds.js
+
+# DB
+*.db
+.env

@@ -79,7 +79,7 @@ with app.setup:
 
 
 @app.cell
-def _(get_chat, get_login):
+def _():
 
     ROUTES = [
         ("GET",  "/",                       get_root),
@@ -169,52 +169,42 @@ def page(*body_children):
         h.body({"class": "page stage"}, *body_children))
 
 
-app._unparsable_cell(
-    r"""
-    def login_page():
-        return page(h.main({"class": "pg-main"},
-            h.div({"class": "hud-overlay"}, h.div({"class": "Card stage •", "style": "min-inline-size: min(22rem, 90vw)"},
-                h.div({"class": "column"}, h.div(h.div({"style": "--type: 2; font-weight: 600"}, "py_sse chat"),
-                    h.div({"style": "--type: -1; --fg: -0.5"}, "pick a name and start typing")),
-                h.form({"method": "post", "action": "/login"}, h.div({"class": "column"},
-                    h.div(h.label({"for": "username"}, "display name"),
-                        h.input({"class": "input", "id": "username", "name": "username", "autofocus": True, "maxlength": "32", "required": True})),
-                    h.button({"class": "btn", "type": "submit", "style": "--bg: 0.8"}, "sign in")))))))
-
-    """,
-    name="_"
-)
+@app.function
+def login_page():
+    return page(h.main({"class": "pg-main"},
+        h.div({"class": "hud-overlay"}, h.div({"class": "Card stage •", "style": "min-inline-size: min(22rem, 90vw)"},
+            h.div({"class": "column"}, h.div(h.div({"style": "--type: 2; font-weight: 600"}, "py_sse chat"),
+                h.div({"style": "--type: -1; --fg: -0.5"}, "pick a name and start typing")),
+            h.form({"method": "post", "action": "/login"}, h.div({"class": "column"},
+                h.div(h.label({"for": "username"}, "display name"),
+                    h.input({"class": "input", "id": "username", "name": "username", "autofocus": True, "maxlength": "32", "required": True})),
+                h.button({"class": "btn", "type": "submit", "style": "--bg: 0.8"}, "sign in"))))))))
 
 
-app._unparsable_cell(
-    r"""
-    def chat_page(user):
-        return page(
-            h.div({"class": "pg-header"}, h.div({"class": "spread"},
-                h.div({"class": "row"}, h.span({"style": "--type: 1; font-weight: 700"}, "py_sse chat"), h.span({"class": "tag suc"}, "live")),
-                h.div({"class": "row"}, h.span({"class": "avatar", "style": f"--hue-lock: {user_hue(user)}"}, user[:2].upper()),
-                    h.span({"class": "desktop", "style": "--fg: -0.5"}, user),
-                    h.form({"method": "post", "action": "/logout"}, h.button({"class": "btn", "type": "submit"}, "sign out"))))),
-            h.main({"class": "pg-main"}, h.div({"id": "feed", "data-init": "@get('/chat/feed')}")),
-            h.div({"class": "pg-main-footer"}, h.style("@scope {:scope > div.composer {display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: calc(0.25 * 1lh);}:scope > div.attached {margin-block-start: calc(0.25 * 1lh);}}"),
-                h.div({"class": "composer"},
-                    h.label({"class": "icon-btn", "title": "attach file"},
-                        h.span({"data-show": "!$files.length", "aria-hidden": "true"}, "📎"),
-                        h.span({"data-show": "$files.length",  "aria-hidden": "true"}, "📄"),
-                        h.input({"type": "file", "class": "vh", "data-bind:files": True})),
-                    h.input({"class": "input", "data-bind:text": True, "placeholder": "say something  (or attach a file)", "autofocus": True, "maxlength": "500",
-                        "data-on:keydown": "evt.key === 'Enter' && !evt.shiftKey && ($text.trim() || $files.length) && (evt.preventDefault(), @post('/chat/say'), $text='', $files=[], $filesMimes=[], $filesNames=[]"}),
-                    h.button({"class": "btn", "type": "button", "data-on:click": "($text.trim() || $files.length) && (@post('/chat/say'), $text='', $files=[], $filesMimes=[], $filesNames=[])", "data-attr:disabled": "!$text.trim() && !$files.length", "style": "--bg: 0.8"}, "send")),
-                h.div({"data-show": "$files.length", "class": "row attached"},
-                    h.span({"class": "tag inf", "data-text": "$filesNames?.[0]"}),
-                    h.span({"style": "--type: -2; --fg: -0.5"}, "attached — × to remove"),
-                    h.button({"class": "icon-btn", "data-on:click": "$files=[]; $filesMimes=[]; $filesNames=[]", "title": "remove"}, "×"))),
-            h.div({"class": "pg-footer", "style": "--type: -2; --fg: -0.5; text-align: center"}, f"messages & files auto-expire after 24h · max {fmt_size(UPLOAD_MAX_BYTES)} per file"),
-            h.div({"class": "vh", "data-signals": "{me: " + repr(user) + ", text: '', files: [], filesMimes: [], filesNames: []}"}))
-
-    """,
-    name="_"
-)
+@app.function
+def chat_page(user):
+    return page(
+        h.div({"class": "pg-header"}, h.div({"class": "spread"},
+            h.div({"class": "row"}, h.span({"style": "--type: 1; font-weight: 700"}, "py_sse chat"), h.span({"class": "tag suc"}, "live")),
+            h.div({"class": "row"}, h.span({"class": "avatar", "style": f"--hue-lock: {user_hue(user)}"}, user[:2].upper()),
+                h.span({"class": "desktop", "style": "--fg: -0.5"}, user),
+                h.form({"method": "post", "action": "/logout"}, h.button({"class": "btn", "type": "submit"}, "sign out"))))),
+        h.main({"class": "pg-main"}, h.div({"id": "feed", "data-init": "@get('/chat/feed')"})),
+        h.div({"class": "pg-main-footer"}, h.style("@scope {:scope > div.composer {display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: calc(0.25 * 1lh);}:scope > div.attached {margin-block-start: calc(0.25 * 1lh);}}"),
+            h.div({"class": "composer"},
+                h.label({"class": "icon-btn", "title": "attach file"},
+                    h.span({"data-show": "!$files.length", "aria-hidden": "true"}, "📎"),
+                    h.span({"data-show": "$files.length",  "aria-hidden": "true"}, "📄"),
+                    h.input({"type": "file", "class": "vh", "data-bind:files": True})),
+                h.input({"class": "input", "data-bind:text": True, "placeholder": "say something  (or attach a file)", "autofocus": True, "maxlength": "500",
+                    "data-on:keydown": "evt.key === 'Enter' && !evt.shiftKey && ($text.trim() || $files.length) && (evt.preventDefault(), @post('/chat/say'), $text='', $files=[], $filesMimes=[], $filesNames=[]"}),
+                h.button({"class": "btn", "type": "button", "data-on:click": "($text.trim() || $files.length) && (@post('/chat/say'), $text='', $files=[], $filesMimes=[], $filesNames=[])", "data-attr:disabled": "!$text.trim() && !$files.length", "style": "--bg: 0.8"}, "send")),
+            h.div({"data-show": "$files.length", "class": "row attached"},
+                h.span({"class": "tag inf", "data-text": "$filesNames?.[0]"}),
+                h.span({"style": "--type: -2; --fg: -0.5"}, "attached — × to remove"),
+                h.button({"class": "icon-btn", "data-on:click": "$files=[]; $filesMimes=[]; $filesNames=[]", "title": "remove"}, "×"))),
+        h.div({"class": "pg-footer", "style": "--type: -2; --fg: -0.5; text-align: center"}, f"messages & files auto-expire after 24h · max {fmt_size(UPLOAD_MAX_BYTES)} per file"),
+        h.div({"class": "vh", "data-signals": "{me: " + repr(user) + ", text: '', files: [], filesMimes: [], filesNames: []}"}))
 
 
 @app.function
@@ -284,11 +274,8 @@ def extract_files(sig):
 def get_root(req): return redirect("/chat" if req["user"] else "/login")
 
 
-@app.cell
-def _(login_page):
-    def get_login(req): return redirect("/chat") if req["user"] else html(h_render(login_page()))
-
-    return (get_login,)
+@app.function
+def get_login(req): return redirect("/chat") if req["user"] else html(h_render(login_page()))
 
 
 @app.function
@@ -306,11 +293,8 @@ def post_logout(req):
     return redirect("/login")
 
 
-@app.cell
-def _(chat_page):
-    def get_chat(req): return redirect("/login") if not req["user"] else html(h_render(chat_page(req["user"])))
-
-    return (get_chat,)
+@app.function
+def get_chat(req): return redirect("/login") if not req["user"] else html(h_render(chat_page(req["user"])))
 
 
 @app.function
@@ -388,7 +372,6 @@ def get_file(req):
 def _(ROUTES):
     if __name__ == "__main__":
         serve(ROUTES, host=os.environ.get("HOST", "127.0.0.1"), port=int(os.environ.get("PORT", "8000")), before_hooks=[attach_user])
-
     return
 
 

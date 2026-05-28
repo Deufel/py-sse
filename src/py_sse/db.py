@@ -1,105 +1,95 @@
-import atexit
-import os
-import threading
+import asyncio
+import logging
 import apsw
-from .server import Changes
+import apsw.bestpractice
+import apsw.ext
 
-"""SQLite (APSW) wrapper. Per-thread connections.
+log = logging.getLogger(__name__)
 
-    Pure pass-through to SQL. The app is responsible for calling
-    `db.changes.notify("subject")` with appropriate subjects when state
-    changes. No magic dependency tracking, no SQL parsing — just a
-    database.
+"""SQLite helpers and the `Changes` primitive that bridges SQLite's
+    update_hook to asyncio waiters, so `@app.stream` can re-render on each write.
 
-    Notification model:
-        Each Database has a Changes instance. Writers call notify() with
-        a dotted subject like "game.5.score" or "chat.room1". Subscribers
-        wait() on a pattern that may include wildcards.
-
-        The set of subscribers is implicit: it's the set of threads
-        currently parked in changes.wait(). A dropped connection ends its
-        handler thread, which ends the subscription. No registry, no list.
-
-    Handler code:
-        db.execute("INSERT INTO score ...", (...))
-        db.changes.notify(f"game.{game_id}.score")
-
-    Reader code (inside an SSE stream):
-        db.changes.wait(f"game.{game_id}.*", timeout=15)
+    `Changes` does one thing: turn DB writes into a coalesced asyncio signal.
+    No rendering, no caching, no broadcasting. The route handler decides what
+    to render on each tick.
     """
+apsw.bestpractice.apply(apsw.bestpractice.recommended)
+apsw.ext.log_sqlite()
 
-class Database:
-    """SQLite wrapper. Per-thread connections via thread-local storage.
+def create_db(path: str) -> apsw.Connection:
+    "Open a SQLite connection with WAL + apsw best practices."
+    conn = apsw.Connection(path)
+    conn.pragma("journal_mode", "wal")
+    return conn
 
-    Owns a Changes instance for pub/sub notifications, but does NOT
-    auto-notify on writes — the app handler decides when and what to
-    publish.
+def migrate(conn: apsw.Connection, schema_sql: str) -> None:
+    "Apply schema idempotently in one transaction."
+    with conn: conn.execute(schema_sql)
+
+def query(conn: apsw.Connection, sql: str, bindings: tuple = (), *, limit: int = 1000) -> list:
+    "Run a SELECT and return up to `limit` rows as tuples."
+    rows = []
+    for row in conn.execute(sql, bindings):
+        rows.append(row)
+        if len(rows) >= limit: break
+    return rows
+
+def write(conn: apsw.Connection, fn, *args):
+    "Run fn(conn, *args) in a transaction; returns fn's result."
+    with conn: return fn(conn, *args)
+
+class Changes:
+    """Bridges SQLite update_hook to asyncio waiters.
+
+    Each DB write wakes all current waiters once. Multiple writes within the
+    same event-loop tick coalesce into a single wake (cheap; avoids thundering
+    herd during transactions).
+
+    Must be constructed inside or with a reference to the loop that will own
+    the waiters (typically inside `on_init(loop)` of the RSGI app).
     """
+    def __init__(self, db: apsw.Connection, loop: asyncio.AbstractEventLoop):
+        self._db = db
+        self._loop = loop
+        self._event = None       # bound lazily on first wait()
+        self._pending = False
+        db.set_update_hook(self._on_write)
 
-    def __init__(self, path, schema="", changes=None,
-                 dev_mode=False, remove_on_exit=False, busy_timeout=5000):
-        self.path = path
-        self.schema = schema or ""
-        self.changes = changes or Changes()
-        self.dev_mode = dev_mode
-        self.remove_on_exit = remove_on_exit or dev_mode
-        self.busy_timeout = busy_timeout
-        self._tls = threading.local()
-        if self.schema:
-            self._init_schema()
-        if self.remove_on_exit:
-            atexit.register(self.cleanup)
+    # ── SQLite-side, called from apsw's thread ─────────────
+    def _on_write(self, *_):
+        self._loop.call_soon_threadsafe(self._schedule)
 
-    def _conn(self):
-        conn = getattr(self._tls, "conn", None)
-        if conn is None:
-            conn = apsw.Connection(self.path)
-            conn.execute("PRAGMA journal_mode=WAL")
-            conn.execute(f"PRAGMA busy_timeout={int(self.busy_timeout)}")
-            self._tls.conn = conn
-        return conn
+    # ── loop-side, called via call_soon_threadsafe ─────────
+    def _schedule(self):
+        if self._pending: return
+        self._pending = True
+        self._loop.call_soon(self._swap)
 
-    def _init_schema(self):
-        conn = apsw.Connection(self.path)
+    def _swap(self):
+        self._pending = False
+        if self._event is None: return        # nobody waiting yet
+        old, self._event = self._event, asyncio.Event()
+        old.set()
+
+    async def wait(self):
+        """Async iterator: yields once per coalesced DB change.
+
+        Usage in a stream handler:
+
+            async for _ in changes.wait():
+                yield patch_elements(render_view())
+        """
+        if self._event is None:
+            self._event = asyncio.Event()
         try:
-            conn.execute("PRAGMA journal_mode=WAL")
-            for sql in self.schema.strip().split(";"):
-                sql = sql.strip()
-                if sql:
-                    conn.execute(sql)
-        finally:
-            conn.close()
+            while True:
+                ev = self._event
+                await ev.wait()
+                yield
+        except (asyncio.CancelledError, GeneratorExit):
+            pass
 
-    def conn(self):
-        return self._conn()
-
-    def execute(self, sql, params=()):
-        return self._conn().execute(sql, params)
-
-    def one(self, sql, params=()):
-        return self.execute(sql, params).fetchone()
-
-    def all(self, sql, params=()):
-        return self.execute(sql, params).fetchall()
-
-    def transaction(self):
-        return self._conn().transaction()
-
-    def cleanup(self):
-        try:
-            conn = getattr(self._tls, "conn", None)
-            if conn is not None:
-                try:
-                    conn.close()
-                except Exception:
-                    pass
-                self._tls.conn = None
-        finally:
-            if self.remove_on_exit and self.path:
-                for suf in ("", "-wal", "-shm"):
-                    p = self.path + suf
-                    try:
-                        if os.path.exists(p):
-                            os.remove(p)
-                    except Exception:
-                        pass
+    def close(self):
+        "Detach the update_hook. Safe to call multiple times."
+        try: self._db.set_update_hook(None)
+        except Exception: pass

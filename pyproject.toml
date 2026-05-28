@@ -1,7 +1,7 @@
 [project]
 name = "py-sse"
-version = "0.7.0"
-description = "minimal python sse server"
+version = "0.12.0"
+description = "oppionated python sse server wrapping granian"
 readme = "README.md"
 authors = [
     { name = "Deufel", email = "MDeufel13@gmail.com" }
@@ -10,6 +10,7 @@ requires-python = ">=3.12"
 dependencies = [
     "apsw>=3.53.1.0",
     "brotli>=1.2.0",
+    "granian>=2.7.5",
 ]
 
 [build-system]

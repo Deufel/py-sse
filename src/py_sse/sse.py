@@ -1,0 +1,59 @@
+import json
+
+"""Datastar SSE event formatters.
+
+    Each function returns a string in `text/event-stream` framing, ready for
+    `transport.send_str(...)` or as a yielded event from an `@app.stream` handler.
+    """
+
+def patch_elements(
+    elements: str,
+    *,
+    selector: str | None = None,
+    mode: str | None = None,
+    namespace: str | None = None,
+    use_view_transition: bool | None = None,
+) -> str:
+    "Format a datastar-patch-elements SSE event."
+    if hasattr(elements, '__html__'):
+        elements = elements.__html__()
+    lines = []
+    if selector is not None:    lines.append(f"data: selector {selector}")
+    if mode is not None:        lines.append(f"data: mode {mode}")
+    if namespace is not None:   lines.append(f"data: namespace {namespace}")
+    if use_view_transition is not None:
+        lines.append(f"data: useViewTransition {str(use_view_transition).lower()}")
+    for line in elements.split("\n"):
+        lines.append(f"data: elements {line}")
+    return "event: datastar-patch-elements\n" + "\n".join(lines) + "\n\n"
+
+def patch_signals(signals: dict | str, *, only_if_missing: bool | None = None) -> str:
+    "Format a datastar-patch-signals SSE event."
+    if isinstance(signals, dict):
+        signals = json.dumps(signals)
+    lines = []
+    if only_if_missing is not None:
+        lines.append(f"data: onlyIfMissing {str(only_if_missing).lower()}")
+    lines.append(f"data: signals {signals}")
+    return "event: datastar-patch-signals\n" + "\n".join(lines) + "\n\n"
+
+def remove_signals(*names: str) -> str:
+    "Remove signals by patching them to null."
+    return patch_signals({n: None for n in names})
+
+def execute_script(script: str, *, auto_remove: bool = True, attributes: dict | None = None) -> str:
+    "Format a datastar-execute-script SSE event."
+    lines = []
+    if not auto_remove:         lines.append("data: autoRemove false")
+    if attributes is not None:  lines.append(f"data: attributes {json.dumps(attributes)}")
+    for line in script.split("\n"):
+        lines.append(f"data: script {line}")
+    return "event: datastar-execute-script\n" + "\n".join(lines) + "\n\n"
+
+def redirect(url: str) -> str:
+    """Redirect the browser to `url` via a patched script.
+
+    Wraps `window.location =` in setTimeout to work around a Firefox bug
+    where direct assignment replaces the history entry instead of pushing.
+    """
+    return execute_script(f"setTimeout(() => window.location = {json.dumps(url)}, 0)")

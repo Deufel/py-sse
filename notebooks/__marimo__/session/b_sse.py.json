@@ -7,7 +7,7 @@
   "cells": [
     {
       "id": "setup",
-      "code_hash": "30a58d1788bee6bd7885c23f8a23fb72",
+      "code_hash": "6aef8b0e45dab102deaf9026d9621cc7",
       "outputs": [
         {
           "type": "data",
@@ -33,12 +33,12 @@
     },
     {
       "id": "MJUe",
-      "code_hash": "94956e35cb4d024cdfd01bc5cb93080a",
+      "code_hash": "e4741291000d73b9f1c9fcf2ce842ac1",
       "outputs": [
         {
           "type": "data",
           "data": {
-            "text/plain": ""
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h1 id=\"package-py-sse\">Package: py-sse</h1>\n<h2 id=\"module-sse\">Module: .sse</h2>\n<blockquote>\n<span class=\"paragraph\">Datastar SSE event formatting.</span>\n</blockquote>\n<ul>\n<li>Pure functions \u2014 no I/O, no framework dependency.</li>\n<li>Each returns a ready-to-send SSE event string.</li>\n</ul></span>"
           }
         }
       ],
@@ -46,7 +46,7 @@
     },
     {
       "id": "vblA",
-      "code_hash": "d3cc1393df6a2dbbd203a60238000a92",
+      "code_hash": "6e2be3bf11dbfa2c8288bd5e21dac0ad",
       "outputs": [
         {
           "type": "data",
@@ -59,7 +59,7 @@
     },
     {
       "id": "bkHC",
-      "code_hash": "628cf69988735d4072faef083c2b203a",
+      "code_hash": "1747ba16ccbe14f686927ae94973a2bd",
       "outputs": [
         {
           "type": "data",
@@ -72,7 +72,7 @@
     },
     {
       "id": "lEQa",
-      "code_hash": "f91af2d1532dac279ae50f9fad1f640b",
+      "code_hash": "628bb8f1003ecdafbdb2da857027099d",
       "outputs": [
         {
           "type": "data",
@@ -85,7 +85,7 @@
     },
     {
       "id": "PKri",
-      "code_hash": "80c01675adb0ce23e87cfa5bf3e12fea",
+      "code_hash": "1cd7e041986baf481082c4b462b90aa4",
       "outputs": [
         {
           "type": "data",
@@ -98,7 +98,7 @@
     },
     {
       "id": "Xref",
-      "code_hash": null,
+      "code_hash": "7d38154643a90f123a4769a35854ea6e",
       "outputs": [
         {
           "type": "data",

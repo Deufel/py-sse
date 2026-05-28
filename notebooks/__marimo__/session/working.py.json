@@ -1,0 +1,87 @@
+{
+  "version": "1",
+  "metadata": {
+    "marimo_version": "0.23.6",
+    "script_metadata_hash": null
+  },
+  "cells": [
+    {
+      "id": "setup",
+      "code_hash": "8bc76e82d3153b688ff1d709aa578103",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "Hbol",
+      "code_hash": "1d0db38904205bec4d6f6f6a1f6cec3e",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "MJUe",
+      "code_hash": "283475169857e1dfc9a9a718d2a211d3",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h1 id=\"db-as-cache-chat-demo\">DB-as-cache chat demo</h1>\n<span class=\"paragraph\">One SQLite table, one <code>Changes</code> primitive, two routes.\nRe-renders the feed on every write. No <code>Broadcaster</code>, no <code>Raw</code>,\nno wrapper dataclasses \u2014 <code>@app.stream</code> handles SSE framing.</span></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "vblA",
+      "code_hash": "bc3de5055f5a3c60ae886eff7459f5ba",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "bkHC",
+      "code_hash": "a5f5476c973f8e0ffaa9be6d6d16674e",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": [
+        {
+          "type": "stream",
+          "name": "stdout",
+          "text": "[WARNING] Embedded server is experimental!\nserver running on :8000 \u2014 press Enter to stop sdf\n[INFO] Starting granian (embedded)\n[INFO] Listening at: http://127.0.0.1:8000\n[INFO] Spawning worker-1 with id: 281473436199680\n[INFO] Started worker-1\n[INFO] Shutting down granian\n[INFO] Stopping worker-1\n[INFO] Stopping worker-1\n",
+          "mimetype": "text/plain"
+        }
+      ]
+    },
+    {
+      "id": "lEQa",
+      "code_hash": null,
+      "outputs": [],
+      "console": []
+    }
+  ]
+}

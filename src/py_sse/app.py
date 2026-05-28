@@ -1,10 +1,44 @@
-# py-sse
+import asyncio, base64, hashlib, hmac, inspect, json
+import os, re, time, traceback
+from urllib.parse import parse_qs
+import mimetypes
+from granian._granian import RSGIProtocolClosed
+from .sse import patch_elements
 
-> minimal python sse server
+PARAM_RE = re.compile('\\{(\\w+)\\}')
 
+"""Opinionated RSGI app for Datastar.
 
-## app
+    Two route types:
+      @app.get / @app.post / ...    short request/response (HTML, JSON, redirect)
+      @app.stream(path, on=...)     long-lived SSE; re-renders on each tick
 
+    Everything else is plumbing: routing, signals, cookies, static serving,
+    beforeware, and RSGI lifecycle hooks.
+    """
+
+def _parse_request(scope, proto) -> dict:
+    "Build a request dict from an RSGI scope and protocol."
+    raw_cookies = scope.headers.get("cookie", "")
+    return {
+        "path":         scope.path,
+        "method":       scope.method,
+        "headers":      scope.headers,
+        "query":        {k: v[0] if len(v) == 1 else v
+                         for k, v in parse_qs(scope.query_string).items()},
+        "cookies":      dict(
+            pair.strip().split("=", 1)
+            for pair in raw_cookies.split(";")
+            if "=" in pair
+        ),
+        "scheme":       scope.scheme,
+        "client":       scope.client,
+        "http_version": scope.http_version,
+        "server":       scope.server,
+        "authority":    getattr(scope, "authority", None),
+        "_proto":       proto,
+        "_cookies":     [],
+    }
 
 async def body(req: dict, *, max_size: int = 1_048_576) -> bytes:
     "Read the full request body, cached, with a size limit."
@@ -49,6 +83,19 @@ async def signals(req: dict) -> dict:
 def set_cookie(req: dict, name: str, value: str, **opts) -> None:
     "Queue a Set-Cookie header on the request."
     req["_cookies"].append((name, value, opts))
+
+def _serialize_cookie(name: str, value: str, opts: dict) -> str:
+    parts = [f"{name}={value}"]
+    for k, v in opts.items():
+        k = k.replace("_", "-")
+        if isinstance(v, bool):
+            if v: parts.append(k)
+        else:   parts.append(f"{k}={v}")
+    return "; ".join(parts)
+
+def _cookie_headers(req: dict) -> list[tuple[str, str]]:
+    return [("set-cookie", _serialize_cookie(n, v, o))
+            for n, v, o in req["_cookies"]]
 
 def create_signer(secret: str | bytes | None = None):
     """HMAC-SHA256 cookie signer.
@@ -298,7 +345,7 @@ def create_app(routes: dict | None = None, *, on_init=None, on_del=None):
     # ── Response dispatch ────────────────────────────────────
 
     def _respond(proto, req, result):
-        headers = internal_cookie_headers(req)
+        headers = _cookie_headers(req)
 
         if isinstance(result, tuple) and len(result) == 2:
             content, status = result
@@ -349,7 +396,7 @@ def create_app(routes: dict | None = None, *, on_init=None, on_del=None):
         if scope.proto != "http":
             return
 
-        req = internal_parse_request(scope, proto)
+        req = _parse_request(scope, proto)
         req["params"] = {}
 
         handler = routes.get((req["method"], req["path"]))
@@ -408,7 +455,7 @@ def create_app(routes: dict | None = None, *, on_init=None, on_del=None):
                     ("content-type",      "text/event-stream"),
                     ("cache-control",     "no-cache"),
                     ("x-accel-buffering", "no"),
-                ] + internal_cookie_headers(req)
+                ] + _cookie_headers(req)
 
                 transport = proto.response_stream(200, headers)
                 disconnect = asyncio.ensure_future(proto.client_disconnect())
@@ -504,243 +551,3 @@ def serve(app, *, host: str = "127.0.0.1", port: int = 8000, **kwargs):
         asyncio.run(_run())
     except KeyboardInterrupt:
         pass
-
-## sse
-
-
-def patch_elements(
-    elements: str,
-    *,
-    selector: str | None = None,
-    mode: str | None = None,
-    namespace: str | None = None,
-    use_view_transition: bool | None = None,
-) -> str:
-    "Format a datastar-patch-elements SSE event."
-    if hasattr(elements, '__html__'):
-        elements = elements.__html__()
-    lines = []
-    if selector is not None:    lines.append(f"data: selector {selector}")
-    if mode is not None:        lines.append(f"data: mode {mode}")
-    if namespace is not None:   lines.append(f"data: namespace {namespace}")
-    if use_view_transition is not None:
-        lines.append(f"data: useViewTransition {str(use_view_transition).lower()}")
-    for line in elements.split("\n"):
-        lines.append(f"data: elements {line}")
-    return "event: datastar-patch-elements\n" + "\n".join(lines) + "\n\n"
-
-def patch_signals(signals: dict | str, *, only_if_missing: bool | None = None) -> str:
-    "Format a datastar-patch-signals SSE event."
-    if isinstance(signals, dict):
-        signals = json.dumps(signals)
-    lines = []
-    if only_if_missing is not None:
-        lines.append(f"data: onlyIfMissing {str(only_if_missing).lower()}")
-    lines.append(f"data: signals {signals}")
-    return "event: datastar-patch-signals\n" + "\n".join(lines) + "\n\n"
-
-def remove_signals(*names: str) -> str:
-    "Remove signals by patching them to null."
-    return patch_signals({n: None for n in names})
-
-def execute_script(script: str, *, auto_remove: bool = True, attributes: dict | None = None) -> str:
-    "Format a datastar-execute-script SSE event."
-    lines = []
-    if not auto_remove:         lines.append("data: autoRemove false")
-    if attributes is not None:  lines.append(f"data: attributes {json.dumps(attributes)}")
-    for line in script.split("\n"):
-        lines.append(f"data: script {line}")
-    return "event: datastar-execute-script\n" + "\n".join(lines) + "\n\n"
-
-def redirect(url: str) -> str:
-    """Redirect the browser to `url` via a patched script.
-
-    Wraps `window.location =` in setTimeout to work around a Firefox bug
-    where direct assignment replaces the history entry instead of pushing.
-    """
-    return execute_script(f"setTimeout(() => window.location = {json.dumps(url)}, 0)")
-
-## db
-
-
-def create_db(path: str) -> apsw.Connection:
-    "Open a SQLite connection with WAL + apsw best practices."
-    conn = apsw.Connection(path)
-    conn.pragma("journal_mode", "wal")
-    return conn
-
-def migrate(conn: apsw.Connection, schema_sql: str) -> None:
-    "Apply schema idempotently in one transaction."
-    with conn: conn.execute(schema_sql)
-
-def query(conn: apsw.Connection, sql: str, bindings: tuple = (), *, limit: int = 1000) -> list:
-    "Run a SELECT and return up to `limit` rows as tuples."
-    rows = []
-    for row in conn.execute(sql, bindings):
-        rows.append(row)
-        if len(rows) >= limit: break
-    return rows
-
-def write(conn: apsw.Connection, fn, *args):
-    "Run fn(conn, *args) in a transaction; returns fn's result."
-    with conn: return fn(conn, *args)
-
-class Changes:
-    """Bridges SQLite update_hook to asyncio waiters.
-
-    Each DB write wakes all current waiters once. Multiple writes within the
-    same event-loop tick coalesce into a single wake (cheap; avoids thundering
-    herd during transactions).
-
-    Must be constructed inside or with a reference to the loop that will own
-    the waiters (typically inside `on_init(loop)` of the RSGI app).
-    """
-    def __init__(self, db: apsw.Connection, loop: asyncio.AbstractEventLoop):
-        self._db = db
-        self._loop = loop
-        self._event = None       # bound lazily on first wait()
-        self._pending = False
-        db.set_update_hook(self._on_write)
-
-    # ── SQLite-side, called from apsw's thread ─────────────
-    def _on_write(self, *_):
-        self._loop.call_soon_threadsafe(self._schedule)
-
-    # ── loop-side, called via call_soon_threadsafe ─────────
-    def _schedule(self):
-        if self._pending: return
-        self._pending = True
-        self._loop.call_soon(self._swap)
-
-    def _swap(self):
-        self._pending = False
-        if self._event is None: return        # nobody waiting yet
-        old, self._event = self._event, asyncio.Event()
-        old.set()
-
-    async def wait(self):
-        """Async iterator: yields once per coalesced DB change.
-
-        Usage in a stream handler:
-
-            async for _ in changes.wait():
-                yield patch_elements(render_view())
-        """
-        if self._event is None:
-            self._event = asyncio.Event()
-        try:
-            while True:
-                ev = self._event
-                await ev.wait()
-                yield
-        except (asyncio.CancelledError, GeneratorExit):
-            pass
-
-    def close(self):
-        "Detach the update_hook. Safe to call multiple times."
-        try: self._db.set_update_hook(None)
-        except Exception: pass
-
-## mserver
-
-
-@dataclass
-class ServerState:
-    "Handle returned by serve_background; pass to stop_background."
-    server: object = None
-    loop:   object = None
-    thread: object = None
-    host:   str    = "127.0.0.1"
-    port:   int    = 8000
-
-def serve_background(app, host: str = "127.0.0.1", port: int = 8000, **kwargs) -> ServerState:
-    """Run a py-sse app in a background thread.
-
-        state = serve_background(app)
-        # ... later ...
-        stop_background(state)
-    """
-    from granian.server.embed import Server
-    from granian.constants import Interfaces
-
-    server = Server(app, address=host, port=port, interface=Interfaces.RSGI, **kwargs)
-    loop = asyncio.new_event_loop()
-
-    async def run():
-        await server.serve()
-
-    def thread_target():
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(run())
-
-    thread = threading.Thread(target=thread_target, daemon=True)
-    thread.start()
-    return ServerState(server=server, loop=loop, thread=thread, host=host, port=port)
-
-def stop_background(state: ServerState) -> None:
-    """Stop a background server via Granian's clean shutdown path.
-
-    Joins the worker thread with a 3-second timeout. If the thread is still
-    alive after that, prints a warning — a zombie thread will prevent the
-    next serve_background on the same port from binding.
-    """
-    if state.server and state.loop and state.loop.is_running():
-        state.loop.call_soon_threadsafe(state.server.stop)
-    if state.thread:
-        state.thread.join(timeout=3)
-        if state.thread.is_alive():
-            print(f"WARNING: server thread on port {state.port} did not stop within 3s")
-
-def dev_alive(port_or_state) -> bool:
-    "Check whether a port (or ServerState's port) is accepting connections."
-    port = port_or_state.port if isinstance(port_or_state, ServerState) else port_or_state
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        return s.connect_ex(("localhost", port)) == 0
-
-## ngrok
-
-
-@dataclass
-class TunnelState:
-    "Handle returned by start_tunnel; pass to stop_tunnel."
-    listener: object = None
-    url:      str    = ""
-
-def load_env(path: str = ".env"):
-    "Minimal .env loader: KEY=VALUE per line, # for comments."
-    import os
-    for line in open(path):
-        if "=" in (line := line.strip()) and not line.startswith("#"):
-            k, v = line.split("=", 1)
-            os.environ.setdefault(k.strip(), v.strip())
-
-def start_tunnel(port: int = 8000, **kwargs) -> TunnelState:
-    """Open an ngrok tunnel to localhost:port.
-
-    Requires the `ngrok` package and NGROK_AUTHTOKEN env var.
-    Extra kwargs forward to ngrok.forward().
-
-        tunnel = start_tunnel(8000)
-        print(tunnel.url)
-        stop_tunnel(tunnel)
-    """
-    import threading
-    import ngrok
-
-    result = [None]
-
-    def _connect():
-        result[0] = ngrok.forward(port, authtoken_from_env=True, **kwargs)
-
-    t = threading.Thread(target=_connect)
-    t.start()
-    t.join()
-
-    listener = result[0]
-    return TunnelState(listener=listener, url=listener.url())
-
-def stop_tunnel(tunnel: TunnelState) -> None:
-    "Close an ngrok tunnel."
-    if tunnel.listener:
-        import ngrok
-        ngrok.disconnect(tunnel.url)
