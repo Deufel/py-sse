@@ -1,0 +1,180 @@
+{
+  "version": "1",
+  "metadata": {
+    "marimo_version": "0.23.6",
+    "script_metadata_hash": null
+  },
+  "cells": [
+    {
+      "id": "setup",
+      "code_hash": "ef18f60c033305c61a16cab358f2f62d",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "Hbol",
+      "code_hash": "1d0db38904205bec4d6f6f6a1f6cec3e",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "Tjet",
+      "code_hash": "139497f3ba8383c0cdf17bc349aa2860",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "jPVp",
+      "code_hash": "2683f7e168e06b8c1f013346bbcd79fc",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h2 id=\"sse-event-formatters-b_sse\">SSE event formatters (b_sse).</h2>\n<blockquote>\n<span class=\"paragraph\">Pure string functions \u2014 assert on framing.</span>\n</blockquote></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "bhvV",
+      "code_hash": "577bfcd97757d958750dd5b54333a920",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": [
+        {
+          "type": "stream",
+          "name": "stdout",
+          "text": "\u001b[32m.\u001b[0m\u001b[32m.\u001b[0m\u001b[32m.\u001b[0m\u001b[32m.\u001b[0m\u001b[32m.\u001b[0m\u001b[32m.\u001b[0m\u001b[32m.\u001b[0m\u001b[32m.\u001b[0m\u001b[32m.\u001b[0m\u001b[32m.\u001b[0m\u001b[33m                                                               [100%]\u001b[0m\n=================================== Overview ===================================\nPassed Tests:\n\u001b[1m\u001b[32m\u001b[22m\u2713\u001b[0m\u001b[0m notebooks/test.py::test_execute_script_can_disable_autoremove\n\u001b[1m\u001b[32m\u001b[22m\u2713\u001b[0m\u001b[0m notebooks/test.py::test_execute_script_omits_autoremove_by_default\n\u001b[1m\u001b[32m\u001b[22m\u2713\u001b[0m\u001b[0m notebooks/test.py::test_patch_elements_accepts_html_object\n\u001b[1m\u001b[32m\u001b[22m\u2713\u001b[0m\u001b[0m notebooks/test.py::test_patch_elements_basic\n\u001b[1m\u001b[32m\u001b[22m\u2713\u001b[0m\u001b[0m notebooks/test.py::test_patch_elements_emits_options\n\u001b[1m\u001b[32m\u001b[22m\u2713\u001b[0m\u001b[0m notebooks/test.py::test_patch_elements_prefixes_each_line\n\u001b[1m\u001b[32m\u001b[22m\u2713\u001b[0m\u001b[0m notebooks/test.py::test_patch_signals_dict_is_json_encoded\n\u001b[1m\u001b[32m\u001b[22m\u2713\u001b[0m\u001b[0m notebooks/test.py::test_patch_signals_only_if_missing\n\u001b[1m\u001b[32m\u001b[22m\u2713\u001b[0m\u001b[0m notebooks/test.py::test_redirect_wraps_location_in_settimeout\n\u001b[1m\u001b[32m\u001b[22m\u2713\u001b[0m\u001b[0m notebooks/test.py::test_remove_signals_sets_nulls\n\nSummary:\nTotal: 10, Passed: 10, Failed: 0, Errors: 0, Skipped: 0\n",
+          "mimetype": "text/plain"
+        }
+      ]
+    },
+    {
+      "id": "lJtj",
+      "code_hash": "9dd60c98eaf103f0aed2fec6b2a2c2ae",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h2 id=\"hmac-cookie-signer-set-cookie-serialization-a_app\">HMAC cookie signer + Set-Cookie serialization (a_app).</h2>\n<blockquote>\n<span class=\"paragraph\">Note: _serialize_cookie is imported locally inside its tests \u2014 marimo treats\n leading-underscore names as cell-private, so they can't flow in as cell params.</span>\n</blockquote></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "nKwS",
+      "code_hash": "db51ce6dbfb74151cbb44963a9c0c4a3",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": [
+        {
+          "type": "stream",
+          "name": "stdout",
+          "text": "\u001b[32m.\u001b[0m\u001b[32m.\u001b[0m\u001b[32m.\u001b[0m\u001b[32m.\u001b[0m\u001b[32m.\u001b[0m\u001b[32m.\u001b[0m\u001b[32m.\u001b[0m\u001b[33m                                                                  [100%]\u001b[0m\n=================================== Overview ===================================\nPassed Tests:\n\u001b[1m\u001b[32m\u001b[22m\u2713\u001b[0m\u001b[0m notebooks/test.py::test_serialize_cookie_bool_flags\n\u001b[1m\u001b[32m\u001b[22m\u2713\u001b[0m\u001b[0m notebooks/test.py::test_serialize_cookie_underscores_become_dashes\n\u001b[1m\u001b[32m\u001b[22m\u2713\u001b[0m\u001b[0m notebooks/test.py::test_signer_honours_expiry\n\u001b[1m\u001b[32m\u001b[22m\u2713\u001b[0m\u001b[0m notebooks/test.py::test_signer_malformed_returns_none\n\u001b[1m\u001b[32m\u001b[22m\u2713\u001b[0m\u001b[0m notebooks/test.py::test_signer_rejects_tamper\n\u001b[1m\u001b[32m\u001b[22m\u2713\u001b[0m\u001b[0m notebooks/test.py::test_signer_rejects_wrong_secret\n\u001b[1m\u001b[32m\u001b[22m\u2713\u001b[0m\u001b[0m notebooks/test.py::test_signer_roundtrip\n\nSummary:\nTotal: 7, Passed: 7, Failed: 0, Errors: 0, Skipped: 0\n",
+          "mimetype": "text/plain"
+        }
+      ]
+    },
+    {
+      "id": "YJJs",
+      "code_hash": "d37108c66f61c82c1b347aec1e804afe",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h2 id=\"sqlite-helpers-c_db\">SQLite helpers (c_db).</h2>\n<blockquote>\n<span class=\"paragraph\">tmp_path is a pytest built-in fixture, resolved per test.</span>\n</blockquote></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "jTmv",
+      "code_hash": "9ceac52b0b9d7bf74b73a70516515f0f",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": [
+        {
+          "type": "stream",
+          "name": "stdout",
+          "text": "\u001b[32m.\u001b[0m\u001b[32m.\u001b[0m\u001b[32m.\u001b[0m\u001b[32m.\u001b[0m\u001b[33m                                                                     [100%]\u001b[0m\n=================================== Overview ===================================\nPassed Tests:\n\u001b[1m\u001b[32m\u001b[22m\u2713\u001b[0m\u001b[0m notebooks/test.py::test_create_db_uses_wal\n\u001b[1m\u001b[32m\u001b[22m\u2713\u001b[0m\u001b[0m notebooks/test.py::test_db_insert_select_roundtrip\n\u001b[1m\u001b[32m\u001b[22m\u2713\u001b[0m\u001b[0m notebooks/test.py::test_query_respects_limit\n\u001b[1m\u001b[32m\u001b[22m\u2713\u001b[0m\u001b[0m notebooks/test.py::test_write_returns_fn_result\n\nSummary:\nTotal: 4, Passed: 4, Failed: 0, Errors: 0, Skipped: 0\n",
+          "mimetype": "text/plain"
+        }
+      ]
+    },
+    {
+      "id": "cxFB",
+      "code_hash": "a4ac15d795115fd39102ea58c11f0ab5",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h2 id=\"env-loader-e_ngrok\">.env loader (e_ngrok).</h2>\n<blockquote>\n<span class=\"paragraph\">monkeypatch keeps os.environ changes isolated per test.</span>\n</blockquote></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "CSMv",
+      "code_hash": "c859dde6983be1985c0fd1fc48986046",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": [
+        {
+          "type": "stream",
+          "name": "stdout",
+          "text": "\u001b[32m.\u001b[0m\u001b[32m.\u001b[0m\u001b[32m.\u001b[0m\u001b[32m.\u001b[0m\u001b[32m.\u001b[0m\u001b[32m.\u001b[0m\u001b[33m                                                                   [ 50%]\u001b[0m\n=================================== Overview ===================================\nPassed Tests:\n\u001b[1m\u001b[32m\u001b[22m\u2713\u001b[0m\u001b[0m notebooks/test.py::test_load_env_does_not_override_existing\n\u001b[1m\u001b[32m\u001b[22m\u2713\u001b[0m\u001b[0m notebooks/test.py::test_load_env_missing_file_is_noop\n\u001b[1m\u001b[32m\u001b[22m\u2713\u001b[0m\u001b[0m notebooks/test.py::test_load_env_reads_keys\n\u001b[1m\u001b[32m\u001b[22m\u2713\u001b[0m\u001b[0m notebooks/test.py::test_load_env_does_not_override_existing\n\u001b[1m\u001b[32m\u001b[22m\u2713\u001b[0m\u001b[0m notebooks/test.py::test_load_env_missing_file_is_noop\n\u001b[1m\u001b[32m\u001b[22m\u2713\u001b[0m\u001b[0m notebooks/test.py::test_load_env_reads_keys\n\nSummary:\nTotal: 6, Passed: 6, Failed: 0, Errors: 0, Skipped: 0\n",
+          "mimetype": "text/plain"
+        }
+      ]
+    }
+  ]
+}

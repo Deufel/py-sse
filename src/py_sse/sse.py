@@ -3,17 +3,17 @@ import json
 """Datastar SSE event formatters.
 
     Each function returns a string in `text/event-stream` framing, ready for
-    `transport.send_str(...)` or as a yielded event from an `@app.stream` handler.
+    `transport.send_str(...)` or to yield from an `@app.stream` handler.
     """
 
 def patch_elements(
-    elements: str,
+    elements:str,              # HTML to patch in; an html_tags node (has __html__) also works
     *,
-    selector: str | None = None,
-    mode: str | None = None,
-    namespace: str | None = None,
-    use_view_transition: bool | None = None,
-) -> str:
+    selector:str|None=None,    # CSS target; defaults to matching by element id
+    mode:str|None=None,        # morph mode, e.g. outer / inner / append
+    namespace:str|None=None,   # optional namespace for the patch
+    use_view_transition:bool|None=None, # wrap the patch in a View Transition
+)->str:                        # framed datastar-patch-elements event
     "Format a datastar-patch-elements SSE event."
     if hasattr(elements, '__html__'):
         elements = elements.__html__()
@@ -27,7 +27,11 @@ def patch_elements(
         lines.append(f"data: elements {line}")
     return "event: datastar-patch-elements\n" + "\n".join(lines) + "\n\n"
 
-def patch_signals(signals: dict | str, *, only_if_missing: bool | None = None) -> str:
+def patch_signals(
+    signals:dict|str,            # signals to patch; a dict is JSON-encoded for you
+    *,
+    only_if_missing:bool|None=None, # only set signals not already present
+)->str:                          # framed datastar-patch-signals event
     "Format a datastar-patch-signals SSE event."
     if isinstance(signals, dict):
         signals = json.dumps(signals)
@@ -37,11 +41,18 @@ def patch_signals(signals: dict | str, *, only_if_missing: bool | None = None) -
     lines.append(f"data: signals {signals}")
     return "event: datastar-patch-signals\n" + "\n".join(lines) + "\n\n"
 
-def remove_signals(*names: str) -> str:
+def remove_signals(
+    *names:str, # signal names to remove
+)->str:         # framed datastar-patch-signals event setting each to null
     "Remove signals by patching them to null."
     return patch_signals({n: None for n in names})
 
-def execute_script(script: str, *, auto_remove: bool = True, attributes: dict | None = None) -> str:
+def execute_script(
+    script:str,                  # JS source to run in the browser
+    *,
+    auto_remove:bool=True,       # remove the injected <script> after it runs
+    attributes:dict|None=None,   # extra attributes for the injected <script>
+)->str:                          # framed datastar-execute-script event
     "Format a datastar-execute-script SSE event."
     lines = []
     if not auto_remove:         lines.append("data: autoRemove false")
@@ -50,10 +61,8 @@ def execute_script(script: str, *, auto_remove: bool = True, attributes: dict | 
         lines.append(f"data: script {line}")
     return "event: datastar-execute-script\n" + "\n".join(lines) + "\n\n"
 
-def redirect(url: str) -> str:
-    """Redirect the browser to `url` via a patched script.
-
-    Wraps `window.location =` in setTimeout to work around a Firefox bug
-    where direct assignment replaces the history entry instead of pushing.
-    """
+def redirect(
+    url:str, # destination to send the browser to
+)->str:      # framed datastar-execute-script event that navigates
+    "Redirect the browser to `url` via a patched script (setTimeout wraps a Firefox history quirk)."
     return execute_script(f"setTimeout(() => window.location = {json.dumps(url)}, 0)")

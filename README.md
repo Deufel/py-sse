@@ -1,22 +1,23 @@
 ![PyPI version](https://img.shields.io/pypi/v/py-sse)
 
-> [!WARNING]
-> Under active development — May 2026
+# py-sse
 
-# py_sse
+> minimal python sse server for datastar — built on rsgi/granian + apsw/sqlite
 
-> minimal python sse server
-
-A small framework for building [Datastar](https://data-star.dev) apps over
-Server-Sent Events. Runs on [Granian](https://github.com/emmett-framework/granian)
-via RSGI, talks to SQLite through [apsw](https://github.com/rogerbinns/apsw),
-and pushes live DOM updates from the database with no client-side polling.
+```md
+sse.py      →  datastar event formatters (patch_elements, patch_signals, …)
+app.py      →  rsgi app: routing, signals, cookies, static, @app.stream
+db.py       →  sqlite helpers + Changes (update_hook → asyncio)
+mserver.py  →  background server for notebooks (serve_background/stop_background)
+ngrok.py    →  public tunnel + .env loader
+```
 
 ```sh
 pip install py-sse
+uv add py-sse      # preferred
 ```
 
-## Hello
+## hello
 
 ```python
 from py_sse import create_app, serve
@@ -24,25 +25,18 @@ from py_sse import create_app, serve
 app = create_app()
 
 @app.get('/')
-async def index(req):
-    return '<h1>hello</h1>'
+async def index(req): return '<h1>hello</h1>'
 
-if __name__ == '__main__':
-    serve(app)
+if __name__ == '__main__': serve(app)
 ```
 
-Handlers return one of: `str` → 200 HTML, `dict` → 200 JSON, `None` → 204,
-`(url, status)` → redirect/text, or an async generator → raw SSE stream.
+## live feed
 
-## Live feed
-
-`@app.stream` is the core feature: register an SSE endpoint that re-renders
-every time the database changes. `Changes` bridges SQLite's update hook to
-asyncio, so any `write()` wakes every connected stream.
+Backend is the source of truth. Each write wakes every `/feed` stream; the
+handler re-renders. No polling, no optimistic updates, no client state.
 
 ```python
-from py_sse import (create_app, create_db, migrate, query, write,
-                    signals, Changes, serve)
+from py_sse import *
 
 db = create_db('chat.db')
 migrate(db, "CREATE TABLE IF NOT EXISTS msgs (id INTEGER PRIMARY KEY, txt TEXT)")
@@ -61,46 +55,59 @@ async def say(req):
 @app.stream('/feed', on=lambda: changes)
 def feed(req):
     rows = query(db, "SELECT txt FROM msgs ORDER BY id DESC LIMIT 50")
-    return ''.join(f'<p>{txt}</p>' for (txt,) in rows)
+    return ''.join(f'<p>{t}</p>' for (t,) in rows)
 ```
 
-Post to `/say` from any tab and every tab subscribed to `/feed` re-renders.
+## handler returns
 
-## API
+```md
+str          →  200 html
+dict         →  200 json
+None         →  204
+(url, int)   →  redirect (3xx) or text body (4xx/5xx)
+async gen    →  sse stream  (use @app.stream for the common case)
+```
 
-**App** — `create_app(routes=None, *, on_init=None, on_del=None)`. Returns a
-handle with `.get/.post/.put/.patch/.delete(path)`, `.mount(prefix, fn)`,
-`.before(fn, *, methods=None)`, and `.stream(path, *, on)`. Paths support
-`{name}` params. `on_init(loop)`/`on_del(loop)` run at startup/shutdown for
-wiring shared state onto the right loop.
+## api
 
-**Requests** — `signals(req)` reads Datastar signals (query param on GET, JSON
-body otherwise). `body(req)` / `body_stream(req)` read the raw payload.
-`set_cookie(req, name, value, **opts)` queues a Set-Cookie.
+```md
+create_app(on_init=, on_del=)   →  app handle: .get .post .put .patch .delete .mount .before .stream
+@app.stream(path, on=)          →  sse route; re-renders each time `on` ticks
+signals(req)                    →  datastar signals (query on GET, json body otherwise)
+body(req) / body_stream(req)    →  full body / chunked body
+set_cookie(req, name, value)    →  queue a Set-Cookie
+create_signer(secret)           →  .sign(value) / .unsign(signed) — hmac-sha256
+static(app, prefix, dir)        →  zero-copy file serving, http range support
 
-**SSE events** — `patch_elements`, `patch_signals`, `remove_signals`,
-`execute_script`, `redirect`. `@app.stream` calls `patch_elements` for you.
+create_db(path)                 →  wal sqlite connection
+migrate(conn, sql)              →  apply schema in one txn
+query(conn, sql, …, limit=)     →  rows as tuples
+write(conn, fn, …)              →  run fn(conn, …) in a txn, return its result
+Changes(db, loop)               →  fan db writes out to streams; .wait() / .close()
 
-**DB** — `create_db(path)` opens a WAL connection. `migrate(conn, sql)` applies
-schema idempotently. `query(conn, sql, bindings=(), *, limit=1000)` returns
-rows. `write(conn, fn, *args)` runs `fn` in a transaction. `Changes(db, loop)`
-fans writes out to streams.
+patch_elements(html, …)         →  datastar-patch-elements event
+patch_signals(signals, …)       →  datastar-patch-signals event
+remove_signals(*names)          →  null those signals
+execute_script(js, …)           →  datastar-execute-script event
+redirect(url)                   →  navigate via patched script
 
-**Static** — `static(app, url_prefix, directory)` serves a file or directory
-with HTTP range support and a directory-traversal guard.
+serve(app)                      →  foreground granian server (blocks)
+serve_background(app)           →  background thread → ServerState
+stop_background(state)          →  clean shutdown, 3s join
+dev_alive(port)                 →  is the port accepting connections
+start_tunnel(port)              →  ngrok tunnel → TunnelState  (needs NGROK_AUTHTOKEN)
+stop_tunnel(tunnel)             →  close it
+load_env(path='.env')           →  read KEY=VALUE; missing file is a noop
+```
 
-**Cookies** — `create_signer(secret)` returns an HMAC-SHA256 signer with
-`.sign(value)` / `.unsign(signed, max_age=3600)`.
+## datastar
 
-**Serving** — `serve(app, *, host, port, **kwargs)` runs in the foreground.
-`serve_background(app, host, port)` returns a `ServerState` you stop with
-`stop_background(state)`; `dev_alive(state)` checks the port. Useful for
-notebooks. `start_tunnel(port)` / `stop_tunnel(t)` expose a local server via
-ngrok (requires `ngrok` and `NGROK_AUTHTOKEN`).
+```md
+patch elements & signals     →  the verb;  morph is the mechanism
+fat morph                    →  send large dom chunks, up to <html>
+signals                      →  user interaction only, used sparingly
+cqrs                         →  long-lived read stream + short-lived writes
+brotli on sse                →  ratios up to 200:1
+```
 
-## License
-
-MIT
-## License
-
-MIT
+MIT · built from marimo notebooks with marimo-dev

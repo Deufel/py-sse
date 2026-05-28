@@ -8,40 +8,42 @@ class TunnelState:
     listener: object = None
     url:      str    = ""
 
-def load_env(path: str = ".env"):
-    "Minimal .env loader: KEY=VALUE per line, # for comments."
+def load_env(
+    path:str=".env", # env file to read; missing file is a no-op
+):
+    "Minimal .env loader: `KEY=VALUE` per line, `#` for comments. Won't override existing vars."
     import os
-    for line in open(path):
-        if "=" in (line := line.strip()) and not line.startswith("#"):
-            k, v = line.split("=", 1)
-            os.environ.setdefault(k.strip(), v.strip())
+    if not os.path.exists(path): return
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            if "=" in (line := line.strip()) and not line.startswith("#"):
+                k, v = line.split("=", 1)
+                os.environ.setdefault(k.strip(), v.strip())
 
-def start_tunnel(port: int = 8000, **kwargs) -> TunnelState:
-    """Open an ngrok tunnel to localhost:port.
-
-    Requires the `ngrok` package and NGROK_AUTHTOKEN env var.
-    Extra kwargs forward to ngrok.forward().
-
-        tunnel = start_tunnel(8000)
-        print(tunnel.url)
-        stop_tunnel(tunnel)
-    """
+def start_tunnel(
+    port:int=8000, # local port to forward
+    **kwargs,      # forwarded to ngrok.forward()
+)->TunnelState:    # handle to pass to stop_tunnel
+    "Open an ngrok tunnel to localhost:`port` (needs the `ngrok` pkg + NGROK_AUTHTOKEN)."
     import threading
     import ngrok
 
-    result = [None]
+    result, error = [None], [None]
 
     def _connect():
-        result[0] = ngrok.forward(port, authtoken_from_env=True, **kwargs)
+        try:                   result[0] = ngrok.forward(port, authtoken_from_env=True, **kwargs)
+        except Exception as e: error[0]  = e
 
     t = threading.Thread(target=_connect)
     t.start()
     t.join()
 
-    listener = result[0]
-    return TunnelState(listener=listener, url=listener.url())
+    if error[0] is not None: raise error[0]
+    return TunnelState(listener=result[0], url=result[0].url())
 
-def stop_tunnel(tunnel: TunnelState) -> None:
+def stop_tunnel(
+    tunnel:TunnelState, # handle from start_tunnel
+)->None:                # nothing
     "Close an ngrok tunnel."
     if tunnel.listener:
         import ngrok

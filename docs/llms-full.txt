@@ -509,13 +509,13 @@ def serve(app, *, host: str = "127.0.0.1", port: int = 8000, **kwargs):
 
 
 def patch_elements(
-    elements: str,
+    elements:str,              # HTML to patch in; an html_tags node (has __html__) also works
     *,
-    selector: str | None = None,
-    mode: str | None = None,
-    namespace: str | None = None,
-    use_view_transition: bool | None = None,
-) -> str:
+    selector:str|None=None,    # CSS target; defaults to matching by element id
+    mode:str|None=None,        # morph mode, e.g. outer / inner / append
+    namespace:str|None=None,   # optional namespace for the patch
+    use_view_transition:bool|None=None, # wrap the patch in a View Transition
+)->str:                        # framed datastar-patch-elements event
     "Format a datastar-patch-elements SSE event."
     if hasattr(elements, '__html__'):
         elements = elements.__html__()
@@ -529,7 +529,11 @@ def patch_elements(
         lines.append(f"data: elements {line}")
     return "event: datastar-patch-elements\n" + "\n".join(lines) + "\n\n"
 
-def patch_signals(signals: dict | str, *, only_if_missing: bool | None = None) -> str:
+def patch_signals(
+    signals:dict|str,            # signals to patch; a dict is JSON-encoded for you
+    *,
+    only_if_missing:bool|None=None, # only set signals not already present
+)->str:                          # framed datastar-patch-signals event
     "Format a datastar-patch-signals SSE event."
     if isinstance(signals, dict):
         signals = json.dumps(signals)
@@ -539,11 +543,18 @@ def patch_signals(signals: dict | str, *, only_if_missing: bool | None = None) -
     lines.append(f"data: signals {signals}")
     return "event: datastar-patch-signals\n" + "\n".join(lines) + "\n\n"
 
-def remove_signals(*names: str) -> str:
+def remove_signals(
+    *names:str, # signal names to remove
+)->str:         # framed datastar-patch-signals event setting each to null
     "Remove signals by patching them to null."
     return patch_signals({n: None for n in names})
 
-def execute_script(script: str, *, auto_remove: bool = True, attributes: dict | None = None) -> str:
+def execute_script(
+    script:str,                  # JS source to run in the browser
+    *,
+    auto_remove:bool=True,       # remove the injected <script> after it runs
+    attributes:dict|None=None,   # extra attributes for the injected <script>
+)->str:                          # framed datastar-execute-script event
     "Format a datastar-execute-script SSE event."
     lines = []
     if not auto_remove:         lines.append("data: autoRemove false")
@@ -552,12 +563,10 @@ def execute_script(script: str, *, auto_remove: bool = True, attributes: dict | 
         lines.append(f"data: script {line}")
     return "event: datastar-execute-script\n" + "\n".join(lines) + "\n\n"
 
-def redirect(url: str) -> str:
-    """Redirect the browser to `url` via a patched script.
-
-    Wraps `window.location =` in setTimeout to work around a Firefox bug
-    where direct assignment replaces the history entry instead of pushing.
-    """
+def redirect(
+    url:str, # destination to send the browser to
+)->str:      # framed datastar-execute-script event that navigates
+    "Redirect the browser to `url` via a patched script (setTimeout wraps a Firefox history quirk)."
     return execute_script(f"setTimeout(() => window.location = {json.dumps(url)}, 0)")
 
 ## db
@@ -653,13 +662,13 @@ class ServerState:
     host:   str    = "127.0.0.1"
     port:   int    = 8000
 
-def serve_background(app, host: str = "127.0.0.1", port: int = 8000, **kwargs) -> ServerState:
-    """Run a py-sse app in a background thread.
-
-        state = serve_background(app)
-        # ... later ...
-        stop_background(state)
-    """
+def serve_background(
+    app,                    # the py-sse app to run
+    host:str="127.0.0.1",   # bind address
+    port:int=8000,          # bind port
+    **kwargs,               # forwarded to granian's embedded Server
+)->ServerState:             # handle to pass to stop_background
+    "Run a py-sse app in a background thread."
     from granian.server.embed import Server
     from granian.constants import Interfaces
 
@@ -677,13 +686,10 @@ def serve_background(app, host: str = "127.0.0.1", port: int = 8000, **kwargs) -
     thread.start()
     return ServerState(server=server, loop=loop, thread=thread, host=host, port=port)
 
-def stop_background(state: ServerState) -> None:
-    """Stop a background server via Granian's clean shutdown path.
-
-    Joins the worker thread with a 3-second timeout. If the thread is still
-    alive after that, prints a warning — a zombie thread will prevent the
-    next serve_background on the same port from binding.
-    """
+def stop_background(
+    state:ServerState, # handle from serve_background
+)->None:
+    "Stop a background server via Granian's clean shutdown; warns if the thread won't die in 3s."
     if state.server and state.loop and state.loop.is_running():
         state.loop.call_soon_threadsafe(state.server.stop)
     if state.thread:
@@ -691,7 +697,9 @@ def stop_background(state: ServerState) -> None:
         if state.thread.is_alive():
             print(f"WARNING: server thread on port {state.port} did not stop within 3s")
 
-def dev_alive(port_or_state) -> bool:
+def dev_alive(
+    port_or_state, # a port int, or a ServerState to read .port from
+)->bool:           # True if the port is accepting connections
     "Check whether a port (or ServerState's port) is accepting connections."
     port = port_or_state.port if isinstance(port_or_state, ServerState) else port_or_state
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -706,40 +714,42 @@ class TunnelState:
     listener: object = None
     url:      str    = ""
 
-def load_env(path: str = ".env"):
-    "Minimal .env loader: KEY=VALUE per line, # for comments."
+def load_env(
+    path:str=".env", # env file to read; missing file is a no-op
+):
+    "Minimal .env loader: `KEY=VALUE` per line, `#` for comments. Won't override existing vars."
     import os
-    for line in open(path):
-        if "=" in (line := line.strip()) and not line.startswith("#"):
-            k, v = line.split("=", 1)
-            os.environ.setdefault(k.strip(), v.strip())
+    if not os.path.exists(path): return
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            if "=" in (line := line.strip()) and not line.startswith("#"):
+                k, v = line.split("=", 1)
+                os.environ.setdefault(k.strip(), v.strip())
 
-def start_tunnel(port: int = 8000, **kwargs) -> TunnelState:
-    """Open an ngrok tunnel to localhost:port.
-
-    Requires the `ngrok` package and NGROK_AUTHTOKEN env var.
-    Extra kwargs forward to ngrok.forward().
-
-        tunnel = start_tunnel(8000)
-        print(tunnel.url)
-        stop_tunnel(tunnel)
-    """
+def start_tunnel(
+    port:int=8000, # local port to forward
+    **kwargs,      # forwarded to ngrok.forward()
+)->TunnelState:    # handle to pass to stop_tunnel
+    "Open an ngrok tunnel to localhost:`port` (needs the `ngrok` pkg + NGROK_AUTHTOKEN)."
     import threading
     import ngrok
 
-    result = [None]
+    result, error = [None], [None]
 
     def _connect():
-        result[0] = ngrok.forward(port, authtoken_from_env=True, **kwargs)
+        try:                   result[0] = ngrok.forward(port, authtoken_from_env=True, **kwargs)
+        except Exception as e: error[0]  = e
 
     t = threading.Thread(target=_connect)
     t.start()
     t.join()
 
-    listener = result[0]
-    return TunnelState(listener=listener, url=listener.url())
+    if error[0] is not None: raise error[0]
+    return TunnelState(listener=result[0], url=result[0].url())
 
-def stop_tunnel(tunnel: TunnelState) -> None:
+def stop_tunnel(
+    tunnel:TunnelState, # handle from start_tunnel
+)->None:                # nothing
     "Close an ngrok tunnel."
     if tunnel.listener:
         import ngrok

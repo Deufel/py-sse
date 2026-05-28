@@ -15,9 +15,8 @@ with app.setup:
 
     from py_sse import (
         serve, signals, set_cookie,
-        html, redirect, no_content, blob, error,
-        Changes, sse_data, sse_keepalive,
-    )
+        redirect,
+        Changes)
 
     from html_tags import h
     from html_tags import render as h_render
@@ -79,7 +78,14 @@ with app.setup:
 
 
 @app.cell
-def _():
+def _(
+    get_chat,
+    get_file,
+    get_login,
+    post_delete_file,
+    post_delete_msg,
+    post_say,
+):
 
     ROUTES = [
         ("GET",  "/",                       get_root),
@@ -274,8 +280,11 @@ def extract_files(sig):
 def get_root(req): return redirect("/chat" if req["user"] else "/login")
 
 
-@app.function
-def get_login(req): return redirect("/chat") if req["user"] else html(h_render(login_page()))
+@app.cell
+def _(html):
+    def get_login(req): return redirect("/chat") if req["user"] else html(h_render(login_page()))
+
+    return (get_login,)
 
 
 @app.function
@@ -293,51 +302,63 @@ def post_logout(req):
     return redirect("/login")
 
 
-@app.function
-def get_chat(req): return redirect("/login") if not req["user"] else html(h_render(chat_page(req["user"])))
+@app.cell
+def _(html):
+    def get_chat(req): return redirect("/login") if not req["user"] else html(h_render(chat_page(req["user"])))
+
+    return (get_chat,)
 
 
-@app.function
-def post_say(req):
-    if not req["user"]: return error(401, "auth required")
-    if len(req["body"]) > UPLOAD_WIRE_MAX: return error(413, "payload too large")
-    sig = signals(req)
-    keys = list(sig.keys()) if isinstance(sig, dict) else []
-    if "files" in sig and isinstance(sig["files"], list) and sig["files"]: print(f"[say] keys={keys} files={len(sig['files'])}")
-    txt = (sig.get("text") or "").strip()[:500] if isinstance(sig, dict) else ""
-    if txt:
-        conn = db()
-        conn.execute("INSERT INTO msgs(author, txt, ts) VALUES(?, ?, ?)", (req["user"], txt, time.time()))
-    items = list(extract_files(sig))
-    if items:
-        cur = db().execute("SELECT COALESCE(SUM(size), 0) FROM files")
-        current = cur.fetchone()[0]
-        conn = db()
-        for raw, name, mime in items:
-            if len(raw) > UPLOAD_MAX_BYTES:
-                print(f"[say] reject {name!r}: {len(raw)} > limit"); continue
-            if current + len(raw) > AGGREGATE_MAX_BYTES:
-                print(f"[say] reject {name!r}: aggregate cap"); return error(507, "storage full")
-            current += len(raw)
-            conn.execute("INSERT INTO files(blob, orig_name, uploader, mime, size, ts) VALUES(?, ?, ?, ?, ?, ?)", (raw, name, req["user"], mime, len(raw), time.time()))
-            print(f"[say] saved {name!r} ({len(raw)} bytes)")
-    return no_content()
+@app.cell
+def _(error, no_content):
+    def post_say(req):
+        if not req["user"]: return error(401, "auth required")
+        if len(req["body"]) > UPLOAD_WIRE_MAX: return error(413, "payload too large")
+        sig = signals(req)
+        keys = list(sig.keys()) if isinstance(sig, dict) else []
+        if "files" in sig and isinstance(sig["files"], list) and sig["files"]: print(f"[say] keys={keys} files={len(sig['files'])}")
+        txt = (sig.get("text") or "").strip()[:500] if isinstance(sig, dict) else ""
+        if txt:
+            conn = db()
+            conn.execute("INSERT INTO msgs(author, txt, ts) VALUES(?, ?, ?)", (req["user"], txt, time.time()))
+        items = list(extract_files(sig))
+        if items:
+            cur = db().execute("SELECT COALESCE(SUM(size), 0) FROM files")
+            current = cur.fetchone()[0]
+            conn = db()
+            for raw, name, mime in items:
+                if len(raw) > UPLOAD_MAX_BYTES:
+                    print(f"[say] reject {name!r}: {len(raw)} > limit"); continue
+                if current + len(raw) > AGGREGATE_MAX_BYTES:
+                    print(f"[say] reject {name!r}: aggregate cap"); return error(507, "storage full")
+                current += len(raw)
+                conn.execute("INSERT INTO files(blob, orig_name, uploader, mime, size, ts) VALUES(?, ?, ?, ?, ?, ?)", (raw, name, req["user"], mime, len(raw), time.time()))
+                print(f"[say] saved {name!r} ({len(raw)} bytes)")
+        return no_content()
+
+    return (post_say,)
 
 
-@app.function
-def post_delete_msg(req):
-    if not req["user"]: return error(401)
-    msg_id = int(req["params"]["msg_id"])
-    db().execute("DELETE FROM msgs WHERE id = ? AND author = ?", (msg_id, req["user"]))
-    return no_content()
+@app.cell
+def _(error, no_content):
+    def post_delete_msg(req):
+        if not req["user"]: return error(401)
+        msg_id = int(req["params"]["msg_id"])
+        db().execute("DELETE FROM msgs WHERE id = ? AND author = ?", (msg_id, req["user"]))
+        return no_content()
+
+    return (post_delete_msg,)
 
 
-@app.function
-def post_delete_file(req):
-    if not req["user"]: return error(401)
-    file_id = int(req["params"]["file_id"])
-    db().execute("DELETE FROM files WHERE id = ? AND uploader = ?", (file_id, req["user"]))
-    return no_content()
+@app.cell
+def _(error, no_content):
+    def post_delete_file(req):
+        if not req["user"]: return error(401)
+        file_id = int(req["params"]["file_id"])
+        db().execute("DELETE FROM files WHERE id = ? AND uploader = ?", (file_id, req["user"]))
+        return no_content()
+
+    return (post_delete_file,)
 
 
 @app.function
@@ -357,15 +378,18 @@ def get_feed(req):
         except (OSError, BrokenPipeError): return
 
 
-@app.function
-def get_file(req):
-    if not req["user"]: return redirect("/login")
-    try: file_id = int(req["params"]["file_id"])
-    except: return error(404, "not found")
-    row = db().execute("SELECT blob, orig_name, mime FROM files WHERE id = ?", (file_id,)).fetchone()
-    if row is None: return error(404, "not found")
-    body, orig_name, mime = row
-    return blob(body, mime, filename=orig_name)
+@app.cell
+def _(blob, error):
+    def get_file(req):
+        if not req["user"]: return redirect("/login")
+        try: file_id = int(req["params"]["file_id"])
+        except: return error(404, "not found")
+        row = db().execute("SELECT blob, orig_name, mime FROM files WHERE id = ?", (file_id,)).fetchone()
+        if row is None: return error(404, "not found")
+        body, orig_name, mime = row
+        return blob(body, mime, filename=orig_name)
+
+    return (get_file,)
 
 
 @app.cell

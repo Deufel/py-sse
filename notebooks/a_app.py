@@ -25,7 +25,6 @@ with app.setup:
     PARAM_RE = re.compile(r'\{(\w+)\}')
 
 
-
 @app.cell
 def _():
     import marimo as mo
@@ -44,7 +43,10 @@ def _(mo):
 
 
 @app.function
-def internal_parse_request(scope, proto) -> dict:
+def internal_parse_request(
+    scope, # RSGI scope: path, method, headers, query, etc.
+    proto, # RSGI protocol: body reader + responder
+)->dict:   # the request dict every handler receives
     "Build a request dict from an RSGI scope and protocol."
     raw_cookies = scope.headers.get("cookie", "")
     return {
@@ -69,7 +71,11 @@ def internal_parse_request(scope, proto) -> dict:
 
 
 @app.function
-async def body(req: dict, *, max_size: int = 1_048_576) -> bytes:
+async def body(
+    req:dict,             # the request dict
+    *,
+    max_size:int=1_048_576, # byte cap; raises ValueError if exceeded (0 disables)
+)->bytes:                 # the full body, cached on req for repeat reads
     "Read the full request body, cached, with a size limit."
     if "_body" in req:
         return req["_body"]
@@ -81,17 +87,24 @@ async def body(req: dict, *, max_size: int = 1_048_576) -> bytes:
 
 
 @app.function
-def header_values(req: dict, name: str) -> list[str]:
+def header_values(
+    req:dict,  # the request dict
+    name:str,  # header name (case-insensitive)
+)->list[str]:  # every value sent for that header
     "Return all values for a header (multi-value safe). Uses RSGI's native get_all()."
     return req["headers"].get_all(name)
 
 
 @app.function
-async def body_stream(req: dict, *, max_size: int = 1_048_576):
+async def body_stream(
+    req:dict,             # the request dict
+    *,
+    max_size:int=1_048_576, # cumulative byte cap; raises ValueError if exceeded (0 disables)
+):                        # async generator yielding body chunks (bytes)
     """Yield request body in chunks without buffering the full payload.
 
-    Mutually exclusive with body() — use one or the other per request.
-    Suitable for file uploads.
+    Mutually exclusive with body() — use one or the other per request. Suitable
+    for file uploads.
     """
     proto = req["_proto"]
     total = 0
@@ -103,11 +116,13 @@ async def body_stream(req: dict, *, max_size: int = 1_048_576):
 
 
 @app.function
-async def signals(req: dict) -> dict:
+async def signals(
+    req:dict, # the request dict
+)->dict:      # decoded Datastar signals
     """Read Datastar signals from a request.
 
-    GET: JSON-encoded `datastar` query parameter.
-    Other methods: JSON body, optionally wrapped in `{datastar: ...}`.
+    GET reads the JSON-encoded `datastar` query param; other methods read the
+    JSON body, optionally unwrapped from `{datastar: ...}`.
     """
     if req["method"] == "GET":
         raw = req["query"].get("datastar", "{}")
@@ -117,7 +132,12 @@ async def signals(req: dict) -> dict:
 
 
 @app.function
-def set_cookie(req: dict, name: str, value: str, **opts) -> None:
+def set_cookie(
+    req:dict,    # the request dict
+    name:str,    # cookie name
+    value:str,   # cookie value (sign sensitive values first; see create_signer)
+    **opts,      # attributes: max_age, path, secure=True, httponly=True, samesite=..., underscores become dashes
+)->None:
     "Queue a Set-Cookie header on the request."
     req["_cookies"].append((name, value, opts))
 
@@ -140,7 +160,9 @@ def internal_cookie_headers(req: dict) -> list[tuple[str, str]]:
 
 
 @app.function
-def create_signer(secret: str | bytes | None = None):
+def create_signer(
+    secret:str|bytes|None=None, # HMAC key; None generates an ephemeral random key (won't survive restart)
+):                              # a signer object with .sign(value) / .unsign(signed)
     """HMAC-SHA256 cookie signer.
 
         signer = create_signer("my-secret")
@@ -157,12 +179,18 @@ def create_signer(secret: str | bytes | None = None):
     def _mac(payload: str) -> str:
         return _b64e(hmac.new(secret, payload.encode(), hashlib.sha256).digest())
 
-    def sign(value: str, ts: float | None = None) -> str:
+    def sign(
+        value:str,            # the string to sign
+        ts:float|None=None,   # unix timestamp to embed; defaults to now
+    )->str:                   # "value.ts.mac", all URL-safe base64
         ts = ts or time.time()
         payload = f"{_b64e(value.encode())}.{int(ts):x}"
         return f"{payload}.{_mac(payload)}"
 
-    def unsign(signed: str, max_age: int | None = 3600) -> str | None:
+    def unsign(
+        signed:str,           # a string produced by sign()
+        max_age:int|None=3600, # max age in seconds; None disables expiry
+    )->str|None:              # the original value, or None if missing/tampered/expired
         if not signed: return None
         parts = signed.split(".")
         if len(parts) != 3: return None
@@ -184,11 +212,15 @@ def create_signer(secret: str | bytes | None = None):
 
 
 @app.function
-def static(app, url_prefix: str, directory: str):
+def static(
+    app,             # the app to mount the route onto
+    url_prefix:str,  # URL path to serve under (or the exact path, for a single file)
+    directory:str,   # filesystem directory to serve, or a single file path
+):
     """Mount a directory or single file for static serving.
 
-    Uses RSGI response_file / response_file_range for zero-copy file I/O.
-    Supports HTTP Range requests for resumable downloads and media seeking.
+    Uses RSGI response_file / response_file_range for zero-copy file I/O, with
+    HTTP Range support for resumable downloads and media seeking.
 
         static(app, "/static", "static/")
         static(app, "/favicon.svg", "favicon.svg")
@@ -266,33 +298,23 @@ def static(app, url_prefix: str, directory: str):
 
 
 @app.function
-def create_app(routes: dict | None = None, *, on_init=None, on_del=None):
+def create_app(
+    routes:dict|None=None, # optional preseeded {(METHOD, path): handler} map
+    *,
+    on_init=None,          # on_init(loop) at startup, before the loop runs — wire shared state (DB, Changes) here
+    on_del=None,           # on_del(loop) at shutdown — close connections, detach hooks; sync or async
+):                         # the app handle: an RSGI callable with .get/.post/.stream/... attached
     """Create a Datastar RSGI application.
 
-    Lifecycle:
-        on_init(loop)  → called at server startup. Loop not yet running.
-                         Use to wire shared state (DB connections, Changes,
-                         relays) onto the correct loop.
-        on_del(loop)   → called at server shutdown. Loop not yet running.
-                         Use to close DB connections, detach hooks.
-
-        Both can be sync or async; async ones run via loop.run_until_complete.
-
     Handler return protocol:
-        str          → 200 HTML response
-        dict         → 200 JSON response
+        str          → 200 HTML
+        dict         → 200 JSON
         None         → 204 No Content
-        (url, int)   → redirect (3xx) or text (4xx/5xx)
+        (url, int)   → redirect (3xx) or text body (4xx/5xx)
         async gen    → SSE stream (raw; use @app.stream for the common case)
 
-        async def startup(loop):
-            global changes
-            changes = Changes(db, loop)
-
-        def shutdown(loop):
-            changes.close()
-
-        app = create_app(on_init=startup, on_del=shutdown)
+    on_init / on_del receive the loop before it runs; async ones run via
+    loop.run_until_complete.
     """
     if routes is None:
         routes = {}
@@ -306,7 +328,10 @@ def create_app(routes: dict | None = None, *, on_init=None, on_del=None):
 
     # ── Routing decorators ───────────────────────────────────
 
-    def route(method: str, path: str):
+    def route(
+        method:str, # HTTP method
+        path:str,   # URL path; may contain {name} segments, captured into req["params"]
+    ):
         def decorator(fn):
             if "{" in path:
                 param_routes.append((method.upper(), _path_re(path), fn))
@@ -315,10 +340,14 @@ def create_app(routes: dict | None = None, *, on_init=None, on_del=None):
             return fn
         return decorator
 
-    def mount(prefix, fn):
+    def mount(
+        prefix:str, # URL prefix to match (trailing slash stripped)
+        fn,         # handler receiving req with req["params"]["path"] = the remainder
+    ):
         mounts.append((prefix.rstrip("/"), fn))
         mounts.sort(key=lambda x: -len(x[0]))
 
+    # thin verbs over route(); all take a path and return a decorator
     def get(path):    return route("GET", path)
     def post(path):   return route("POST", path)
     def put(path):    return route("PUT", path)
@@ -327,18 +356,16 @@ def create_app(routes: dict | None = None, *, on_init=None, on_del=None):
 
     # ── @app.stream — the opinionated SSE route ──────────────
 
-    def stream(path: str, *, on):
+    def stream(
+        path:str, # URL path for the SSE endpoint
+        *,
+        on,       # a Changes-like object (has async wait()), or a zero-arg callable returning one (resolved per-request)
+    ):
         """Register an SSE endpoint that re-renders on each tick from `on`.
 
-        The decorated function is sync (or async), takes `req`, and returns
-        either an html_tags tree or a pre-rendered HTML string. The framework
-        handles SSE framing, initial render, re-render on change, disconnect
-        cleanup, and prompt subscriber teardown.
-
-        `on` is either:
-          • a Changes-like object with `async def wait(self)`, or
-          • a zero-arg callable returning one (resolved per-request, useful
-            when the Changes is created in `on_init` after route registration).
+        The decorated fn takes `req` and returns an html_tags tree or an HTML
+        string; the framework handles SSE framing, the initial render, re-render
+        on change, and disconnect cleanup.
 
             @app.stream('/feed', on=lambda: changes)
             def feed(req):
@@ -379,7 +406,11 @@ def create_app(routes: dict | None = None, *, on_init=None, on_del=None):
 
     # ── Beforeware ───────────────────────────────────────────
 
-    def before(fn=None, *, methods=None):
+    def before(
+        fn=None,        # the hook fn(req); returning non-None short-circuits the response
+        *,
+        methods=None,   # restrict to these HTTP methods; None means all
+    ):
         def decorator(f):
             m = {x.upper() for x in methods} if methods else None
             before_hooks.append((f, m))
@@ -579,14 +610,17 @@ def create_app(routes: dict | None = None, *, on_init=None, on_del=None):
 
 
 @app.function
-def serve(app, *, host: str = "127.0.0.1", port: int = 8000, **kwargs):
-    """Run an app with Granian's embedded RSGI server.
+def serve(
+    app,                  # the app to run
+    *,
+    host:str="127.0.0.1", # bind address
+    port:int=8000,        # bind port
+    **kwargs,             # forwarded to granian's embedded Server (log_access=, websockets=, ssl_cert=, ...)
+):
+    """Run an app with Granian's embedded RSGI server (blocks until Ctrl-C).
 
         if __name__ == "__main__":
             serve(app)
-
-    Extra kwargs forward to granian.server.embed.Server
-    (e.g. log_access=True, websockets=False, ssl_cert=...).
     """
     from granian.server.embed import Server
     from granian.constants import Interfaces

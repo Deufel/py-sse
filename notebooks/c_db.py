@@ -4,12 +4,12 @@ __generated_with = "0.23.6"
 app = marimo.App()
 
 with app.setup:
-    """SQLite helpers and the `Changes` primitive that bridges SQLite's
-    update_hook to asyncio waiters, so `@app.stream` can re-render on each write.
+    """SQLite helpers and the `Changes` primitive that bridges SQLite's update_hook
+    to asyncio waiters, so `@app.stream` can re-render on each write.
 
-    `Changes` does one thing: turn DB writes into a coalesced asyncio signal.
-    No rendering, no caching, no broadcasting. The route handler decides what
-    to render on each tick.
+    `Changes` does one thing: turn DB writes into a coalesced asyncio signal. No
+    rendering, no caching, no broadcasting — the route handler decides what to
+    render on each tick.
     """
     import asyncio
     import logging
@@ -23,7 +23,6 @@ with app.setup:
     apsw.ext.log_sqlite()
 
 
-
 @app.cell
 def _():
     import marimo as mo
@@ -32,7 +31,9 @@ def _():
 
 
 @app.function
-def create_db(path: str) -> apsw.Connection:
+def create_db(
+    path:str, # path to the SQLite file (created if absent)
+)->apsw.Connection: # an open WAL-mode connection
     "Open a SQLite connection with WAL + apsw best practices."
     conn = apsw.Connection(path)
     conn.pragma("journal_mode", "wal")
@@ -40,13 +41,22 @@ def create_db(path: str) -> apsw.Connection:
 
 
 @app.function
-def migrate(conn: apsw.Connection, schema_sql: str) -> None:
+def migrate(
+    conn:apsw.Connection, # target connection
+    schema_sql:str,       # one or more DDL statements
+)->None:
     "Apply schema idempotently in one transaction."
     with conn: conn.execute(schema_sql)
 
 
 @app.function
-def query(conn: apsw.Connection, sql: str, bindings: tuple = (), *, limit: int = 1000) -> list:
+def query(
+    conn:apsw.Connection,  # connection to read from
+    sql:str,               # a SELECT statement
+    bindings:tuple=(),     # parameters bound to `?` placeholders
+    *,
+    limit:int=1000,        # stop after this many rows
+)->list:                   # rows as tuples
     "Run a SELECT and return up to `limit` rows as tuples."
     rows = []
     for row in conn.execute(sql, bindings):
@@ -56,23 +66,22 @@ def query(conn: apsw.Connection, sql: str, bindings: tuple = (), *, limit: int =
 
 
 @app.function
-def write(conn: apsw.Connection, fn, *args):
+def write(
+    conn:apsw.Connection, # connection to write to
+    fn,                   # called as fn(conn, *args) inside the transaction
+    *args,                # extra positional args forwarded to fn
+):                        # returns whatever fn returns
     "Run fn(conn, *args) in a transaction; returns fn's result."
     with conn: return fn(conn, *args)
 
 
 @app.class_definition
 class Changes:
-    """Bridges SQLite update_hook to asyncio waiters.
-
-    Each DB write wakes all current waiters once. Multiple writes within the
-    same event-loop tick coalesce into a single wake (cheap; avoids thundering
-    herd during transactions).
-
-    Must be constructed inside or with a reference to the loop that will own
-    the waiters (typically inside `on_init(loop)` of the RSGI app).
-    """
-    def __init__(self, db: apsw.Connection, loop: asyncio.AbstractEventLoop):
+    "Bridge SQLite's update_hook to asyncio waiters; coalesces writes within a tick into one wake."
+    def __init__(self,
+        db:apsw.Connection,             # connection whose writes to observe
+        loop:asyncio.AbstractEventLoop, # loop that will own the waiters (pass on_init's loop)
+    ):
         self._db = db
         self._loop = loop
         self._event = None       # bound lazily on first wait()
@@ -96,13 +105,7 @@ class Changes:
         old.set()
 
     async def wait(self):
-        """Async iterator: yields once per coalesced DB change.
-
-        Usage in a stream handler:
-
-            async for _ in changes.wait():
-                yield patch_elements(render_view())
-        """
+        "Async iterator: yields once per coalesced DB change."
         if self._event is None:
             self._event = asyncio.Event()
         try:

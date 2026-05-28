@@ -1,16 +1,17 @@
 [project]
 name = "py-sse"
-version = "0.12.1"
+version = "0.12.2"
 description = "oppionated python sse server wrapping granian"
 readme = "README.md"
 authors = [
     { name = "Deufel", email = "MDeufel13@gmail.com" }
 ]
-requires-python = ">=3.12"
+requires-python = ">=3.13"
 dependencies = [
     "apsw>=3.53.1.0",
     "brotli>=1.2.0",
     "granian>=2.7.5",
+    "ngrok>=1.7.0",
 ]
 
 [build-system]
@@ -23,6 +24,7 @@ dev = [
     "marimo-dev>=0.3.3",
     "marimo>=0.21.1",
     "pydantic-ai-slim>=1.97.0",
+    "pytest>=9.0.3",
 ]
 
 [tool.marimo-dev]
