@@ -1,5 +1,5 @@
 """oppionated python sse server wrapping granian"""
-__version__ = '0.12.0'
+__version__ = '0.12.1'
 __author__ = 'Deufel'
 from .app import body, header_values, body_stream, signals, set_cookie, create_signer, static, create_app, serve
 from .sse import patch_elements, patch_signals, remove_signals, execute_script, redirect

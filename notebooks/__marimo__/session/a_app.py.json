@@ -1,0 +1,106 @@
+{
+  "version": "1",
+  "metadata": {
+    "marimo_version": "0.23.6",
+    "script_metadata_hash": null
+  },
+  "cells": [
+    {
+      "id": "setup",
+      "code_hash": "913da6012753e69b95fe9eeee68ccb3a",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "Hbol",
+      "code_hash": "1d0db38904205bec4d6f6f6a1f6cec3e",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "MJUe",
+      "code_hash": "c72568d31506a4b5f4ce01e78d9148f5",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h1 id=\"app\">App</h1>\n<blockquote>\n<span class=\"paragraph\">Opinonated granin implementation of rsgi for sse datastar applications</span>\n</blockquote></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "vblA",
+      "code_hash": "9ee0c4a25ebddba243221383d315771e",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "bkHC",
+      "code_hash": "eb19c125f8afd90f913f4db3506ab55d",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "lEQa",
+      "code_hash": "c4222e04b3f015fd7b0d176739269273",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "PKri",
+      "code_hash": "8e91e324cc280c21e0bbaf7c8362cdf5",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "Xref",
+      "code_hash": "c434ecceb25027d35c6d6f29dfcdbb50",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "SFPL",
+      "code_hash": "5f18f0a52ba9c3b8f73027786820a42a",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "BYtC",
+      "code_hash": "edd48b51000b447238bc56b7636c9148",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "RGSE",
+      "code_hash": "8abbd00e7727a5c3b79fea6cb256a127",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "Kclp",
+      "code_hash": "f0a5d927c76c33e940dbe8c5b7f23262",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "emfo",
+      "code_hash": "7744a47f1e2f53897e5050a7b3a79047",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "Hstk",
+      "code_hash": "ed2a331d8cb68ef76045d4282bf74e01",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "nWHF",
+      "code_hash": "ac270b356a4d1935a28db8383f0fb71a",
+      "outputs": [],
+      "console": []
+    }
+  ]
+}

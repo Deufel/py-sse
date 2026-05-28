@@ -1,6 +1,6 @@
 # py-sse
 
-> minimal python sse server
+> oppionated python sse server wrapping granian
 
 
 ## app

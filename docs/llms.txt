@@ -1,6 +1,6 @@
 # py-sse
 
-> minimal python sse server
+> oppionated python sse server wrapping granian
 
 - [app](/app): body, header_values, body_stream, signals, set_cookie, create_signer, static, create_app, serve
 - [sse](/sse): patch_elements, patch_signals, remove_signals, execute_script, redirect
